@@ -1,0 +1,3947 @@
+{
+  "instance_name": "Dynamic_R101_P5",
+  "num_periods": 5,
+  "period_duration": 240.0,
+  "total_horizon": 1200.0,
+  "depot_coordinates": [
+    35.0,
+    35.0
+  ],
+  "vehicle_capacity": 200.0,
+  "periods": [
+    {
+      "period_index": 0,
+      "period_start_time": 0.0,
+      "period_end_time": 240.0,
+      "orders": [
+        {
+          "order_id": "ORD_001",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            41.0,
+            49.0
+          ],
+          "demand_weight": 10.0,
+          "volume": 2.5,
+          "priority": 1,
+          "earliest_delivery": 161.0,
+          "latest_delivery": 171.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_002",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            35.0,
+            17.0
+          ],
+          "demand_weight": 7.0,
+          "volume": 1.75,
+          "priority": 1,
+          "earliest_delivery": 50.0,
+          "latest_delivery": 60.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_003",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            45.0
+          ],
+          "demand_weight": 13.0,
+          "volume": 3.25,
+          "priority": 1,
+          "earliest_delivery": 116.0,
+          "latest_delivery": 126.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_004",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            20.0
+          ],
+          "demand_weight": 19.0,
+          "volume": 4.75,
+          "priority": 1,
+          "earliest_delivery": 149.0,
+          "latest_delivery": 159.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_007",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            50.0
+          ],
+          "demand_weight": 5.0,
+          "volume": 1.25,
+          "priority": 1,
+          "earliest_delivery": 81.0,
+          "latest_delivery": 91.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_008",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            10.0,
+            43.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 95.0,
+          "latest_delivery": 105.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_009",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            60.0
+          ],
+          "demand_weight": 16.0,
+          "volume": 4.0,
+          "priority": 1,
+          "earliest_delivery": 97.0,
+          "latest_delivery": 107.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_010",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            30.0,
+            60.0
+          ],
+          "demand_weight": 16.0,
+          "volume": 4.0,
+          "priority": 1,
+          "earliest_delivery": 124.0,
+          "latest_delivery": 134.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_011",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            65.0
+          ],
+          "demand_weight": 12.0,
+          "volume": 3.0,
+          "priority": 1,
+          "earliest_delivery": 67.0,
+          "latest_delivery": 77.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_015",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            30.0,
+            5.0
+          ],
+          "demand_weight": 8.0,
+          "volume": 2.0,
+          "priority": 1,
+          "earliest_delivery": 61.0,
+          "latest_delivery": 71.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_016",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            10.0,
+            20.0
+          ],
+          "demand_weight": 19.0,
+          "volume": 4.75,
+          "priority": 1,
+          "earliest_delivery": 75.0,
+          "latest_delivery": 85.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_017",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            5.0,
+            30.0
+          ],
+          "demand_weight": 2.0,
+          "volume": 0.5,
+          "priority": 1,
+          "earliest_delivery": 157.0,
+          "latest_delivery": 167.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_018",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            40.0
+          ],
+          "demand_weight": 12.0,
+          "volume": 3.0,
+          "priority": 1,
+          "earliest_delivery": 87.0,
+          "latest_delivery": 97.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_020",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            45.0,
+            65.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 126.0,
+          "latest_delivery": 136.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_021",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            45.0,
+            20.0
+          ],
+          "demand_weight": 11.0,
+          "volume": 2.75,
+          "priority": 1,
+          "earliest_delivery": 62.0,
+          "latest_delivery": 72.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_022",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            45.0,
+            10.0
+          ],
+          "demand_weight": 18.0,
+          "volume": 4.5,
+          "priority": 1,
+          "earliest_delivery": 97.0,
+          "latest_delivery": 107.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_023",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            5.0
+          ],
+          "demand_weight": 29.0,
+          "volume": 7.25,
+          "priority": 1,
+          "earliest_delivery": 68.0,
+          "latest_delivery": 78.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_024",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            65.0,
+            35.0
+          ],
+          "demand_weight": 3.0,
+          "volume": 0.75,
+          "priority": 1,
+          "earliest_delivery": 153.0,
+          "latest_delivery": 163.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_026",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            45.0,
+            30.0
+          ],
+          "demand_weight": 17.0,
+          "volume": 4.25,
+          "priority": 1,
+          "earliest_delivery": 132.0,
+          "latest_delivery": 142.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_027",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            35.0,
+            40.0
+          ],
+          "demand_weight": 16.0,
+          "volume": 4.0,
+          "priority": 1,
+          "earliest_delivery": 37.0,
+          "latest_delivery": 47.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_028",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            41.0,
+            37.0
+          ],
+          "demand_weight": 16.0,
+          "volume": 4.0,
+          "priority": 1,
+          "earliest_delivery": 39.0,
+          "latest_delivery": 49.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_029",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            64.0,
+            42.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 63.0,
+          "latest_delivery": 73.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_030",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            40.0,
+            60.0
+          ],
+          "demand_weight": 21.0,
+          "volume": 5.25,
+          "priority": 1,
+          "earliest_delivery": 71.0,
+          "latest_delivery": 81.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_031",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            31.0,
+            52.0
+          ],
+          "demand_weight": 27.0,
+          "volume": 6.75,
+          "priority": 1,
+          "earliest_delivery": 50.0,
+          "latest_delivery": 60.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_033",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            53.0,
+            52.0
+          ],
+          "demand_weight": 11.0,
+          "volume": 2.75,
+          "priority": 1,
+          "earliest_delivery": 37.0,
+          "latest_delivery": 47.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_035",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            63.0,
+            65.0
+          ],
+          "demand_weight": 8.0,
+          "volume": 2.0,
+          "priority": 1,
+          "earliest_delivery": 143.0,
+          "latest_delivery": 153.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_036",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            2.0,
+            60.0
+          ],
+          "demand_weight": 5.0,
+          "volume": 1.25,
+          "priority": 1,
+          "earliest_delivery": 41.0,
+          "latest_delivery": 51.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_038",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            5.0,
+            5.0
+          ],
+          "demand_weight": 16.0,
+          "volume": 4.0,
+          "priority": 1,
+          "earliest_delivery": 83.0,
+          "latest_delivery": 93.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_039",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            60.0,
+            12.0
+          ],
+          "demand_weight": 31.0,
+          "volume": 7.75,
+          "priority": 1,
+          "earliest_delivery": 44.0,
+          "latest_delivery": 54.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_040",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            40.0,
+            25.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 85.0,
+          "latest_delivery": 95.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_041",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            42.0,
+            7.0
+          ],
+          "demand_weight": 5.0,
+          "volume": 1.25,
+          "priority": 1,
+          "earliest_delivery": 97.0,
+          "latest_delivery": 107.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_045",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            6.0,
+            38.0
+          ],
+          "demand_weight": 16.0,
+          "volume": 4.0,
+          "priority": 1,
+          "earliest_delivery": 32.0,
+          "latest_delivery": 42.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_046",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            2.0,
+            48.0
+          ],
+          "demand_weight": 1.0,
+          "volume": 0.25,
+          "priority": 1,
+          "earliest_delivery": 117.0,
+          "latest_delivery": 127.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_047",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            8.0,
+            56.0
+          ],
+          "demand_weight": 27.0,
+          "volume": 6.75,
+          "priority": 1,
+          "earliest_delivery": 51.0,
+          "latest_delivery": 61.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_049",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            6.0,
+            68.0
+          ],
+          "demand_weight": 30.0,
+          "volume": 7.5,
+          "priority": 1,
+          "earliest_delivery": 108.0,
+          "latest_delivery": 118.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_050",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            47.0,
+            47.0
+          ],
+          "demand_weight": 13.0,
+          "volume": 3.25,
+          "priority": 1,
+          "earliest_delivery": 124.0,
+          "latest_delivery": 134.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_051",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            49.0,
+            58.0
+          ],
+          "demand_weight": 10.0,
+          "volume": 2.5,
+          "priority": 1,
+          "earliest_delivery": 88.0,
+          "latest_delivery": 98.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_052",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            27.0,
+            43.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 52.0,
+          "latest_delivery": 62.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_053",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            37.0,
+            31.0
+          ],
+          "demand_weight": 14.0,
+          "volume": 3.5,
+          "priority": 1,
+          "earliest_delivery": 95.0,
+          "latest_delivery": 105.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_055",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            63.0,
+            23.0
+          ],
+          "demand_weight": 2.0,
+          "volume": 0.5,
+          "priority": 1,
+          "earliest_delivery": 136.0,
+          "latest_delivery": 146.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_057",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            32.0,
+            12.0
+          ],
+          "demand_weight": 7.0,
+          "volume": 1.75,
+          "priority": 1,
+          "earliest_delivery": 101.0,
+          "latest_delivery": 111.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_060",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            17.0,
+            34.0
+          ],
+          "demand_weight": 3.0,
+          "volume": 0.75,
+          "priority": 1,
+          "earliest_delivery": 162.0,
+          "latest_delivery": 172.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_061",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            12.0,
+            24.0
+          ],
+          "demand_weight": 13.0,
+          "volume": 3.25,
+          "priority": 1,
+          "earliest_delivery": 76.0,
+          "latest_delivery": 86.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_062",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            24.0,
+            58.0
+          ],
+          "demand_weight": 19.0,
+          "volume": 4.75,
+          "priority": 1,
+          "earliest_delivery": 58.0,
+          "latest_delivery": 68.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_063",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            27.0,
+            69.0
+          ],
+          "demand_weight": 10.0,
+          "volume": 2.5,
+          "priority": 1,
+          "earliest_delivery": 34.0,
+          "latest_delivery": 44.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_064",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            15.0,
+            77.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 73.0,
+          "latest_delivery": 83.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_065",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            62.0,
+            77.0
+          ],
+          "demand_weight": 20.0,
+          "volume": 5.0,
+          "priority": 1,
+          "earliest_delivery": 51.0,
+          "latest_delivery": 61.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_066",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            49.0,
+            73.0
+          ],
+          "demand_weight": 25.0,
+          "volume": 6.25,
+          "priority": 1,
+          "earliest_delivery": 127.0,
+          "latest_delivery": 137.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_068",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            56.0,
+            39.0
+          ],
+          "demand_weight": 36.0,
+          "volume": 9.0,
+          "priority": 1,
+          "earliest_delivery": 142.0,
+          "latest_delivery": 152.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_070",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            37.0,
+            56.0
+          ],
+          "demand_weight": 5.0,
+          "volume": 1.25,
+          "priority": 1,
+          "earliest_delivery": 182.0,
+          "latest_delivery": 192.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_071",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            57.0,
+            68.0
+          ],
+          "demand_weight": 15.0,
+          "volume": 3.75,
+          "priority": 1,
+          "earliest_delivery": 77.0,
+          "latest_delivery": 87.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_072",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            47.0,
+            16.0
+          ],
+          "demand_weight": 25.0,
+          "volume": 6.25,
+          "priority": 1,
+          "earliest_delivery": 35.0,
+          "latest_delivery": 45.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_073",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            44.0,
+            17.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 78.0,
+          "latest_delivery": 88.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_074",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            46.0,
+            13.0
+          ],
+          "demand_weight": 8.0,
+          "volume": 2.0,
+          "priority": 1,
+          "earliest_delivery": 149.0,
+          "latest_delivery": 159.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_075",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            49.0,
+            11.0
+          ],
+          "demand_weight": 18.0,
+          "volume": 4.5,
+          "priority": 1,
+          "earliest_delivery": 69.0,
+          "latest_delivery": 79.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_077",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            53.0,
+            43.0
+          ],
+          "demand_weight": 14.0,
+          "volume": 3.5,
+          "priority": 1,
+          "earliest_delivery": 179.0,
+          "latest_delivery": 189.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_078",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            61.0,
+            52.0
+          ],
+          "demand_weight": 3.0,
+          "volume": 0.75,
+          "priority": 1,
+          "earliest_delivery": 96.0,
+          "latest_delivery": 106.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_079",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            57.0,
+            48.0
+          ],
+          "demand_weight": 23.0,
+          "volume": 5.75,
+          "priority": 1,
+          "earliest_delivery": 92.0,
+          "latest_delivery": 102.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_080",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            56.0,
+            37.0
+          ],
+          "demand_weight": 6.0,
+          "volume": 1.5,
+          "priority": 1,
+          "earliest_delivery": 182.0,
+          "latest_delivery": 192.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_081",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            54.0
+          ],
+          "demand_weight": 26.0,
+          "volume": 6.5,
+          "priority": 1,
+          "earliest_delivery": 94.0,
+          "latest_delivery": 104.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_082",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            15.0,
+            47.0
+          ],
+          "demand_weight": 16.0,
+          "volume": 4.0,
+          "priority": 1,
+          "earliest_delivery": 55.0,
+          "latest_delivery": 65.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_083",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            14.0,
+            37.0
+          ],
+          "demand_weight": 11.0,
+          "volume": 2.75,
+          "priority": 1,
+          "earliest_delivery": 44.0,
+          "latest_delivery": 54.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_084",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            11.0,
+            31.0
+          ],
+          "demand_weight": 7.0,
+          "volume": 1.75,
+          "priority": 1,
+          "earliest_delivery": 101.0,
+          "latest_delivery": 111.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_085",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            16.0,
+            22.0
+          ],
+          "demand_weight": 41.0,
+          "volume": 10.25,
+          "priority": 1,
+          "earliest_delivery": 91.0,
+          "latest_delivery": 101.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_088",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            26.0,
+            52.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 74.0,
+          "latest_delivery": 84.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_089",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            26.0,
+            35.0
+          ],
+          "demand_weight": 15.0,
+          "volume": 3.75,
+          "priority": 1,
+          "earliest_delivery": 176.0,
+          "latest_delivery": 186.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_090",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            31.0,
+            67.0
+          ],
+          "demand_weight": 3.0,
+          "volume": 0.75,
+          "priority": 1,
+          "earliest_delivery": 95.0,
+          "latest_delivery": 105.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_091",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            15.0,
+            19.0
+          ],
+          "demand_weight": 1.0,
+          "volume": 0.25,
+          "priority": 1,
+          "earliest_delivery": 160.0,
+          "latest_delivery": 170.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_092",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            22.0,
+            22.0
+          ],
+          "demand_weight": 2.0,
+          "volume": 0.5,
+          "priority": 1,
+          "earliest_delivery": 18.0,
+          "latest_delivery": 28.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_093",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            18.0,
+            24.0
+          ],
+          "demand_weight": 22.0,
+          "volume": 5.5,
+          "priority": 1,
+          "earliest_delivery": 188.0,
+          "latest_delivery": 198.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_094",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            26.0,
+            27.0
+          ],
+          "demand_weight": 27.0,
+          "volume": 6.75,
+          "priority": 1,
+          "earliest_delivery": 100.0,
+          "latest_delivery": 110.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_097",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            25.0,
+            21.0
+          ],
+          "demand_weight": 12.0,
+          "volume": 3.0,
+          "priority": 1,
+          "earliest_delivery": 133.0,
+          "latest_delivery": 143.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_098",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            19.0,
+            21.0
+          ],
+          "demand_weight": 10.0,
+          "volume": 2.5,
+          "priority": 1,
+          "earliest_delivery": 58.0,
+          "latest_delivery": 68.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_099",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            26.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 83.0,
+          "latest_delivery": 93.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_100",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            18.0,
+            18.0
+          ],
+          "demand_weight": 17.0,
+          "volume": 4.25,
+          "priority": 1,
+          "earliest_delivery": 185.0,
+          "latest_delivery": 195.0,
+          "service_time": 10.0,
+          "release_time": 0.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        }
+      ]
+    },
+    {
+      "period_index": 1,
+      "period_start_time": 240.0,
+      "period_end_time": 480.0,
+      "orders": [
+        {
+          "order_id": "ORD_002_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            35.0,
+            17.0
+          ],
+          "demand_weight": 7.2,
+          "volume": 1.8,
+          "priority": 1,
+          "earliest_delivery": 325.2,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 325.2,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_003_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            45.0
+          ],
+          "demand_weight": 10.2,
+          "volume": 2.55,
+          "priority": 1,
+          "earliest_delivery": 332.8,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 332.8,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_009_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            60.0
+          ],
+          "demand_weight": 4.0,
+          "volume": 1.0,
+          "priority": 1,
+          "earliest_delivery": 244.4,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 244.4,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_010_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            30.0,
+            60.0
+          ],
+          "demand_weight": 16.6,
+          "volume": 4.15,
+          "priority": 1,
+          "earliest_delivery": 314.6,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 314.6,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_011_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            65.0
+          ],
+          "demand_weight": 12.2,
+          "volume": 3.05,
+          "priority": 1,
+          "earliest_delivery": 365.3,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 365.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_012_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            50.0,
+            35.0
+          ],
+          "demand_weight": 29.8,
+          "volume": 7.45,
+          "priority": 1,
+          "earliest_delivery": 375.2,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 375.2,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_013_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            30.0,
+            25.0
+          ],
+          "demand_weight": 32.4,
+          "volume": 8.1,
+          "priority": 5,
+          "earliest_delivery": 316.5,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 316.5,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_014_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            15.0,
+            10.0
+          ],
+          "demand_weight": 18.3,
+          "volume": 4.575,
+          "priority": 1,
+          "earliest_delivery": 284.9,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 284.9,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_037_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            20.0
+          ],
+          "demand_weight": 7.0,
+          "volume": 1.75,
+          "priority": 1,
+          "earliest_delivery": 291.4,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 291.4,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_038_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            5.0,
+            5.0
+          ],
+          "demand_weight": 19.3,
+          "volume": 4.825,
+          "priority": 1,
+          "earliest_delivery": 281.6,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 281.6,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_040_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            40.0,
+            25.0
+          ],
+          "demand_weight": 7.5,
+          "volume": 1.875,
+          "priority": 1,
+          "earliest_delivery": 313.4,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 313.4,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_048_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            13.0,
+            52.0
+          ],
+          "demand_weight": 39.2,
+          "volume": 9.8,
+          "priority": 1,
+          "earliest_delivery": 303.3,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 303.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_055_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            63.0,
+            23.0
+          ],
+          "demand_weight": 2.3,
+          "volume": 0.575,
+          "priority": 1,
+          "earliest_delivery": 279.5,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 279.5,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_058_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            36.0,
+            26.0
+          ],
+          "demand_weight": 18.8,
+          "volume": 4.7,
+          "priority": 5,
+          "earliest_delivery": 324.1,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 324.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_060_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            17.0,
+            34.0
+          ],
+          "demand_weight": 4.0,
+          "volume": 1.0,
+          "priority": 1,
+          "earliest_delivery": 310.9,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 310.9,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_061_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            12.0,
+            24.0
+          ],
+          "demand_weight": 14.0,
+          "volume": 3.5,
+          "priority": 5,
+          "earliest_delivery": 323.1,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 323.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_070_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            37.0,
+            56.0
+          ],
+          "demand_weight": 5.6,
+          "volume": 1.4,
+          "priority": 1,
+          "earliest_delivery": 243.5,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 243.5,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_076_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            49.0,
+            42.0
+          ],
+          "demand_weight": 13.0,
+          "volume": 3.25,
+          "priority": 5,
+          "earliest_delivery": 243.7,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 243.7,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_077_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            53.0,
+            43.0
+          ],
+          "demand_weight": 14.7,
+          "volume": 3.675,
+          "priority": 1,
+          "earliest_delivery": 360.5,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 360.5,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_079_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            57.0,
+            48.0
+          ],
+          "demand_weight": 28.9,
+          "volume": 7.225,
+          "priority": 1,
+          "earliest_delivery": 349.3,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 349.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_080_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            56.0,
+            37.0
+          ],
+          "demand_weight": 6.2,
+          "volume": 1.55,
+          "priority": 1,
+          "earliest_delivery": 387.5,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 387.5,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_086_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            4.0,
+            18.0
+          ],
+          "demand_weight": 37.0,
+          "volume": 9.25,
+          "priority": 1,
+          "earliest_delivery": 364.3,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 364.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_087_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            28.0,
+            18.0
+          ],
+          "demand_weight": 24.1,
+          "volume": 6.025,
+          "priority": 1,
+          "earliest_delivery": 379.0,
+          "latest_delivery": 480.0,
+          "service_time": 10.0,
+          "release_time": 379.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_097_P1",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            25.0,
+            21.0
+          ],
+          "demand_weight": 11.2,
+          "volume": 2.8,
+          "priority": 1,
+          "earliest_delivery": 412.9,
+          "latest_delivery": 502.9,
+          "service_time": 10.0,
+          "release_time": 412.9,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        }
+      ]
+    },
+    {
+      "period_index": 2,
+      "period_start_time": 480.0,
+      "period_end_time": 720.0,
+      "orders": [
+        {
+          "order_id": "ORD_012_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            50.0,
+            35.0
+          ],
+          "demand_weight": 9.1,
+          "volume": 2.275,
+          "priority": 1,
+          "earliest_delivery": 638.7,
+          "latest_delivery": 728.7,
+          "service_time": 10.0,
+          "release_time": 638.7,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_014_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            15.0,
+            10.0
+          ],
+          "demand_weight": 21.6,
+          "volume": 5.4,
+          "priority": 1,
+          "earliest_delivery": 633.2,
+          "latest_delivery": 723.2,
+          "service_time": 10.0,
+          "release_time": 633.2,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_021_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            45.0,
+            20.0
+          ],
+          "demand_weight": 10.0,
+          "volume": 2.5,
+          "priority": 5,
+          "earliest_delivery": 650.7,
+          "latest_delivery": 740.7,
+          "service_time": 10.0,
+          "release_time": 650.7,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_027_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            35.0,
+            40.0
+          ],
+          "demand_weight": 12.7,
+          "volume": 3.175,
+          "priority": 1,
+          "earliest_delivery": 519.9,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 519.9,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_037_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            20.0
+          ],
+          "demand_weight": 9.7,
+          "volume": 2.425,
+          "priority": 1,
+          "earliest_delivery": 501.7,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 501.7,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_039_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            60.0,
+            12.0
+          ],
+          "demand_weight": 40.7,
+          "volume": 10.175,
+          "priority": 1,
+          "earliest_delivery": 518.9,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 518.9,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_043_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            23.0,
+            3.0
+          ],
+          "demand_weight": 7.1,
+          "volume": 1.775,
+          "priority": 1,
+          "earliest_delivery": 498.1,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 498.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_044_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            11.0,
+            14.0
+          ],
+          "demand_weight": 21.9,
+          "volume": 5.475,
+          "priority": 1,
+          "earliest_delivery": 576.1,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 576.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_048_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            13.0,
+            52.0
+          ],
+          "demand_weight": 44.5,
+          "volume": 11.125,
+          "priority": 1,
+          "earliest_delivery": 636.3,
+          "latest_delivery": 726.3,
+          "service_time": 10.0,
+          "release_time": 636.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_051_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            49.0,
+            58.0
+          ],
+          "demand_weight": 6.3,
+          "volume": 1.575,
+          "priority": 1,
+          "earliest_delivery": 489.2,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 489.2,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_055_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            63.0,
+            23.0
+          ],
+          "demand_weight": 2.3,
+          "volume": 0.575,
+          "priority": 5,
+          "earliest_delivery": 593.3,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 593.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_058_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            36.0,
+            26.0
+          ],
+          "demand_weight": 23.0,
+          "volume": 5.75,
+          "priority": 1,
+          "earliest_delivery": 617.6,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 617.6,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_071_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            57.0,
+            68.0
+          ],
+          "demand_weight": 15.9,
+          "volume": 3.975,
+          "priority": 1,
+          "earliest_delivery": 518.0,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 518.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_072_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            47.0,
+            16.0
+          ],
+          "demand_weight": 28.0,
+          "volume": 7.0,
+          "priority": 1,
+          "earliest_delivery": 480.5,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 480.5,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_074_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            46.0,
+            13.0
+          ],
+          "demand_weight": 7.5,
+          "volume": 1.875,
+          "priority": 1,
+          "earliest_delivery": 521.7,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 521.7,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_086_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            4.0,
+            18.0
+          ],
+          "demand_weight": 20.3,
+          "volume": 5.075,
+          "priority": 1,
+          "earliest_delivery": 509.9,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 509.9,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_090_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            31.0,
+            67.0
+          ],
+          "demand_weight": 4.3,
+          "volume": 1.075,
+          "priority": 1,
+          "earliest_delivery": 604.0,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 604.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_092_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            22.0,
+            22.0
+          ],
+          "demand_weight": 1.7,
+          "volume": 0.425,
+          "priority": 1,
+          "earliest_delivery": 487.2,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 487.2,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_094_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            26.0,
+            27.0
+          ],
+          "demand_weight": 32.1,
+          "volume": 8.025,
+          "priority": 1,
+          "earliest_delivery": 496.4,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 496.4,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_099_P2",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            26.0
+          ],
+          "demand_weight": 5.8,
+          "volume": 1.45,
+          "priority": 1,
+          "earliest_delivery": 616.1,
+          "latest_delivery": 720.0,
+          "service_time": 10.0,
+          "release_time": 616.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        }
+      ]
+    },
+    {
+      "period_index": 3,
+      "period_start_time": 720.0,
+      "period_end_time": 960.0,
+      "orders": [
+        {
+          "order_id": "ORD_002_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            35.0,
+            17.0
+          ],
+          "demand_weight": 6.5,
+          "volume": 1.625,
+          "priority": 1,
+          "earliest_delivery": 825.4,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 825.4,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_028_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            41.0,
+            37.0
+          ],
+          "demand_weight": 16.1,
+          "volume": 4.025,
+          "priority": 1,
+          "earliest_delivery": 818.9,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 818.9,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_031_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            31.0,
+            52.0
+          ],
+          "demand_weight": 27.1,
+          "volume": 6.775,
+          "priority": 1,
+          "earliest_delivery": 895.2,
+          "latest_delivery": 985.2,
+          "service_time": 10.0,
+          "release_time": 895.2,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_034_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            65.0,
+            55.0
+          ],
+          "demand_weight": 17.0,
+          "volume": 4.25,
+          "priority": 1,
+          "earliest_delivery": 898.6,
+          "latest_delivery": 988.6,
+          "service_time": 10.0,
+          "release_time": 898.6,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_036_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            2.0,
+            60.0
+          ],
+          "demand_weight": 4.6,
+          "volume": 1.15,
+          "priority": 1,
+          "earliest_delivery": 869.8,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 869.8,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_037_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            20.0
+          ],
+          "demand_weight": 5.8,
+          "volume": 1.45,
+          "priority": 1,
+          "earliest_delivery": 870.3,
+          "latest_delivery": 960.3,
+          "service_time": 10.0,
+          "release_time": 870.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_045_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            6.0,
+            38.0
+          ],
+          "demand_weight": 22.3,
+          "volume": 5.575,
+          "priority": 1,
+          "earliest_delivery": 862.2,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 862.2,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_052_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            27.0,
+            43.0
+          ],
+          "demand_weight": 7.9,
+          "volume": 1.975,
+          "priority": 1,
+          "earliest_delivery": 816.9,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 816.9,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_062_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            24.0,
+            58.0
+          ],
+          "demand_weight": 19.9,
+          "volume": 4.975,
+          "priority": 1,
+          "earliest_delivery": 854.0,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 854.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_067_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            67.0,
+            5.0
+          ],
+          "demand_weight": 15.8,
+          "volume": 3.95,
+          "priority": 1,
+          "earliest_delivery": 810.4,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 810.4,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_076_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            49.0,
+            42.0
+          ],
+          "demand_weight": 10.0,
+          "volume": 2.5,
+          "priority": 1,
+          "earliest_delivery": 804.5,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 804.5,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_086_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            4.0,
+            18.0
+          ],
+          "demand_weight": 53.3,
+          "volume": 13.325,
+          "priority": 1,
+          "earliest_delivery": 732.3,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 732.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_091_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            15.0,
+            19.0
+          ],
+          "demand_weight": 1.0,
+          "volume": 0.25,
+          "priority": 1,
+          "earliest_delivery": 834.1,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 834.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_093_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            18.0,
+            24.0
+          ],
+          "demand_weight": 23.5,
+          "volume": 5.875,
+          "priority": 1,
+          "earliest_delivery": 863.3,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 863.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_095_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            25.0,
+            24.0
+          ],
+          "demand_weight": 20.9,
+          "volume": 5.225,
+          "priority": 1,
+          "earliest_delivery": 815.6,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 815.6,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_096_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            22.0,
+            27.0
+          ],
+          "demand_weight": 8.6,
+          "volume": 2.15,
+          "priority": 1,
+          "earliest_delivery": 876.8,
+          "latest_delivery": 966.8,
+          "service_time": 10.0,
+          "release_time": 876.8,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_099_P3",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            20.0,
+            26.0
+          ],
+          "demand_weight": 9.0,
+          "volume": 2.25,
+          "priority": 1,
+          "earliest_delivery": 803.0,
+          "latest_delivery": 960.0,
+          "service_time": 10.0,
+          "release_time": 803.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        }
+      ]
+    },
+    {
+      "period_index": 4,
+      "period_start_time": 960.0,
+      "period_end_time": 1200.0,
+      "orders": [
+        {
+          "order_id": "ORD_003_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            45.0
+          ],
+          "demand_weight": 13.7,
+          "volume": 3.425,
+          "priority": 1,
+          "earliest_delivery": 1039.5,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1039.5,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_009_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            60.0
+          ],
+          "demand_weight": 16.7,
+          "volume": 4.175,
+          "priority": 1,
+          "earliest_delivery": 1029.2,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1029.2,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_019_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            15.0,
+            60.0
+          ],
+          "demand_weight": 23.4,
+          "volume": 5.85,
+          "priority": 1,
+          "earliest_delivery": 1069.2,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1069.2,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_038_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            5.0,
+            5.0
+          ],
+          "demand_weight": 16.7,
+          "volume": 4.175,
+          "priority": 1,
+          "earliest_delivery": 1013.1,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1013.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_050_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            47.0,
+            47.0
+          ],
+          "demand_weight": 15.0,
+          "volume": 3.75,
+          "priority": 1,
+          "earliest_delivery": 1133.3,
+          "latest_delivery": 1223.3,
+          "service_time": 10.0,
+          "release_time": 1133.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_059_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            21.0,
+            24.0
+          ],
+          "demand_weight": 21.4,
+          "volume": 5.35,
+          "priority": 1,
+          "earliest_delivery": 1056.6,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1056.6,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_063_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            27.0,
+            69.0
+          ],
+          "demand_weight": 5.2,
+          "volume": 1.3,
+          "priority": 5,
+          "earliest_delivery": 1002.1,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1002.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_067_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            67.0,
+            5.0
+          ],
+          "demand_weight": 32.1,
+          "volume": 8.025,
+          "priority": 1,
+          "earliest_delivery": 971.4,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 971.4,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_069_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            37.0,
+            47.0
+          ],
+          "demand_weight": 5.3,
+          "volume": 1.325,
+          "priority": 1,
+          "earliest_delivery": 1130.3,
+          "latest_delivery": 1220.3,
+          "service_time": 10.0,
+          "release_time": 1130.3,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_071_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            57.0,
+            68.0
+          ],
+          "demand_weight": 11.1,
+          "volume": 2.775,
+          "priority": 1,
+          "earliest_delivery": 1119.7,
+          "latest_delivery": 1209.7,
+          "service_time": 10.0,
+          "release_time": 1119.7,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_076_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            49.0,
+            42.0
+          ],
+          "demand_weight": 14.6,
+          "volume": 3.65,
+          "priority": 5,
+          "earliest_delivery": 1034.7,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1034.7,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_080_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            56.0,
+            37.0
+          ],
+          "demand_weight": 7.9,
+          "volume": 1.975,
+          "priority": 1,
+          "earliest_delivery": 1026.7,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1026.7,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_081_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            55.0,
+            54.0
+          ],
+          "demand_weight": 22.4,
+          "volume": 5.6,
+          "priority": 1,
+          "earliest_delivery": 1083.4,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1083.4,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_085_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            16.0,
+            22.0
+          ],
+          "demand_weight": 34.0,
+          "volume": 8.5,
+          "priority": 1,
+          "earliest_delivery": 982.0,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 982.0,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_088_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            26.0,
+            52.0
+          ],
+          "demand_weight": 10.3,
+          "volume": 2.575,
+          "priority": 1,
+          "earliest_delivery": 1101.6,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1101.6,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_089_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            26.0,
+            35.0
+          ],
+          "demand_weight": 15.3,
+          "volume": 3.825,
+          "priority": 5,
+          "earliest_delivery": 1061.6,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1061.6,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_090_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            31.0,
+            67.0
+          ],
+          "demand_weight": 2.2,
+          "volume": 0.55,
+          "priority": 1,
+          "earliest_delivery": 1116.5,
+          "latest_delivery": 1206.5,
+          "service_time": 10.0,
+          "release_time": 1116.5,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_091_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            15.0,
+            19.0
+          ],
+          "demand_weight": 1.1,
+          "volume": 0.275,
+          "priority": 5,
+          "earliest_delivery": 1122.1,
+          "latest_delivery": 1212.1,
+          "service_time": 10.0,
+          "release_time": 1122.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_092_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            22.0,
+            22.0
+          ],
+          "demand_weight": 1.7,
+          "volume": 0.425,
+          "priority": 1,
+          "earliest_delivery": 1005.1,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 1005.1,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_094_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            26.0,
+            27.0
+          ],
+          "demand_weight": 27.5,
+          "volume": 6.875,
+          "priority": 1,
+          "earliest_delivery": 962.7,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 962.7,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        },
+        {
+          "order_id": "ORD_095_P4",
+          "pickup_location": [
+            35.0,
+            35.0
+          ],
+          "destination": [
+            25.0,
+            24.0
+          ],
+          "demand_weight": 25.1,
+          "volume": 6.275,
+          "priority": 1,
+          "earliest_delivery": 969.4,
+          "latest_delivery": 1200.0,
+          "service_time": 10.0,
+          "release_time": 969.4,
+          "status": "PENDING",
+          "assigned_vehicle_id": null,
+          "actual_delivery_time": null
+        }
+      ]
+    }
+  ],
+  "customer_demand_profiles": {
+    "ORD_001": {
+      "base_demand": 10.0,
+      "variance": 0.29,
+      "order_frequency": 0.51,
+      "urgency_probability": 0.09
+    },
+    "ORD_002": {
+      "base_demand": 7.0,
+      "variance": 0.17,
+      "order_frequency": 0.87,
+      "urgency_probability": 0.15
+    },
+    "ORD_003": {
+      "base_demand": 13.0,
+      "variance": 0.37,
+      "order_frequency": 0.54,
+      "urgency_probability": 0.11
+    },
+    "ORD_004": {
+      "base_demand": 19.0,
+      "variance": 0.11,
+      "order_frequency": 0.61,
+      "urgency_probability": 0.13
+    },
+    "ORD_005": {
+      "base_demand": 26.0,
+      "variance": 0.11,
+      "order_frequency": 0.6,
+      "urgency_probability": 0.15
+    },
+    "ORD_006": {
+      "base_demand": 3.0,
+      "variance": 0.26,
+      "order_frequency": 0.61,
+      "urgency_probability": 0.14
+    },
+    "ORD_007": {
+      "base_demand": 5.0,
+      "variance": 0.34,
+      "order_frequency": 0.5,
+      "urgency_probability": 0.17
+    },
+    "ORD_008": {
+      "base_demand": 9.0,
+      "variance": 0.31,
+      "order_frequency": 0.67,
+      "urgency_probability": 0.07
+    },
+    "ORD_009": {
+      "base_demand": 16.0,
+      "variance": 0.39,
+      "order_frequency": 0.67,
+      "urgency_probability": 0.06
+    },
+    "ORD_010": {
+      "base_demand": 16.0,
+      "variance": 0.13,
+      "order_frequency": 0.92,
+      "urgency_probability": 0.14
+    },
+    "ORD_011": {
+      "base_demand": 12.0,
+      "variance": 0.34,
+      "order_frequency": 0.86,
+      "urgency_probability": 0.13
+    },
+    "ORD_012": {
+      "base_demand": 19.0,
+      "variance": 0.39,
+      "order_frequency": 0.69,
+      "urgency_probability": 0.13
+    },
+    "ORD_013": {
+      "base_demand": 23.0,
+      "variance": 0.35,
+      "order_frequency": 0.81,
+      "urgency_probability": 0.18
+    },
+    "ORD_014": {
+      "base_demand": 20.0,
+      "variance": 0.27,
+      "order_frequency": 0.85,
+      "urgency_probability": 0.06
+    },
+    "ORD_015": {
+      "base_demand": 8.0,
+      "variance": 0.17,
+      "order_frequency": 0.64,
+      "urgency_probability": 0.06
+    },
+    "ORD_016": {
+      "base_demand": 19.0,
+      "variance": 0.17,
+      "order_frequency": 0.55,
+      "urgency_probability": 0.09
+    },
+    "ORD_017": {
+      "base_demand": 2.0,
+      "variance": 0.29,
+      "order_frequency": 0.68,
+      "urgency_probability": 0.11
+    },
+    "ORD_018": {
+      "base_demand": 12.0,
+      "variance": 0.16,
+      "order_frequency": 0.63,
+      "urgency_probability": 0.19
+    },
+    "ORD_019": {
+      "base_demand": 17.0,
+      "variance": 0.29,
+      "order_frequency": 0.8,
+      "urgency_probability": 0.08
+    },
+    "ORD_020": {
+      "base_demand": 9.0,
+      "variance": 0.32,
+      "order_frequency": 0.58,
+      "urgency_probability": 0.11
+    },
+    "ORD_021": {
+      "base_demand": 11.0,
+      "variance": 0.4,
+      "order_frequency": 0.82,
+      "urgency_probability": 0.13
+    },
+    "ORD_022": {
+      "base_demand": 18.0,
+      "variance": 0.31,
+      "order_frequency": 0.92,
+      "urgency_probability": 0.17
+    },
+    "ORD_023": {
+      "base_demand": 29.0,
+      "variance": 0.17,
+      "order_frequency": 0.52,
+      "urgency_probability": 0.1
+    },
+    "ORD_024": {
+      "base_demand": 3.0,
+      "variance": 0.18,
+      "order_frequency": 0.61,
+      "urgency_probability": 0.19
+    },
+    "ORD_025": {
+      "base_demand": 6.0,
+      "variance": 0.36,
+      "order_frequency": 0.66,
+      "urgency_probability": 0.15
+    },
+    "ORD_026": {
+      "base_demand": 17.0,
+      "variance": 0.22,
+      "order_frequency": 0.96,
+      "urgency_probability": 0.12
+    },
+    "ORD_027": {
+      "base_demand": 16.0,
+      "variance": 0.18,
+      "order_frequency": 0.62,
+      "urgency_probability": 0.13
+    },
+    "ORD_028": {
+      "base_demand": 16.0,
+      "variance": 0.18,
+      "order_frequency": 0.79,
+      "urgency_probability": 0.18
+    },
+    "ORD_029": {
+      "base_demand": 9.0,
+      "variance": 0.22,
+      "order_frequency": 0.61,
+      "urgency_probability": 0.2
+    },
+    "ORD_030": {
+      "base_demand": 21.0,
+      "variance": 0.25,
+      "order_frequency": 0.55,
+      "urgency_probability": 0.06
+    },
+    "ORD_031": {
+      "base_demand": 27.0,
+      "variance": 0.13,
+      "order_frequency": 0.81,
+      "urgency_probability": 0.17
+    },
+    "ORD_032": {
+      "base_demand": 23.0,
+      "variance": 0.23,
+      "order_frequency": 0.53,
+      "urgency_probability": 0.11
+    },
+    "ORD_033": {
+      "base_demand": 11.0,
+      "variance": 0.4,
+      "order_frequency": 0.76,
+      "urgency_probability": 0.2
+    },
+    "ORD_034": {
+      "base_demand": 14.0,
+      "variance": 0.36,
+      "order_frequency": 0.51,
+      "urgency_probability": 0.16
+    },
+    "ORD_035": {
+      "base_demand": 8.0,
+      "variance": 0.3,
+      "order_frequency": 0.77,
+      "urgency_probability": 0.09
+    },
+    "ORD_036": {
+      "base_demand": 5.0,
+      "variance": 0.29,
+      "order_frequency": 0.56,
+      "urgency_probability": 0.12
+    },
+    "ORD_037": {
+      "base_demand": 8.0,
+      "variance": 0.24,
+      "order_frequency": 0.98,
+      "urgency_probability": 0.18
+    },
+    "ORD_038": {
+      "base_demand": 16.0,
+      "variance": 0.18,
+      "order_frequency": 0.75,
+      "urgency_probability": 0.08
+    },
+    "ORD_039": {
+      "base_demand": 31.0,
+      "variance": 0.37,
+      "order_frequency": 0.94,
+      "urgency_probability": 0.09
+    },
+    "ORD_040": {
+      "base_demand": 9.0,
+      "variance": 0.29,
+      "order_frequency": 0.8,
+      "urgency_probability": 0.07
+    },
+    "ORD_041": {
+      "base_demand": 5.0,
+      "variance": 0.33,
+      "order_frequency": 0.77,
+      "urgency_probability": 0.17
+    },
+    "ORD_042": {
+      "base_demand": 5.0,
+      "variance": 0.26,
+      "order_frequency": 0.5,
+      "urgency_probability": 0.1
+    },
+    "ORD_043": {
+      "base_demand": 7.0,
+      "variance": 0.11,
+      "order_frequency": 0.96,
+      "urgency_probability": 0.18
+    },
+    "ORD_044": {
+      "base_demand": 18.0,
+      "variance": 0.35,
+      "order_frequency": 0.65,
+      "urgency_probability": 0.06
+    },
+    "ORD_045": {
+      "base_demand": 16.0,
+      "variance": 0.36,
+      "order_frequency": 0.97,
+      "urgency_probability": 0.06
+    },
+    "ORD_046": {
+      "base_demand": 1.0,
+      "variance": 0.25,
+      "order_frequency": 0.53,
+      "urgency_probability": 0.16
+    },
+    "ORD_047": {
+      "base_demand": 27.0,
+      "variance": 0.33,
+      "order_frequency": 0.56,
+      "urgency_probability": 0.12
+    },
+    "ORD_048": {
+      "base_demand": 36.0,
+      "variance": 0.26,
+      "order_frequency": 0.63,
+      "urgency_probability": 0.18
+    },
+    "ORD_049": {
+      "base_demand": 30.0,
+      "variance": 0.23,
+      "order_frequency": 0.61,
+      "urgency_probability": 0.13
+    },
+    "ORD_050": {
+      "base_demand": 13.0,
+      "variance": 0.32,
+      "order_frequency": 0.6,
+      "urgency_probability": 0.1
+    },
+    "ORD_051": {
+      "base_demand": 10.0,
+      "variance": 0.4,
+      "order_frequency": 0.82,
+      "urgency_probability": 0.12
+    },
+    "ORD_052": {
+      "base_demand": 9.0,
+      "variance": 0.26,
+      "order_frequency": 0.56,
+      "urgency_probability": 0.08
+    },
+    "ORD_053": {
+      "base_demand": 14.0,
+      "variance": 0.2,
+      "order_frequency": 0.79,
+      "urgency_probability": 0.08
+    },
+    "ORD_054": {
+      "base_demand": 18.0,
+      "variance": 0.17,
+      "order_frequency": 0.54,
+      "urgency_probability": 0.14
+    },
+    "ORD_055": {
+      "base_demand": 2.0,
+      "variance": 0.17,
+      "order_frequency": 0.95,
+      "urgency_probability": 0.18
+    },
+    "ORD_056": {
+      "base_demand": 6.0,
+      "variance": 0.12,
+      "order_frequency": 0.62,
+      "urgency_probability": 0.15
+    },
+    "ORD_057": {
+      "base_demand": 7.0,
+      "variance": 0.16,
+      "order_frequency": 0.57,
+      "urgency_probability": 0.19
+    },
+    "ORD_058": {
+      "base_demand": 18.0,
+      "variance": 0.27,
+      "order_frequency": 0.74,
+      "urgency_probability": 0.17
+    },
+    "ORD_059": {
+      "base_demand": 28.0,
+      "variance": 0.34,
+      "order_frequency": 0.6,
+      "urgency_probability": 0.06
+    },
+    "ORD_060": {
+      "base_demand": 3.0,
+      "variance": 0.23,
+      "order_frequency": 0.71,
+      "urgency_probability": 0.12
+    },
+    "ORD_061": {
+      "base_demand": 13.0,
+      "variance": 0.32,
+      "order_frequency": 0.84,
+      "urgency_probability": 0.2
+    },
+    "ORD_062": {
+      "base_demand": 19.0,
+      "variance": 0.13,
+      "order_frequency": 0.7,
+      "urgency_probability": 0.1
+    },
+    "ORD_063": {
+      "base_demand": 10.0,
+      "variance": 0.36,
+      "order_frequency": 0.62,
+      "urgency_probability": 0.08
+    },
+    "ORD_064": {
+      "base_demand": 9.0,
+      "variance": 0.23,
+      "order_frequency": 0.71,
+      "urgency_probability": 0.09
+    },
+    "ORD_065": {
+      "base_demand": 20.0,
+      "variance": 0.17,
+      "order_frequency": 0.96,
+      "urgency_probability": 0.12
+    },
+    "ORD_066": {
+      "base_demand": 25.0,
+      "variance": 0.36,
+      "order_frequency": 0.78,
+      "urgency_probability": 0.06
+    },
+    "ORD_067": {
+      "base_demand": 25.0,
+      "variance": 0.4,
+      "order_frequency": 0.92,
+      "urgency_probability": 0.2
+    },
+    "ORD_068": {
+      "base_demand": 36.0,
+      "variance": 0.38,
+      "order_frequency": 0.92,
+      "urgency_probability": 0.07
+    },
+    "ORD_069": {
+      "base_demand": 6.0,
+      "variance": 0.25,
+      "order_frequency": 0.61,
+      "urgency_probability": 0.11
+    },
+    "ORD_070": {
+      "base_demand": 5.0,
+      "variance": 0.12,
+      "order_frequency": 0.69,
+      "urgency_probability": 0.2
+    },
+    "ORD_071": {
+      "base_demand": 15.0,
+      "variance": 0.18,
+      "order_frequency": 0.89,
+      "urgency_probability": 0.12
+    },
+    "ORD_072": {
+      "base_demand": 25.0,
+      "variance": 0.23,
+      "order_frequency": 0.98,
+      "urgency_probability": 0.2
+    },
+    "ORD_073": {
+      "base_demand": 9.0,
+      "variance": 0.27,
+      "order_frequency": 0.86,
+      "urgency_probability": 0.07
+    },
+    "ORD_074": {
+      "base_demand": 8.0,
+      "variance": 0.19,
+      "order_frequency": 0.98,
+      "urgency_probability": 0.14
+    },
+    "ORD_075": {
+      "base_demand": 18.0,
+      "variance": 0.26,
+      "order_frequency": 0.87,
+      "urgency_probability": 0.06
+    },
+    "ORD_076": {
+      "base_demand": 13.0,
+      "variance": 0.28,
+      "order_frequency": 0.75,
+      "urgency_probability": 0.18
+    },
+    "ORD_077": {
+      "base_demand": 14.0,
+      "variance": 0.15,
+      "order_frequency": 0.98,
+      "urgency_probability": 0.06
+    },
+    "ORD_078": {
+      "base_demand": 3.0,
+      "variance": 0.16,
+      "order_frequency": 0.8,
+      "urgency_probability": 0.15
+    },
+    "ORD_079": {
+      "base_demand": 23.0,
+      "variance": 0.17,
+      "order_frequency": 0.56,
+      "urgency_probability": 0.18
+    },
+    "ORD_080": {
+      "base_demand": 6.0,
+      "variance": 0.17,
+      "order_frequency": 0.8,
+      "urgency_probability": 0.14
+    },
+    "ORD_081": {
+      "base_demand": 26.0,
+      "variance": 0.23,
+      "order_frequency": 0.79,
+      "urgency_probability": 0.13
+    },
+    "ORD_082": {
+      "base_demand": 16.0,
+      "variance": 0.38,
+      "order_frequency": 0.6,
+      "urgency_probability": 0.16
+    },
+    "ORD_083": {
+      "base_demand": 11.0,
+      "variance": 0.17,
+      "order_frequency": 0.7,
+      "urgency_probability": 0.15
+    },
+    "ORD_084": {
+      "base_demand": 7.0,
+      "variance": 0.19,
+      "order_frequency": 0.66,
+      "urgency_probability": 0.16
+    },
+    "ORD_085": {
+      "base_demand": 41.0,
+      "variance": 0.12,
+      "order_frequency": 0.73,
+      "urgency_probability": 0.2
+    },
+    "ORD_086": {
+      "base_demand": 35.0,
+      "variance": 0.4,
+      "order_frequency": 0.54,
+      "urgency_probability": 0.08
+    },
+    "ORD_087": {
+      "base_demand": 26.0,
+      "variance": 0.18,
+      "order_frequency": 0.97,
+      "urgency_probability": 0.18
+    },
+    "ORD_088": {
+      "base_demand": 9.0,
+      "variance": 0.36,
+      "order_frequency": 0.68,
+      "urgency_probability": 0.07
+    },
+    "ORD_089": {
+      "base_demand": 15.0,
+      "variance": 0.35,
+      "order_frequency": 0.85,
+      "urgency_probability": 0.14
+    },
+    "ORD_090": {
+      "base_demand": 3.0,
+      "variance": 0.4,
+      "order_frequency": 0.83,
+      "urgency_probability": 0.05
+    },
+    "ORD_091": {
+      "base_demand": 1.0,
+      "variance": 0.35,
+      "order_frequency": 0.65,
+      "urgency_probability": 0.15
+    },
+    "ORD_092": {
+      "base_demand": 2.0,
+      "variance": 0.38,
+      "order_frequency": 0.57,
+      "urgency_probability": 0.07
+    },
+    "ORD_093": {
+      "base_demand": 22.0,
+      "variance": 0.13,
+      "order_frequency": 0.78,
+      "urgency_probability": 0.09
+    },
+    "ORD_094": {
+      "base_demand": 27.0,
+      "variance": 0.28,
+      "order_frequency": 0.86,
+      "urgency_probability": 0.08
+    },
+    "ORD_095": {
+      "base_demand": 20.0,
+      "variance": 0.29,
+      "order_frequency": 0.63,
+      "urgency_probability": 0.12
+    },
+    "ORD_096": {
+      "base_demand": 11.0,
+      "variance": 0.37,
+      "order_frequency": 0.92,
+      "urgency_probability": 0.06
+    },
+    "ORD_097": {
+      "base_demand": 12.0,
+      "variance": 0.23,
+      "order_frequency": 0.64,
+      "urgency_probability": 0.05
+    },
+    "ORD_098": {
+      "base_demand": 10.0,
+      "variance": 0.33,
+      "order_frequency": 0.82,
+      "urgency_probability": 0.09
+    },
+    "ORD_099": {
+      "base_demand": 9.0,
+      "variance": 0.32,
+      "order_frequency": 0.78,
+      "urgency_probability": 0.11
+    },
+    "ORD_100": {
+      "base_demand": 17.0,
+      "variance": 0.1,
+      "order_frequency": 0.54,
+      "urgency_probability": 0.18
+    }
+  }
+}

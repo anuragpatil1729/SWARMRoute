@@ -96,7 +96,7 @@ Benchmark the OR-Tools optimizer against conventional heuristics (Nearest-Neighb
 python main.py benchmark --dataset C101
 ```
 
-Sample Benchmark Output:
+Benchmark Output (measured with leg-by-leg payload tracking):
 ```
 ====================================================
 AUTONOMOUS FLEET OPTIMIZATION BENCHMARK
@@ -106,30 +106,76 @@ Orders: 100
 ====================================================
 BASELINE (Heuristic)
 Distance: 1,311.5 km
-Fuel: 574.8 L
-CO2: 1,540.4 kg
+Fuel: 475.9 L
+CO2: 1,275.5 kg
 Late deliveries: 59
-Cost: ₹382,046.35
+Cost: ₹381,053.98
 Runtime: 0.00 sec
 ----------------------------------------------------
 AI/DYNAMIC SYSTEM (OR-Tools)
 Distance: 828.9 km
-Fuel: 365.1 L
-CO2: 978.5 kg
+Fuel: 314.9 L
+CO2: 844.0 kg
 Late deliveries: 0
-Cost: ₹4,544.54
-Recovery time: 10.01 sec
+Cost: ₹4,040.64
+Recovery time: 15.01 sec
 ----------------------------------------------------
 IMPROVEMENT
-Fuel reduction: 36.5 %
-CO2 reduction: 36.5 %
-Cost reduction: 98.8 %
+Fuel reduction: 33.8 %
+CO2 reduction: 33.8 %
+Cost reduction: 98.9 %
 Late deliveries: 100.0 %
 ====================================================
 ```
 
-### 5. Run Automated Tests
+### 5. Train Prediction Models (Layer A)
+Train travel time, fuel consumption, and customer demand models:
+```bash
+python main.py train --model all --samples 50000 --seed 42
+```
+All models achieve $R^2 > 0.97$ and are saved to `results/models/`.
+
+### 6. Preprocess Dynamic Multi-Period Datasets
+Generate and partition dynamic period scenarios:
+```bash
+python main.py preprocess
+```
+
+### 7. Run Fleet & Traffic Simulation
+Simulate fleet operations under dynamic traffic, accidents, and breakdowns:
+```bash
+python main.py simulate --scenario full_disaster --duration 90
+```
+
+### 8. Run Flagship Recovery Experiment
+Evaluate fleet resilience during a catastrophic simultaneous event (**Internet Blackout + Truck Breakdown + Traffic Spike**):
+```bash
+python main.py run-experiment --scenario disruption
+```
+
+Flagship Experiment Results:
+```
+================================================================================
+ FLAGSHIP EXPERIMENT: DISRUPTION RECOVERY UNDER INTERNET BLACKOUT
+ Scenario: Internet OFF + Truck Breakdown + Traffic Spike + Urgent Orders
+ Dataset: Solomon C101 | Random Seed: 42
+================================================================================
+METRIC                           | CONVENTIONAL (Centralized) | SWARMRoute (Resilient)
+--------------------------------------------------------------------------------
+Connectivity Mode                | OFFLINE (Failed uplink)  | MESH_MODE (Multi-hop) 
+Mesh Relay Hops                  | None (No ad-hoc radio)   | 1 hops (20.0 ms)      
+Completed Deliveries             | 91 / 108                 | 108 / 108             
+Completion Rate                  | 84.3 %                   | 100.0 %               
+Failed / Abandoned Orders        | 17 orders                | 0 orders              
+Late Deliveries                  | 28 late                  | 1 late                
+Recovery Time                    | Failed (Infinite)        | 0.001 sec             
+Total Fuel Consumed              | 362.1 L                  | 301.3 L               
+Total CO2 Emissions              | 970.6 kg                 | 807.5 kg              
+--------------------------------------------------------------------------------
+```
+
+### 9. Run Automated Tests
 ```bash
 pytest -v
 ```
-All unit and integration tests validate capacity bounds, time windows, lateness accounting, fuel/CO₂ physics, and dataset loaders.
+All 26 unit and integration tests validate capacity bounds, time windows, lateness accounting, fuel/CO₂ physics, mesh routing, dynamic reoptimization, and dataset loaders.

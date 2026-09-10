@@ -158,6 +158,29 @@ def cli_benchmark(args) -> None:
     print("====================================================")
 
 
+def cli_preprocess(args) -> None:
+    """Preprocess dynamic multi-period datasets."""
+    from src.data.loaders.dynamic import DynamicVRPDataLoader
+    print("====================================================")
+    print(" PREPROCESSING: Dynamic Multi-Period VRP Datasets")
+    print("====================================================")
+    loader = DynamicVRPDataLoader()
+    # Ensure raw files exist or synthesize from Solomon benchmarks
+    if not list(loader.raw_dir.glob("*.json")):
+        print("Generating base multi-period instances from Solomon benchmarks...")
+        loader.generate_and_save_raw_multiperiod_instance("C101")
+        loader.generate_and_save_raw_multiperiod_instance("R101")
+
+    processed = loader.preprocess_dataset()
+    print(f"\nSuccessfully preprocessed {len(processed)} dynamic dataset instances:")
+    for p in processed:
+        content = json.loads(p.read_text(encoding="utf-8"))
+        print(
+            f"  - {p.name}: {content['num_periods']} periods, {content['total_orders']} dynamic orders (Horizon: {content['total_horizon']:.0f} mins)"
+        )
+    print("All processed datasets saved to data/processed/")
+
+
 def cli_train(args) -> None:
     """Train machine learning prediction models (Layer A)."""
     from scripts.train_models import (
@@ -181,6 +204,24 @@ def cli_train(args) -> None:
         train_demand_model(samples=samples, seed=seed, output_dir=output_dir)
     else:
         print(f"Unknown model '{args.model}'. Choose from: travel_time, fuel, demand, all")
+
+
+def cli_simulate(args) -> None:
+    """Run dynamic simulation scenario."""
+    from scripts.run_simulation import run_simulation_scenario
+    scenario = args.scenario or "full_disaster"
+    dataset = args.dataset if hasattr(args, "dataset") and args.dataset else "C101"
+    seed = args.seed if hasattr(args, "seed") and args.seed is not None else 42
+    duration = args.duration if hasattr(args, "duration") and args.duration else 90.0
+    run_simulation_scenario(scenario=scenario, dataset=dataset, seed=seed, duration_mins=duration)
+
+
+def cli_run_experiment(args) -> None:
+    """Run flagship disruption recovery experiment."""
+    from scripts.run_experiment import run_experiment_cli
+    dataset = args.dataset if hasattr(args, "dataset") and args.dataset else "C101"
+    seed = args.seed if hasattr(args, "seed") and args.seed is not None else 42
+    run_experiment_cli(dataset=dataset, seed=seed)
 
 
 def main() -> None:
@@ -238,15 +279,34 @@ def main() -> None:
         help="Dataset size to train on (default: 50,000 for high accuracy)",
     )
 
-    # Placeholders for future phases to conform with CLI specs
+    # preprocess
     subparsers.add_parser("preprocess", parents=[common_parser], help="Preprocess dynamic datasets")
+
+    # simulate
     p_sim = subparsers.add_parser(
         "simulate", parents=[common_parser], help="Run dynamic fleet simulation"
     )
     p_sim.add_argument(
         "--scenario",
         choices=["normal", "traffic_spike", "truck_breakdown", "network_failure", "full_disaster"],
+        default="full_disaster",
     )
+    p_sim.add_argument("--dataset", default="C101", help="Solomon dataset name")
+    p_sim.add_argument("--duration", type=float, default=90.0, help="Simulation duration in mins")
+
+    # run-experiment
+    p_exp = subparsers.add_parser(
+        "run-experiment", parents=[common_parser], help="Run flagship recovery experiment"
+    )
+    p_exp.add_argument(
+        "--scenario",
+        choices=["disruption"],
+        default="disruption",
+        help="Experiment scenario to execute",
+    )
+    p_exp.add_argument("--dataset", default="C101", help="Solomon dataset name")
+
+    # Placeholders for future phases to conform with CLI specs
     subparsers.add_parser("train-rl", parents=[common_parser], help="Train RL PPO fleet agent")
     subparsers.add_parser("evaluate", parents=[common_parser], help="Run comprehensive evaluation matrix")
 
@@ -260,7 +320,13 @@ def main() -> None:
         cli_benchmark(args)
     elif args.command == "train":
         cli_train(args)
-    elif args.command in ("preprocess", "simulate", "train-rl", "evaluate"):
+    elif args.command == "preprocess":
+        cli_preprocess(args)
+    elif args.command == "simulate":
+        cli_simulate(args)
+    elif args.command == "run-experiment":
+        cli_run_experiment(args)
+    elif args.command in ("train-rl", "evaluate"):
         print(f"Subcommand '{args.command}' scheduled for subsequent phases.")
     else:
         parser.print_help()

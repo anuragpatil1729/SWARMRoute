@@ -301,18 +301,16 @@ class VRPTWSolver:
                 total_capacity_used += v_load
                 total_capacity_available += vehicle.max_weight
 
-                # Calculate Fuel and CO2 for this vehicle route
-                v_fuel = self.fuel_model.calculate_fuel(
+                # Calculate Fuel and CO2 leg-by-leg along the route
+                demands_dict = {node: order_map[node].demand_weight for node in route_nodes if node != 0}
+                _, v_fuel, v_co2 = self.fuel_model.calculate_route_fuel(
+                    route=route_nodes,
+                    road_network=road_network,
                     vehicle_type=vehicle.vehicle_type,
-                    vehicle_load=v_load,
                     max_weight=vehicle.max_weight,
-                    distance=v_dist,
                     average_speed=vehicle.average_speed,
-                    traffic_level=TrafficLevel.NORMAL,
-                    road_gradient=0.0,
-                    stop_count=v_stops,
+                    customer_demands=demands_dict,
                 )
-                v_co2 = self.fuel_model.calculate_co2(v_fuel)
 
                 total_distance += v_dist
                 total_travel_time += v_time

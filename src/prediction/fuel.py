@@ -34,6 +34,67 @@ class FuelModel(ABC):
         """
         pass
 
+    def calculate_route_fuel(
+        self,
+        route: List[int],
+        road_network: Any,
+        vehicle_type: str = "heavy_duty",
+        max_weight: float = 200.0,
+        average_speed: float = 40.0,
+        customer_demands: Optional[Dict[int, float]] = None,
+        traffic_state: Optional[Dict[Any, TrafficLevel]] = None,
+        road_gradients: Optional[Dict[Tuple[int, int], float]] = None,
+    ) -> Tuple[float, float, float]:
+        """
+        Unified leg-by-leg calculation of distance, fuel, and CO2 emissions along a complete route.
+        Tracks decreasing cargo load as items are delivered at each stop.
+        Returns: (route_distance, route_fuel_liters, route_co2_kg).
+        """
+        if not route or len(route) < 2:
+            return 0.0, 0.0, 0.0
+
+        demands = customer_demands or {}
+        # Initial load departing from depot is the sum of all customer demands on this route
+        total_initial_load = sum(demands.get(node, 0.0) for node in route if node != 0)
+        current_load = min(max_weight, total_initial_load)
+
+        route_dist = 0.0
+        route_fuel = 0.0
+
+        for i in range(len(route) - 1):
+            u, v = route[i], route[i + 1]
+            dist = road_network.get_distance(u, v)
+            route_dist += dist
+
+            traffic = TrafficLevel.NORMAL
+            if traffic_state:
+                traffic = traffic_state.get((u, v), traffic_state.get(v, TrafficLevel.NORMAL))
+
+            gradient = 0.0
+            if road_gradients:
+                gradient = road_gradients.get((u, v), 0.0)
+
+            # Each stop at a customer location incurs stop fuel (braking + unloading + accelerating)
+            stop_count = 1 if v != 0 else 0
+            leg_fuel = self.calculate_fuel(
+                vehicle_type=vehicle_type,
+                vehicle_load=current_load,
+                max_weight=max_weight,
+                distance=dist,
+                average_speed=average_speed,
+                traffic_level=traffic,
+                road_gradient=gradient,
+                stop_count=stop_count,
+            )
+            route_fuel += leg_fuel
+
+            # Reduce load upon servicing customer v
+            if v != 0:
+                current_load = max(0.0, current_load - demands.get(v, 0.0))
+
+        route_co2 = self.calculate_co2(route_fuel)
+        return float(route_dist), float(route_fuel), float(route_co2)
+
 
 class DeterministicFuelModel(FuelModel):
     """

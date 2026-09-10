@@ -116,17 +116,16 @@ class NearestNeighborBaseline:
                 v_dist += ret_dist
                 v_time += ret_time
 
-                v_fuel = self.fuel_model.calculate_fuel(
+                # Unified leg-by-leg fuel calculation identical to VRPTWSolver
+                demands_dict = {node: node_id_to_order[node].demand_weight for node in routes[v.vehicle_id] if node != 0}
+                _, v_fuel, v_co2 = self.fuel_model.calculate_route_fuel(
+                    route=routes[v.vehicle_id],
+                    road_network=road_network,
                     vehicle_type=v.vehicle_type,
-                    vehicle_load=curr_load,
                     max_weight=v.max_weight,
-                    distance=v_dist,
                     average_speed=v.average_speed,
-                    traffic_level=TrafficLevel.NORMAL,
-                    road_gradient=0.0,
-                    stop_count=v_stops,
+                    customer_demands=demands_dict,
                 )
-                v_co2 = self.fuel_model.calculate_co2(v_fuel)
 
                 total_distance += v_dist
                 total_time += v_time
