@@ -4,12 +4,21 @@ SWARMRoute: Autonomous AI Fleet Optimization Platform
 Main CLI entry point.
 """
 from __future__ import annotations
+import sys
+# Prevent pyarrow from registering duplicate C++ protobuf descriptors that conflict with OR-Tools on ARM64
+if "pyarrow" not in sys.modules:
+    sys.modules["pyarrow"] = None
+
 import argparse
 import json
 import os
-import sys
 import yaml
 from pathlib import Path
+
+# Ensure project root in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.loaders.solomon import load_solomon_benchmark
 from src.optimization.route_optimizer import RouteOptimizer
@@ -149,20 +158,53 @@ def cli_benchmark(args) -> None:
     print("====================================================")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="SWARMRoute: Autonomous AI Fleet Optimization Core"
+def cli_train(args) -> None:
+    """Train machine learning prediction models (Layer A)."""
+    from scripts.train_models import (
+        train_travel_time_model,
+        train_fuel_model,
+        train_demand_model,
     )
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    seed = args.seed if hasattr(args, "seed") and args.seed is not None else 42
+    output_dir = "results/models"
+
+    if args.model == "travel_time":
+        train_travel_time_model(seed=seed, output_dir=output_dir)
+    elif args.model == "fuel":
+        train_fuel_model(seed=seed, output_dir=output_dir)
+    elif args.model == "demand":
+        train_demand_model(seed=seed, output_dir=output_dir)
+    elif args.model == "all":
+        train_travel_time_model(seed=seed, output_dir=output_dir)
+        train_fuel_model(seed=seed, output_dir=output_dir)
+        train_demand_model(seed=seed, output_dir=output_dir)
+    else:
+        print(f"Unknown model '{args.model}'. Choose from: travel_time, fuel, demand, all")
+
+
+def main() -> None:
+    common_parser = argparse.ArgumentParser(add_help=False)
+    common_parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed for reproducibility"
+    )
+
+    parser = argparse.ArgumentParser(
+        description="SWARMRoute: Autonomous AI Fleet Optimization Core",
+        parents=[common_parser],
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 
     # download-data
-    p_dl = subparsers.add_parser("download-data", help="Download benchmark datasets")
+    p_dl = subparsers.add_parser(
+        "download-data", parents=[common_parser], help="Download benchmark datasets"
+    )
     p_dl.add_argument("--instances", nargs="+", help="Specific Solomon instances to download")
     p_dl.add_argument("--force", action="store_true", help="Force re-download")
 
     # optimize
-    p_opt = subparsers.add_parser("optimize", help="Run route optimization")
+    p_opt = subparsers.add_parser(
+        "optimize", parents=[common_parser], help="Run route optimization"
+    )
     p_opt.add_argument("--dataset", default="C101", help="Solomon dataset name or path")
     p_opt.add_argument("--customers", type=int, default=None, help="Subset customer count (e.g. 25)")
     p_opt.add_argument("--vehicles", type=int, default=None, help="Number of vehicles in fleet")
@@ -170,20 +212,36 @@ def main() -> None:
     p_opt.add_argument("--output", default=None, help="Path to save JSON results")
 
     # benchmark
-    p_bm = subparsers.add_parser("benchmark", help="Run comparative benchmark")
+    p_bm = subparsers.add_parser(
+        "benchmark", parents=[common_parser], help="Run comparative benchmark"
+    )
     p_bm.add_argument("--dataset", default="C101", help="Dataset name (e.g., C101, R101, RC101)")
     p_bm.add_argument("--customers", type=int, default=None, help="Subset customer count")
     p_bm.add_argument("--vehicles", type=int, default=None, help="Number of vehicles in fleet")
     p_bm.add_argument("--time-limit", type=int, default=15, help="Solver time limit in seconds")
 
+    # train
+    p_tr = subparsers.add_parser(
+        "train", parents=[common_parser], help="Train predictive models"
+    )
+    p_tr.add_argument(
+        "--model",
+        choices=["travel_time", "fuel", "demand", "all"],
+        default="travel_time",
+        help="Which model to train",
+    )
+
     # Placeholders for future phases to conform with CLI specs
-    subparsers.add_parser("preprocess", help="Preprocess dynamic datasets")
-    p_tr = subparsers.add_parser("train", help="Train predictive models")
-    p_tr.add_argument("--model", choices=["travel_time", "fuel", "demand"])
-    p_sim = subparsers.add_parser("simulate", help="Run dynamic fleet simulation")
-    p_sim.add_argument("--scenario", choices=["normal", "traffic_spike", "truck_breakdown", "network_failure", "full_disaster"])
-    subparsers.add_parser("train-rl", help="Train RL PPO fleet agent")
-    subparsers.add_parser("evaluate", help="Run comprehensive evaluation matrix")
+    subparsers.add_parser("preprocess", parents=[common_parser], help="Preprocess dynamic datasets")
+    p_sim = subparsers.add_parser(
+        "simulate", parents=[common_parser], help="Run dynamic fleet simulation"
+    )
+    p_sim.add_argument(
+        "--scenario",
+        choices=["normal", "traffic_spike", "truck_breakdown", "network_failure", "full_disaster"],
+    )
+    subparsers.add_parser("train-rl", parents=[common_parser], help="Train RL PPO fleet agent")
+    subparsers.add_parser("evaluate", parents=[common_parser], help="Run comprehensive evaluation matrix")
 
     args = parser.parse_args()
 
@@ -193,7 +251,9 @@ def main() -> None:
         cli_optimize(args)
     elif args.command == "benchmark":
         cli_benchmark(args)
-    elif args.command in ("preprocess", "train", "simulate", "train-rl", "evaluate"):
+    elif args.command == "train":
+        cli_train(args)
+    elif args.command in ("preprocess", "simulate", "train-rl", "evaluate"):
         print(f"Subcommand '{args.command}' scheduled for subsequent phases.")
     else:
         parser.print_help()
