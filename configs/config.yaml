@@ -1,0 +1,60 @@
+# Autonomous AI Fleet Optimization Configuration
+
+project:
+  name: "SWARMRoute"
+  version: "0.1.0"
+  random_seed: 42
+
+fleet:
+  default_vehicle_count: 10
+  default_vehicle_type: "heavy_duty"
+  max_weight: 200.0        # Payload weight capacity (e.g., standard Solomon 200)
+  max_volume: 50.0         # m^3
+  average_speed: 40.0      # km/h
+  fuel_capacity: 300.0     # Liters
+  base_fuel_efficiency: 30.0 # L/100km at empty load, standard speed
+
+optimization:
+  # Multi-objective cost weights (configurable, never hard-coded)
+  objective_weights:
+    distance: 1.0          # Weight per km
+    fuel: 2.0              # Weight per Liter of fuel
+    delay: 10.0            # Penalty per unit of lateness (time window violation)
+    emissions: 3.0         # Weight per kg of CO2
+    vehicle_usage: 5.0     # Fixed cost penalty per active vehicle deployed
+    risk: 4.0              # Risk penalty factor (congestion, bad weather, etc.)
+
+  solver:
+    time_limit_seconds: 30
+    first_solution_strategy: "PATH_CHEAPEST_ARC"
+    local_search_metaheuristic: "GUIDED_LOCAL_SEARCH"
+    log_search: false
+
+emission:
+  # Standard diesel emission factor: ~2.68 kg CO2 per liter of diesel
+  co2_kg_per_liter_diesel: 2.68
+
+paths:
+  data_raw_solomon: "data/raw/solomon"
+  data_raw_dynamic: "data/raw/dynamic"
+  data_processed: "data/processed"
+  results_metrics: "results/metrics"
+  results_plots: "results/plots"
+  results_logs: "results/logs"
+
+simulation:
+  time_step_minutes: 5
+  traffic_probability: 0.2
+  breakdown_probability: 0.02
+  network_failure_probability: 0.1
+
+networking:
+  communication_range_km: 15.0
+  mesh_latency_ms: 50
+  packet_loss_rate: 0.05
+
+rl:
+  algorithm: "PPO"
+  learning_rate: 0.0003
+  gamma: 0.99
+  batch_size: 64
