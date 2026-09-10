@@ -166,18 +166,19 @@ def cli_train(args) -> None:
         train_demand_model,
     )
     seed = args.seed if hasattr(args, "seed") and args.seed is not None else 42
+    samples = args.samples if hasattr(args, "samples") and args.samples is not None else 50000
     output_dir = "results/models"
 
     if args.model == "travel_time":
-        train_travel_time_model(seed=seed, output_dir=output_dir)
+        train_travel_time_model(samples=samples, seed=seed, output_dir=output_dir)
     elif args.model == "fuel":
-        train_fuel_model(seed=seed, output_dir=output_dir)
+        train_fuel_model(samples=samples, seed=seed, output_dir=output_dir)
     elif args.model == "demand":
-        train_demand_model(seed=seed, output_dir=output_dir)
+        train_demand_model(samples=samples, seed=seed, output_dir=output_dir)
     elif args.model == "all":
-        train_travel_time_model(seed=seed, output_dir=output_dir)
-        train_fuel_model(seed=seed, output_dir=output_dir)
-        train_demand_model(seed=seed, output_dir=output_dir)
+        train_travel_time_model(samples=samples, seed=seed, output_dir=output_dir)
+        train_fuel_model(samples=samples, seed=seed, output_dir=output_dir)
+        train_demand_model(samples=samples, seed=seed, output_dir=output_dir)
     else:
         print(f"Unknown model '{args.model}'. Choose from: travel_time, fuel, demand, all")
 
@@ -229,6 +230,12 @@ def main() -> None:
         choices=["travel_time", "fuel", "demand", "all"],
         default="travel_time",
         help="Which model to train",
+    )
+    p_tr.add_argument(
+        "--samples",
+        type=int,
+        default=50000,
+        help="Dataset size to train on (default: 50,000 for high accuracy)",
     )
 
     # Placeholders for future phases to conform with CLI specs

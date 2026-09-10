@@ -35,8 +35,12 @@ class DemandPredictor(BasePredictor):
         self.random_state = random_state
         self.model = HistGradientBoostingRegressor(
             loss="squared_error",
-            max_iter=150,
-            learning_rate=0.06,
+            max_iter=300,
+            learning_rate=0.05,
+            min_samples_leaf=20,
+            l2_regularization=0.1,
+            early_stopping=True,
+            n_iter_no_change=15,
             random_state=self.random_state,
         )
 

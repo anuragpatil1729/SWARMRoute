@@ -18,12 +18,12 @@ from src.prediction.fuel_ml import FuelConsumptionPredictor
 from src.prediction.demand import DemandPredictor
 
 
-def train_travel_time_model(seed: int = 42, output_dir: str = "results/models") -> None:
+def train_travel_time_model(samples: int = 50000, seed: int = 42, output_dir: str = "results/models") -> None:
     print("====================================================")
     print(" TRAINING: Travel-Time Prediction Model (Layer A)")
     print("====================================================")
-    print(f"Generating synthetic trip observations (seed={seed})...")
-    X, y = TravelTimePredictor.generate_synthetic_trip_data(num_samples=8000, seed=seed)
+    print(f"Generating synthetic trip observations ({samples:,} samples, seed={seed})...")
+    X, y = TravelTimePredictor.generate_synthetic_trip_data(num_samples=samples, seed=seed)
     print(f"Training dataset shape: {X.shape} features, {len(y)} labels")
 
     model = TravelTimePredictor(random_state=seed)
@@ -39,12 +39,12 @@ def train_travel_time_model(seed: int = 42, output_dir: str = "results/models") 
     print(f"\nModel checkpoint successfully saved to {out_path}")
 
 
-def train_fuel_model(seed: int = 42, output_dir: str = "results/models") -> None:
+def train_fuel_model(samples: int = 50000, seed: int = 42, output_dir: str = "results/models") -> None:
     print("====================================================")
     print(" TRAINING: ML Fuel Consumption Model (Layer A)")
     print("====================================================")
-    print(f"Generating simulated fleet trips (seed={seed})...")
-    X, y = FuelConsumptionPredictor.generate_synthetic_fuel_data(num_samples=8000, seed=seed)
+    print(f"Generating simulated fleet trips ({samples:,} samples, seed={seed})...")
+    X, y = FuelConsumptionPredictor.generate_synthetic_fuel_data(num_samples=samples, seed=seed)
     print(f"Dataset shape: {X.shape} features, {len(y)} labels")
 
     model = FuelConsumptionPredictor(random_state=seed)
@@ -62,12 +62,12 @@ def train_fuel_model(seed: int = 42, output_dir: str = "results/models") -> None
     print(f"\nModel checkpoint successfully saved to {out_path}")
 
 
-def train_demand_model(seed: int = 42, output_dir: str = "results/models") -> None:
+def train_demand_model(samples: int = 50000, seed: int = 42, output_dir: str = "results/models") -> None:
     print("====================================================")
     print(" TRAINING: Customer Demand Forecasting Model (Layer A)")
     print("====================================================")
-    print(f"Generating dynamic demand series (seed={seed})...")
-    X, y = DemandPredictor.generate_synthetic_demand_data(num_samples=8000, seed=seed)
+    print(f"Generating dynamic demand series ({samples:,} samples, seed={seed})...")
+    X, y = DemandPredictor.generate_synthetic_demand_data(num_samples=samples, seed=seed)
     print(f"Dataset shape: {X.shape} features, {len(y)} labels")
 
     model = DemandPredictor(random_state=seed)
@@ -93,16 +93,22 @@ def main() -> None:
         default="all",
         help="Which model to train",
     )
+    parser.add_argument(
+        "--samples",
+        type=int,
+        default=50000,
+        help="Number of training samples (default: 50,000 for high accuracy)",
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--output-dir", default="results/models", help="Folder to save checkpoints")
     args = parser.parse_args()
 
     if args.model in ("travel_time", "all"):
-        train_travel_time_model(seed=args.seed, output_dir=args.output_dir)
+        train_travel_time_model(samples=args.samples, seed=args.seed, output_dir=args.output_dir)
     if args.model in ("fuel", "all"):
-        train_fuel_model(seed=args.seed, output_dir=args.output_dir)
+        train_fuel_model(samples=args.samples, seed=args.seed, output_dir=args.output_dir)
     if args.model in ("demand", "all"):
-        train_demand_model(seed=args.seed, output_dir=args.output_dir)
+        train_demand_model(samples=args.samples, seed=args.seed, output_dir=args.output_dir)
 
 
 if __name__ == "__main__":
