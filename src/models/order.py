@@ -7,9 +7,13 @@ from pydantic import BaseModel, Field, field_validator
 class OrderStatus(str, Enum):
     PENDING = "PENDING"
     ASSIGNED = "ASSIGNED"
+    LOADED = "LOADED"
     IN_TRANSIT = "IN_TRANSIT"
+    ARRIVED = "ARRIVED"
     DELIVERED = "DELIVERED"
+    LATE = "LATE"
     FAILED = "FAILED"
+    REASSIGNED = "REASSIGNED"
 
 
 class Order(BaseModel):
@@ -42,7 +46,8 @@ class Order(BaseModel):
     )
     status: OrderStatus = Field(default=OrderStatus.PENDING, description="Current lifecycle status")
     assigned_vehicle_id: Optional[str] = Field(default=None, description="Vehicle ID currently assigned")
-    actual_delivery_time: Optional[float] = Field(default=None, description="Recorded arrival/delivery time")
+    actual_arrival_time: Optional[float] = Field(default=None, description="Recorded arrival time at customer")
+    actual_delivery_time: Optional[float] = Field(default=None, description="Recorded completed delivery time")
 
     @field_validator("latest_delivery")
     @classmethod
@@ -52,10 +57,18 @@ class Order(BaseModel):
             raise ValueError(f"latest_delivery ({v}) must be >= earliest_delivery ({earliest})")
         return v
 
-    def is_late(self, arrival_time: float) -> bool:
+    def is_late(self, arrival_time: Optional[float] = None) -> bool:
         """Returns True if arrival exceeds latest delivery deadline."""
-        return arrival_time > self.latest_delivery
+        if arrival_time is not None:
+            return arrival_time > self.latest_delivery
+        if self.status == OrderStatus.LATE:
+            return True
+        t = self.actual_arrival_time if self.actual_arrival_time is not None else self.actual_delivery_time
+        return t > self.latest_delivery if t is not None else False
 
-    def lateness(self, arrival_time: float) -> float:
+    def lateness(self, arrival_time: Optional[float] = None) -> float:
         """Returns lateness duration beyond deadline (0.0 if on time)."""
-        return max(0.0, arrival_time - self.latest_delivery)
+        if arrival_time is not None:
+            return max(0.0, arrival_time - self.latest_delivery)
+        t = self.actual_arrival_time if self.actual_arrival_time is not None else self.actual_delivery_time
+        return max(0.0, t - self.latest_delivery) if t is not None else 0.0

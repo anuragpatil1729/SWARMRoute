@@ -75,6 +75,17 @@ class RouteOptimizer:
             allow_drop=allow_drop,
         )
 
+        # If infeasible without drops, retry with heavy drop penalty disjunctions
+        if result.status == "INFEASIBLE" and not allow_drop:
+            result = solver.solve(
+                vehicles=vehicle_list,
+                orders=order_list,
+                road_network=road_network,
+                time_limit_sec=time_limit_sec,
+                allow_drop=True,
+                drop_penalty=100000,
+            )
+
         # 6. Update fleet vehicle states with resulting routes and assignments
         if isinstance(fleet, FleetState):
             for v_id, route in result.routes.items():

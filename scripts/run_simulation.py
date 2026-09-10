@@ -36,16 +36,14 @@ def run_simulation_scenario(
     print(f" Dataset: Solomon {dataset} | Duration: {duration_mins:.0f} mins | Seed: {seed}")
     print("================================================================================")
 
-    fleet_state, road_network, meta = load_solomon_benchmark(dataset, vehicle_count=10)
+    from src.optimization.route_optimizer import RouteOptimizer
+    fleet_state, road_network, meta = load_solomon_benchmark(dataset, vehicle_count=20)
     orders = list(fleet_state.active_orders.values())
     node_id_map = {o.order_id: idx + 1 for idx, o in enumerate(orders)}
 
     # Initial route schedule
-    solver = VRPTWSolver()
-    sol = solver.solve(list(fleet_state.vehicles.values()), orders, road_network, time_limit_sec=5)
-    for v_id, route in sol.routes.items():
-        fleet_state.vehicles[v_id].current_route = list(route)
-        fleet_state.vehicles[v_id].assigned_orders = list(sol.order_assignments.get(v_id, []))
+    optimizer = RouteOptimizer()
+    optimizer.optimize(fleet=fleet_state, orders=orders, road_network=road_network, time_limit_sec=5)
 
     env = FleetSimulationEnvironment(
         fleet_state=fleet_state,
@@ -55,37 +53,56 @@ def run_simulation_scenario(
     )
 
     # Schedule scenario-specific disruptions
-    if scenario in ("truck_breakdown", "full_disaster"):
-        env.schedule_disruption(
-            time_mins=30.0,
-            breakdown_vehicle_id="TRUCK_02",
-            disconnect_cloud=(scenario == "full_disaster"),
+    is_full = scenario in ("full_disruption", "full_disaster")
+    if scenario == "truck_breakdown" or is_full:
+        env.event_engine.schedule(
+            FleetEvent(
+                event_id="EV_BRK_T2",
+                event_type=EventType.VEHICLE_BREAKDOWN,
+                timestamp=30.0,
+                payload={"vehicle_id": "TRUCK_02"},
+                description="TRUCK_02 mechanical failure mid-route",
+            )
         )
-    elif scenario in ("traffic_spike", "full_disaster"):
-        env.schedule_disruption(
-            time_mins=20.0,
-            traffic_spike_edge=(1, 2),
-            disconnect_cloud=(scenario == "full_disaster"),
+    if scenario == "traffic_spike" or is_full:
+        env.event_engine.schedule(
+            FleetEvent(
+                event_id="EV_TRAF_1_2",
+                event_type=EventType.TRAFFIC_CHANGE,
+                timestamp=20.0,
+                payload={"zone": "central_corridor", "level": TrafficLevel.SEVERE},
+                description="Severe congestion spike across main highway",
+            )
         )
-    elif scenario in ("network_failure", "full_disaster"):
-        env.schedule_disruption(
-            time_mins=15.0,
-            disconnect_cloud=True,
+    if scenario == "network_failure" or is_full:
+        env.event_engine.schedule(
+            FleetEvent(
+                event_id="EV_CONN_BLACKOUT",
+                event_type=EventType.CONNECTIVITY_LOSS,
+                timestamp=15.0,
+                payload={"target_mode": ConnectivityState.MESH_MODE},
+                description="4G LTE cellular blackout - falling back to Truck Mesh",
+            )
         )
 
     print("\nExecuting discrete-event simulation ticks (step=5 mins)...")
     tick = 0
-    while env.current_time_mins < duration_mins:
-        events = env.step()
+    while env.current_time_mins < duration_mins and not env.is_done():
+        obs, reward, done, info = env.step()
         tick += 1
-        if events:
-            for ev in events:
-                print(f"  [T = {ev.timestamp:.0f} min] EVENT: {ev.event_type.value} -> {ev.description}")
+        if info.get("due_events_count", 0) > 0:
+            print(f"  [T = {env.current_time_mins:.0f} min] Dispatched {info['due_events_count']} dynamic disruption events")
 
+    metrics = env.get_metrics()
     print("\nSimulation Finished:")
     print(f"  Final Time:         {env.current_time_mins:.0f} mins")
     print(f"  Connectivity State: {env.fleet_state.connectivity_state.value}")
-    print(f"  Operational Trucks: {sum(1 for v in env.fleet_state.vehicles.values() if v.status.value != 'BROKEN_DOWN')} / {len(env.fleet_state.vehicles)}")
+    print(f"  Completed Orders:   {metrics['completed_deliveries']} / {metrics['total_orders']} ({metrics['completion_rate_pct']:.1f}%)")
+    print(f"  Late Deliveries:    {metrics['late_deliveries']}")
+    print(f"  Failed Orders:      {metrics['failed_orders']}")
+    print(f"  Distance Traveled:  {metrics['total_distance_km']:,.1f} km")
+    print(f"  Fuel Consumed:      {metrics['total_fuel_liters']:,.1f} L")
+    print(f"  CO2 Emissions:      {metrics['total_co2_kg']:,.1f} kg")
     print("================================================================================")
 
 
@@ -93,7 +110,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run SWARMRoute dynamic simulation scenarios.")
     parser.add_argument(
         "--scenario",
-        choices=["normal", "traffic_spike", "truck_breakdown", "network_failure", "full_disaster"],
+        choices=["normal", "traffic_spike", "truck_breakdown", "network_failure", "full_disruption", "full_disaster"],
         default="full_disaster",
         help="Disruption scenario to simulate",
     )

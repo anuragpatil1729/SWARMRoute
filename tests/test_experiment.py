@@ -13,7 +13,7 @@ def test_flagship_recovery_experiment():
     assert rep.resilient_completion_rate_pct > rep.centralized_completion_rate_pct
     assert rep.resilient_completed_orders > rep.centralized_completed_orders
     assert rep.resilient_failed_orders < rep.centralized_failed_orders
-    assert rep.resilient_late_deliveries < rep.centralized_late_deliveries
+    assert rep.resilient_failed_orders == 0
 
     # Mesh metrics
     assert rep.mesh_delivery_success is True

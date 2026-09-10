@@ -18,12 +18,12 @@ class TrafficLevel(str, Enum):
     def speed_multiplier(self) -> float:
         """Returns speed reduction factor for each traffic level."""
         factors = {
-            TrafficLevel.LIGHT: 1.1,
+            TrafficLevel.LIGHT: 1.15,
             TrafficLevel.NORMAL: 1.0,
             TrafficLevel.MODERATE: 0.75,
-            TrafficLevel.HEAVY: 0.45,
-            TrafficLevel.SEVERE: 0.20,
-            TrafficLevel.BLOCKED: 0.01,
+            TrafficLevel.HEAVY: 0.50,
+            TrafficLevel.SEVERE: 0.30,
+            TrafficLevel.BLOCKED: 0.001,
         }
         return factors[self]
 

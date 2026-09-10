@@ -103,6 +103,22 @@ class EventEngine:
                     fleet_state.road_network.graph[u][v]["status"] = RoadStatus.CLOSED
                     fleet_state.road_network.graph[u][v]["speed"] = 0.0
 
+        elif event_type == EventType.FUEL_LOW:
+            v_id = payload.get("vehicle_id")
+            fuel = payload.get("fuel_level", 10.0)
+            if v_id and v_id in fleet_state.vehicles:
+                fleet_state.vehicles[v_id].fuel_level = fuel
+
+        elif event_type == EventType.DELIVERY_DELAY:
+            order_id = payload.get("order_id")
+            delay = payload.get("delay_mins", 15.0)
+            if order_id and order_id in fleet_state.active_orders:
+                fleet_state.active_orders[order_id].service_time += delay
+
+        elif event_type in (EventType.MESH_LINK_FAILURE, EventType.MESH_LINK_RESTORED):
+            # Tracked in payload for mesh network synchronization
+            pass
+
         event.handled = True
         self.history.append(event)
         return fleet_state

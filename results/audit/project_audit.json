@@ -1,0 +1,64 @@
+{
+  "audit_timestamp": "2026-09-10T23:05:00Z",
+  "phase": "Phase 2: From Static Route Optimization -> Dynamic Self-Healing Fleet",
+  "test_suite": {
+    "framework": "pytest",
+    "tests_passed": 34,
+    "tests_failed": 0,
+    "total_tests": 34,
+    "test_duration_sec": 21.0
+  },
+  "cli_commands_working": [
+    "download-data",
+    "optimize",
+    "benchmark",
+    "train",
+    "preprocess",
+    "simulate",
+    "run-experiment"
+  ],
+  "missing_dependencies": [
+    "scipy (installed in Python 3.13 env but omitted from requirements.txt)"
+  ],
+  "incomplete_modules": [
+    {
+      "module": "src/simulation/environment.py",
+      "issue": "Discrete-event stepping does not physically advance trucks edge-by-edge, lacks order lifecycle tracking (ARRIVED, DELIVERED, LATE, FAILED), and lacks gym-compatible reset/step/observe/execute_action interface."
+    },
+    {
+      "module": "src/agents/",
+      "issue": "Missing centralized_agent.py, fleet_agent.py, and truck_agent.py. No strict LocalAgentState vs GlobalState separation."
+    },
+    {
+      "module": "src/evaluation/metrics.py",
+      "issue": "FleetMetrics exists as a Pydantic model but lacks centralized functional calculators (calculate_total_distance, calculate_total_travel_time, calculate_total_fuel, etc.)."
+    },
+    {
+      "module": "src/evaluation/experiments.py",
+      "issue": "Centralized offline failure metrics in flagship experiment used heuristic approximations (e.g. cent_late=28) rather than running step-by-step closed-loop simulation."
+    },
+    {
+      "module": "results/baseline/",
+      "issue": "Missing baseline json results and route files for C101, R101, and RC101."
+    },
+    {
+      "module": "results/plots/",
+      "issue": "Missing automated plotting pipeline for the 7 required visualization figures."
+    }
+  ],
+  "fake_metrics_audit": {
+    "status": "Identified heuristic approximations in experiments.py",
+    "action": "Replace heuristic estimates with actual closed-loop simulation execution for both Centralized and Decentralized agents."
+  },
+  "recommended_fixes": [
+    "Add scipy>=1.12.0 to requirements.txt",
+    "Implement centralized metrics library in src/evaluation/metrics.py",
+    "Generate and save real baseline metrics for C101, R101, RC101 in results/baseline/",
+    "Implement discrete edge-based vehicle movement and order lifecycle transitions in FleetSimulationEnvironment",
+    "Build CentralizedAgent, TruckAgent, and FleetAgent with strict information barrier during Internet outage",
+    "Integrate DeliveryExchangeEngine and MeshNetwork into closed-loop simulation",
+    "Create plotting module generating 7 visualization plots in results/plots/",
+    "Add python main.py audit and expand simulate scenarios (normal, traffic_spike, truck_breakdown, network_failure, full_disruption)",
+    "Write comprehensive unit test suite for new simulation, agent, and recovery components"
+  ]
+}

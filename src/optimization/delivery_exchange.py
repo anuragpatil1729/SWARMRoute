@@ -38,8 +38,13 @@ class DeliveryExchangeEngine:
     when a vehicle breaks down or encounters extreme delays.
     """
 
-    def __init__(self, fuel_model: Optional[FuelModel] = None) -> None:
+    def __init__(
+        self,
+        fuel_model: Optional[FuelModel] = None,
+        max_detour_km: float = 25.0,
+    ) -> None:
         self.fuel_model = fuel_model or DeterministicFuelModel()
+        self.max_detour_km = max_detour_km
 
     def find_best_absorption_vehicle(
         self,

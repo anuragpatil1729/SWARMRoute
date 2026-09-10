@@ -30,6 +30,18 @@ class Vehicle(BaseModel):
     status: VehicleStatus = Field(default=VehicleStatus.IDLE, description="Current operational status")
     current_route: List[Union[int, str]] = Field(default_factory=list, description="Sequence of stop/node identifiers")
     assigned_orders: List[str] = Field(default_factory=list, description="Order IDs assigned to this vehicle")
+    current_node: Optional[int] = Field(default=0, description="Node index currently at or departed from")
+    next_node: Optional[int] = Field(default=None, description="Next destination node in route")
+    route_index: int = Field(default=0, description="Current index pointer into current_route")
+    edge_progress_km: float = Field(default=0.0, ge=0.0, description="Distance traveled along current edge")
+    edge_total_km: float = Field(default=0.0, ge=0.0, description="Total length of current edge")
+    current_speed_kmh: float = Field(default=40.0, ge=0.0, description="Current actual speed considering traffic")
+    service_remaining_mins: float = Field(default=0.0, ge=0.0, description="Service/unloading countdown at customer")
+
+    @property
+    def utilization_rate(self) -> float:
+        """Returns payload capacity utilization ratio (0.0 to 1.0)."""
+        return self.current_load / max(self.max_weight, 1e-4)
 
     def remaining_weight_capacity(self) -> float:
         """Returns remaining available weight capacity."""
