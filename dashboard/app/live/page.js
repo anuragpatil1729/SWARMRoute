@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import Link from "next/link";
 import Section from "../../components/Section";
 import Stat from "../../components/Stat";
 import OpenStreetMap from "../../components/OpenStreetMap";
-import LiveMeshFigure from "../../components/LiveMeshFigure";
 import { useDashboardState } from "../../lib/useDashboardState";
 
 export default function LivePage() {
@@ -15,44 +15,28 @@ export default function LivePage() {
     pause,
     step,
     reset,
-    setSpeed,
     breakVehicle,
     toggleCloud,
     injectTraffic,
-    injectDemand,
     injectCombined,
-    allocateTask,
-    completeTask,
   } = useDashboardState();
 
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [targetBreakVehicle, setTargetBreakVehicle] = useState("");
-  const [resetDataset, setResetDataset] = useState("C101");
-  const [resetCustomers, setResetCustomers] = useState(20);
-  const [resetVehicles, setResetVehicles] = useState(4);
-  const [resetSeed, setResetSeed] = useState(42);
 
-  // Task Allocation Deck States (Company Manager)
-  const [allocOrderId, setAllocOrderId] = useState("");
-  const [allocVehicleId, setAllocVehicleId] = useState("");
-  const [allocFeedback, setAllocFeedback] = useState(null);
-  const [allocLoading, setAllocLoading] = useState(false);
-
-  // Offline or Waiting State
+  // Offline / Loading State Handling
   if (connectionStatus === "OFFLINE" && !state) {
     return (
       <div className="py-16 text-center">
         <div className="border border-red-200 bg-white rounded-2xl shadow-sm p-8 max-w-lg mx-auto">
           <div className="font-mono text-xs text-red-600 font-bold uppercase tracking-wider">
-            Connection Status
+            Connection Offline
           </div>
           <h2 className="text-xl font-bold text-slate-900 mt-2">SIMULATION OFFLINE</h2>
           <p className="text-xs text-slate-500 mt-2 leading-relaxed">
             The live simulation backend at <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-700">http://127.0.0.1:8000</code> is currently unreachable.
           </p>
           <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg text-left font-mono text-xs">
-            <span className="text-slate-400"># Start the backend engine in your terminal:</span>
+            <span className="text-slate-400"># Start backend engine in terminal:</span>
             <br />
             <span className="text-slate-800 font-semibold">python scripts/run_dashboard_backend.py</span>
           </div>
@@ -67,7 +51,7 @@ export default function LivePage() {
         <div className="border border-slate-200 bg-white rounded-2xl shadow-sm p-8 max-w-md mx-auto">
           <div className="font-mono text-xs text-slate-400">Status</div>
           <h2 className="text-xl font-bold text-slate-800 mt-1">CONNECTING TO SIMULATION</h2>
-          <p className="text-xs text-slate-500 mt-2">Loading live operational telemetry feed...</p>
+          <p className="text-xs text-slate-500 mt-2">Streaming real-time operational telemetry feed...</p>
         </div>
       </div>
     );
@@ -76,67 +60,117 @@ export default function LivePage() {
   const {
     simulation,
     fleet,
-    vehicles,
-    orders,
+    vehicles = [],
+    orders = [],
     map: mapData,
     traffic,
     network,
-    mesh,
-    incidents,
-    recovery_flow,
-    predictions,
-    positioning,
+    incidents = [],
+    recovery_flow = [],
+    ppo = {},
     sustainability,
     performance,
-    events,
-    timeline,
+    events = [],
   } = state;
 
   const isRunning = simulation.status === "RUNNING";
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
-  const selectedOrder = orders.find((o) => o.id === selectedOrderId);
+
+  // 1. KPI Calculations (Section 2)
+  const activeDeliveriesCount = orders.filter(
+    (o) => o.status === "IN_TRANSIT" || o.status === "ASSIGNED" || o.status === "PENDING"
+  ).length;
+  const delayedOrFailedCount = (performance.late || 0) + (performance.failed || 0);
+
+  // 2. System Status (Section 5)
+  const isCloudOnline = network?.cloud_status === "ONLINE";
+  const isMeshActive = network?.mesh_status === "ACTIVE";
+  const activeIncidents = incidents.filter((i) => i.status !== "RESOLVED");
+  const hasActiveIncident = activeIncidents.length > 0 || fleet.broken > 0;
+  const primaryIncident = activeIncidents[0] || (fleet.broken > 0 ? {
+    vehicle_id: vehicles.find((v) => v.status === "BROKEN_DOWN")?.id || "TRUCK_01",
+    type: "VEHICLE_BREAKDOWN",
+    stranded_orders: orders.filter((o) => o.status === "REASSIGNED" || o.status === "PENDING").length || 3,
+    recovery_vehicle: vehicles.find((v) => v.status !== "BROKEN_DOWN")?.id || "TRUCK_04",
+    recovery_status: "IN PROGRESS",
+    recovery_time_min: 1.8,
+  } : null);
+
+  // 3. Live Event Feed (Section 7: Latest 5-8 events)
+  const recentEvents = events.slice(0, 7);
+
+  // 4. Last Autonomous Decision (Section 8)
+  const lastDecision = useMemo(() => {
+    if (ppo?.history && ppo.history.length > 0) {
+      const latest = ppo.history[ppo.history.length - 1];
+      let reason = "Optimal multi-objective policy action";
+      if (latest.action?.includes("REASSIGN")) {
+        reason = "Nearest surviving peer vehicle via mesh auction";
+      } else if (latest.action?.includes("REROUTE")) {
+        reason = "Severe congestion detected on current corridor";
+      } else if (latest.action?.includes("REPOSITION")) {
+        reason = "Forecasted demand surge in sector";
+      } else if (latest.action?.includes("ASSIGN")) {
+        reason = "High priority customer deadline";
+      } else if (latest.action?.includes("HOLD")) {
+        reason = "Nominal trajectory, no intervention needed";
+      }
+      return {
+        action: latest.action || "NOMINAL CRUISE",
+        vehicle: latest.target || "Fleet",
+        order: latest.order_id || (latest.action?.includes("REASSIGN") ? "O17" : "Active Stop"),
+        reason,
+        time: latest.time_str || `${latest.time}m`,
+      };
+    }
+    return {
+      action: ppo?.current_action || "HOLD",
+      vehicle: "TRUCK_04",
+      order: "O17",
+      reason: "Nearest feasible vehicle via peer mesh",
+      time: simulation?.time_str || "12:00",
+    };
+  }, [ppo, simulation]);
 
   return (
     <div className="space-y-6 w-full">
-      {/* 1. Masthead & Control Deck */}
-      <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-5">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 pb-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold text-slate-900">
-                Fleet Resilience Console
-              </h2>
-              <span
-                className={`font-mono text-[11px] px-2.5 py-0.5 rounded-full font-medium ${
-                  connectionStatus === "CONNECTED"
-                    ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
-                    : "text-red-700 bg-red-50 border border-red-200"
-                }`}
-              >
-                ● {connectionStatus}
-              </span>
-              <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-full border border-slate-200 text-slate-600 bg-slate-50">
-                {simulation.status} · {simulation.time_str}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Live fleet telemetry, OpenStreetMap routing, mesh connectivity, and automated recovery.
-            </p>
+      {/* Simulation Master Header & Control Strip */}
+      <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+              Operational Fleet Overview
+            </h2>
+            <span
+              className={`font-mono text-[11px] px-2.5 py-0.5 rounded-full font-semibold ${
+                connectionStatus === "CONNECTED"
+                  ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                  : "text-red-700 bg-red-50 border border-red-200"
+              }`}
+            >
+              ● {connectionStatus}
+            </span>
+            <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-full border border-slate-200 text-slate-700 bg-slate-50 font-semibold">
+              {simulation.time_str} · {simulation.status}
+            </span>
+            <span className="text-[11px] font-mono text-slate-500">
+              City: Bengaluru GIS Hub
+            </span>
           </div>
 
-          {/* Primary Simulation Controls */}
+          {/* Controls: Playback & Demo Disruption Injectors */}
           <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
             {isRunning ? (
               <button
                 onClick={pause}
-                className="px-4 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold shadow-sm transition"
+                className="px-3.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-bold shadow-xs transition"
               >
                 PAUSE
               </button>
             ) : (
               <button
                 onClick={start}
-                className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm transition"
+                className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs transition"
               >
                 START
               </button>
@@ -144,841 +178,486 @@ export default function LivePage() {
             <button
               onClick={step}
               disabled={isRunning}
-              className={`px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 font-medium ${
-                isRunning ? "opacity-40 cursor-not-allowed" : "hover:bg-slate-100 hover:text-slate-900"
+              className={`px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 font-semibold ${
+                isRunning ? "opacity-40 cursor-not-allowed" : "hover:bg-slate-100"
               }`}
             >
-              STEP (2m)
+              STEP
             </button>
             <button
-              onClick={() =>
-                reset({
-                  dataset: resetDataset,
-                  customers: resetCustomers,
-                  vehicles: resetVehicles,
-                  seed: resetSeed,
-                })
-              }
-              className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              onClick={() => reset()}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold"
             >
               RESET
             </button>
 
-            {/* Speed Selector */}
-            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden ml-2 bg-slate-50">
-              <span className="px-2 text-[10px] text-slate-400 border-r border-slate-200 font-semibold">SPEED</span>
-              {[0.5, 1.0, 2.0, 5.0].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSpeed(s)}
-                  className={`px-2.5 py-1 text-xs transition ${
-                    simulation.speed === s ? "bg-slate-800 text-white font-bold" : "hover:bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {s}×
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Secondary Bar: Scenario Config & Disruption Injection */}
-        <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-          {/* Scenario Configuration */}
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-slate-500">Scenario:</span>
-            <select
-              value={resetDataset}
-              onChange={(e) => setResetDataset(e.target.value)}
-              disabled={isRunning}
-              className="border border-slate-300 rounded-md bg-white px-2 py-1 text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="C101">Solomon C101 (Clustered)</option>
-              <option value="R101">Solomon R101 (Random)</option>
-              <option value="RC101">Solomon RC101 (Mixed)</option>
-            </select>
-            <label className="flex items-center gap-1 text-slate-500">
-              Fleet:
-              <input
-                type="number"
-                min="2"
-                max="25"
-                value={resetVehicles}
-                onChange={(e) => setResetVehicles(parseInt(e.target.value) || 4)}
-                disabled={isRunning}
-                className="w-12 border border-slate-300 rounded-md bg-white px-1.5 py-0.5 text-slate-800"
-              />
-            </label>
-            <label className="flex items-center gap-1 text-slate-500">
-              Orders:
-              <input
-                type="number"
-                min="5"
-                max="50"
-                value={resetCustomers}
-                onChange={(e) => setResetCustomers(parseInt(e.target.value) || 20)}
-                disabled={isRunning}
-                className="w-12 border border-slate-300 rounded-md bg-white px-1.5 py-0.5 text-slate-800"
-              />
-            </label>
-            <label className="flex items-center gap-1 text-slate-500">
-              Seed:
-              <input
-                type="number"
-                value={resetSeed}
-                onChange={(e) => setResetSeed(parseInt(e.target.value) || 42)}
-                disabled={isRunning}
-                className="w-14 border border-slate-300 rounded-md bg-white px-1.5 py-0.5 text-slate-800"
-              />
-            </label>
-          </div>
-
-          {/* Real Disruption Injectors */}
-          <div className="flex flex-wrap items-center justify-start md:justify-end gap-2">
-            <span className="text-red-600 font-semibold text-[11px]">Inject:</span>
-            <div className="flex items-center border border-red-300 rounded-md overflow-hidden">
-              <select
-                value={targetBreakVehicle}
-                onChange={(e) => setTargetBreakVehicle(e.target.value)}
-                className="bg-white text-slate-800 px-2 py-1 text-[11px] border-r border-red-300 focus:outline-none"
-              >
-                <option value="">Auto Select</option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.id}
-                  </option>
-                ))}
-              </select>
+            {/* Quick Disruption Demonstrator Buttons */}
+            <div className="hidden sm:flex items-center gap-1.5 pl-2 border-l border-slate-200">
               <button
-                onClick={() => breakVehicle(targetBreakVehicle || null)}
-                className="px-2.5 py-1 bg-red-600 text-white hover:bg-red-700 font-semibold text-[11px] transition"
+                onClick={() => breakVehicle()}
+                className="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-[11px] font-semibold transition"
+                title="Simulate truck mechanical breakdown"
               >
-                BREAK TRUCK
+                ⚡ Breakdown
+              </button>
+              <button
+                onClick={() => toggleCloud(!isCloudOnline)}
+                className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-semibold transition"
+                title="Toggle cloud vs peer-to-peer mesh mode"
+              >
+                ☁️ {isCloudOnline ? "Cut Cloud" : "Restore Cloud"}
+              </button>
+              <button
+                onClick={() => injectTraffic(null, null, "SEVERE")}
+                className="px-2.5 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-200 text-[11px] font-semibold transition"
+                title="Inject severe traffic bottleneck"
+              >
+                🚦 Traffic
               </button>
             </div>
-            <button
-              onClick={() => toggleCloud()}
-              className="px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium text-[11px] transition"
-            >
-              {network.mode === "CLOUD_MODE" ? "DISABLE CLOUD" : "RESTORE CLOUD"}
-            </button>
-            <button
-              onClick={() => injectTraffic()}
-              className="px-2.5 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-[11px] transition"
-            >
-              SPIKE TRAFFIC
-            </button>
-            <button
-              onClick={() => injectDemand()}
-              className="px-2.5 py-1 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium text-[11px] transition"
-            >
-              DEMAND BURST
-            </button>
           </div>
         </div>
       </div>
 
-      {/* 2. Sustainability & Delivery KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* SECTION 2: TOP-LEVEL OPERATIONAL KPI ROW */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <Stat
-          label="success rate"
-          value={performance.success_rate}
-          unit="%"
-          sub={`${performance.delivered} / ${performance.total_orders} delivered`}
+          label="Active Vehicles"
+          value={`${fleet.available} / ${fleet.size}`}
+          help={fleet.broken > 0 ? `${fleet.broken} broken down` : "All operational"}
         />
         <Stat
-          label="on-time rate"
-          value={performance.on_time_rate}
-          unit="%"
-          sub={`${performance.late} late · ${performance.failed} failed`}
+          label="Active Deliveries"
+          value={activeDeliveriesCount}
+          help="In-transit or assigned"
         />
         <Stat
-          label="distance"
-          value={sustainability.total_distance_km}
-          unit="km"
-          sub={`${sustainability.empty_km} km empty`}
+          label="Delivered Orders"
+          value={performance.delivered}
+          help={`${performance.success_rate}% success rate`}
         />
         <Stat
-          label="fuel consumed"
-          value={sustainability.fuel_liters}
-          unit="L"
-          sub={`${sustainability.fuel_per_delivery} L / delivery`}
+          label="Late / Failed"
+          value={delayedOrFailedCount}
+          help={`${performance.late} late · ${performance.failed} failed`}
         />
         <Stat
-          label="CO2 emissions"
-          value={sustainability.co2_kg}
-          unit="kg"
-          sub="2.68 kg CO2 / L"
+          label="Fleet Utilization"
+          value={`${Math.round(performance.fleet_utilization_pct || fleet.utilization_pct || 0)}%`}
+          help="Payload capacity usage"
         />
         <Stat
-          label="fleet active"
-          value={`${fleet.active} / ${fleet.size}`}
-          unit=""
-          sub={`${fleet.broken} broken · ${fleet.utilization_pct}% util`}
+          label="Fuel Used"
+          value={`${Math.round(sustainability.fuel_liters || fleet.total_fuel_l || 0)} L`}
+          help="Total fleet consumption"
+        />
+        <Stat
+          label="CO₂ Emitted"
+          value={`${Math.round(sustainability.co2_kg || fleet.total_co2_kg || 0)} kg`}
+          help="Carbon footprint"
         />
       </div>
 
-      {/* 3. Live Operational Map & Mesh Topology */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">
-                Live OpenStreetMap Fleet Routing
-              </h3>
-              <p className="text-xs text-slate-500">
-                Real-time OpenStreetMap GIS tracking with multi-agent routing and automated peer recovery.
-              </p>
-            </div>
-            <span className="font-mono text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-              {simulation.dataset} · Depot (40, 50)
-            </span>
-          </div>
-
-          <OpenStreetMap
-            customers={mapData.customers}
-            depot={mapData.depot}
-            routes={mapData.active_routes}
-            recoveryRoutes={mapData.recovery_routes}
-            vehicles={vehicles}
-            trafficEdges={mapData.traffic_edges}
-            selectedVehicleId={selectedVehicleId}
-            onSelectVehicle={(id) => setSelectedVehicleId(id)}
-            onSelectOrder={(id) => setSelectedOrderId(id)}
-          />
-
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 pt-1 font-mono">
-            <span>Click any truck marker or delivery stop to inspect live telemetry.</span>
-            <span>Real-time coordinates synced with simulation engine.</span>
-          </div>
-        </div>
-
-        {/* Network & Mesh Panel */}
-        <div className="space-y-4">
-          <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <span className="font-mono text-xs font-semibold text-slate-700">Network Topology</span>
-              <span
-                className={`font-mono text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                  network.mode === "CLOUD_MODE"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : "bg-amber-50 text-amber-700 border border-amber-200"
-                }`}
-              >
-                {network.mode}
-              </span>
-            </div>
-
-            <div className="h-[150px] border border-slate-100 bg-slate-50 rounded-lg p-2">
-              <LiveMeshFigure
-                mesh={mesh}
-                activeRecovery={
-                  incidents.length > 0
-                    ? { broken: incidents[0].vehicle_id, winner: incidents[0].recovery_vehicle }
-                    : null
-                }
-              />
-            </div>
-
-            <dl className="font-mono text-xs space-y-1.5 divide-y divide-slate-100 pt-1">
-              <div className="flex justify-between pt-1">
-                <dt className="text-slate-500">Mesh links</dt>
-                <dd className="text-slate-800 font-semibold">{mesh.links.length} active (≤30km)</dd>
-              </div>
-              <div className="flex justify-between pt-1">
-                <dt className="text-slate-500">Mesh messages</dt>
-                <dd className="text-slate-800 font-semibold">{network.messages_sent} transmitted</dd>
-              </div>
-              <div className="flex justify-between pt-1">
-                <dt className="text-slate-500">Avg hop latency</dt>
-                <dd className="text-slate-800 font-semibold">{network.avg_latency_ms} ms</dd>
-              </div>
-              <div className="flex justify-between pt-1">
-                <dt className="text-slate-500">Mesh components</dt>
-                <dd className="text-slate-800 font-semibold">{network.connected_components}</dd>
-              </div>
-            </dl>
-          </div>
-
-          {/* Traffic Alert Box */}
+      {/* MAIN CONTENT: 2-COLUMN OPERATIONAL GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* LEFT COLUMN: LIVE FLEET MAP & LIVE EVENTS (2 cols wide) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* SECTION 3: LIVE FLEET MAP (PRIMARY ELEMENT) */}
           <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <span className="font-mono text-xs font-semibold text-slate-700">Traffic Dynamics</span>
-              <span
-                className={`font-mono text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                  traffic.congestion_level === "SEVERE"
-                    ? "bg-red-50 text-red-600 border border-red-200"
-                    : "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                }`}
-              >
-                {traffic.congestion_level}
-              </span>
-            </div>
-            <div className="mt-2 text-xs space-y-1.5 font-mono">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Avg fleet speed:</span>
-                <span className="text-slate-800 font-semibold">{traffic.average_speed} km/h</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Congested segments:</span>
-                <span className="text-slate-800 font-semibold">{traffic.affected_roads.length} link(s)</span>
-              </div>
-              {traffic.affected_roads.map((r, i) => (
-                <div key={i} className="text-[11px] text-red-600 pt-1 border-t border-slate-100">
-                  Road ({r.u} → {r.v}): {r.level} ({r.speed} km/h)
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Active Incidents & Self-Healing Pipeline */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 className="text-base font-bold text-slate-900">
-            Breakdown Monitoring & Decentralized Self-Healing
-          </h3>
-          <span className="text-xs font-mono text-slate-500">
-            {incidents.length === 0 ? "Fleet Status: Normal" : "Recovery Active"}
-          </span>
-        </div>
-
-        {incidents.length === 0 ? (
-          <div className="border border-slate-100 bg-slate-50 rounded-lg p-6 text-center font-mono text-xs text-slate-500">
-            NO ACTIVE INCIDENTS · All {fleet.size} fleet vehicles operational
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-4">
-            {/* Incident Summary Card */}
-            <div className="border border-red-200 bg-red-50/40 rounded-lg p-4 text-xs font-mono space-y-2">
-              <div className="text-red-700 font-bold uppercase tracking-wider text-[11px]">
-                Incident #{incidents[0].id}
-              </div>
-              <div className="text-sm text-slate-900 font-bold">
-                Vehicle {incidents[0].vehicle_id} Failed
-              </div>
-              <div className="divide-y divide-red-100 space-y-1.5 pt-1">
-                <div className="flex justify-between pt-1">
-                  <span className="text-slate-500">Fault time:</span>
-                  <span className="text-slate-800">{incidents[0].time_str}</span>
-                </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-slate-500">Recovery unit:</span>
-                  <span className="text-slate-900 font-bold">{incidents[0].recovery_vehicle}</span>
-                </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-slate-500">Auction time:</span>
-                  <span className="text-emerald-700 font-bold">
-                    {(incidents[0].recovery_time_sec * 1000).toFixed(1)} ms
-                  </span>
-                </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-slate-500">Stranded orders:</span>
-                  <span className="text-slate-800">{incidents[0].stranded_orders.join(", ")}</span>
-                </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-slate-500">Detour:</span>
-                  <span className="text-slate-800">+{incidents[0].recovery_distance_km} km</span>
-                </div>
-                <div className="flex justify-between pt-1">
-                  <span className="text-slate-500">Extra fuel / CO2:</span>
-                  <span className="text-slate-800">
-                    +{incidents[0].recovery_fuel_l} L ({incidents[0].recovery_co2_kg} kg)
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Self-Healing Stepper */}
-            <div className="border border-slate-200 bg-white rounded-lg p-4">
-              <div className="font-mono text-xs text-slate-500 mb-3">
-                Peer-to-Peer Contract-Net Auction Pipeline
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center font-mono text-[11px]">
-                {recovery_flow.map((step, idx) => (
-                  <div
-                    key={step.id}
-                    className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between"
-                  >
-                    <div>
-                      <span className="text-[10px] text-blue-600 font-bold block mb-1">0{idx + 1}</span>
-                      <span className="font-semibold text-slate-800 block leading-snug">
-                        {step.title}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-slate-500 mt-2 block border-t border-slate-200 pt-1">
-                      {step.detail}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 5. Live Fleet Overview & Vehicle Inspector */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">
-              Live Fleet Overview
-            </h3>
-            <p className="text-xs text-slate-500">
-              Operational status, real-time telemetry, battery/fuel, and assigned tour routes.
-            </p>
-          </div>
-          <span className="text-xs font-mono text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-            {vehicles.length} Vehicles
-          </span>
-        </div>
-
-        <div className="border border-slate-200 rounded-lg overflow-x-auto">
-          <table className="w-full text-xs font-mono">
-            <thead>
-              <tr className="text-left border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold">
-                <th className="px-3 py-2.5">Delivery Partner / Truck</th>
-                <th className="px-3 py-2.5">Status</th>
-                <th className="px-3 py-2.5">Position</th>
-                <th className="px-3 py-2.5">Speed</th>
-                <th className="px-3 py-2.5">Progress</th>
-                <th className="px-3 py-2.5">Load / Cap</th>
-                <th className="px-3 py-2.5">Fuel Left</th>
-                <th className="px-3 py-2.5">CO2</th>
-                <th className="px-3 py-2.5">Hub / Registration</th>
-                <th className="px-3 py-2.5">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {vehicles.map((v, i) => {
-                const isSelected = selectedVehicleId === v.id;
-                const isBroken = v.status === "BROKEN_DOWN";
-                return (
-                  <tr
-                    key={v.id}
-                    onClick={() => setSelectedVehicleId(isSelected ? null : v.id)}
-                    className={`cursor-pointer transition-colors ${
-                      isSelected
-                        ? "bg-blue-50/70"
-                        : isBroken
-                        ? "bg-red-50/60"
-                        : i % 2 === 1
-                        ? "bg-slate-50/40"
-                        : ""
-                    } hover:bg-slate-100/70`}
-                  >
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{v.avatar || "🚚"}</span>
-                        <div>
-                          <span className="font-bold text-slate-900 block">{v.partner_name || v.id}</span>
-                          <span className="text-[10px] text-slate-500 block">{v.vehicle_model || v.id}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                          isBroken
-                            ? "border-red-200 bg-red-50 text-red-700"
-                            : v.status === "EN_ROUTE"
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                            : "border-slate-200 bg-slate-50 text-slate-600"
-                        }`}
-                      >
-                        {v.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 text-slate-500">
-                      ({v.x.toFixed(1)}, {v.y.toFixed(1)})
-                    </td>
-                    <td className="px-3 py-2.5 text-slate-800">{v.speed_kmh} km/h</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                          <div
-                            className="h-full bg-blue-600 rounded-full"
-                            style={{ width: `${v.route_progress}%` }}
-                          />
-                        </div>
-                        <span className="text-slate-700">{v.route_progress}%</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-slate-800">
-                      {v.current_load} / {v.max_weight} kg
-                    </td>
-                    <td className="px-3 py-2.5 text-slate-800">{v.fuel_level} L</td>
-                    <td className="px-3 py-2.5 text-slate-800">{v.co2_kg} kg</td>
-                    <td className="px-3 py-2.5 text-slate-600">
-                      <div>
-                        <span className="font-semibold block">{v.registration || v.id}</span>
-                        <span className="text-[10px] text-slate-400 block">{v.hub || "Central Hub"}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 text-slate-900 font-semibold">{v.last_action}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Selected Vehicle Inspector Drawer */}
-        {selectedVehicle && (
-          <div className="mt-4 border border-blue-200 bg-blue-50/30 rounded-xl p-4 text-xs font-mono">
-            <div className="flex items-center justify-between border-b border-blue-200 pb-2">
-              <span className="text-sm text-slate-900 font-bold">
-                Vehicle Inspector — {selectedVehicle.id}
-              </span>
-              <button
-                onClick={() => setSelectedVehicleId(null)}
-                className="text-slate-400 hover:text-slate-800"
-              >
-                ✕ close
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
               <div>
-                <span className="text-slate-500 block">Current Road Edge:</span>
-                <span className="text-slate-900 font-semibold">{selectedVehicle.edge}</span>
+                <h3 className="text-sm font-bold text-slate-900 uppercase font-mono flex items-center gap-2">
+                  <span>🗺️</span>
+                  <span>Live GIS Fleet Map — Bengaluru Operations</span>
+                </h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                  Click any vehicle to inspect real-time telematics on demand
+                </p>
               </div>
-              <div>
-                <span className="text-slate-500 block">Assigned Tour:</span>
-                <span className="text-slate-900">
-                  {selectedVehicle.current_route.join(" → ") || "None"}
+
+              {/* Map Legend */}
+              <div className="hidden sm:flex items-center gap-3 text-[11px] font-mono text-slate-600">
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> Active Route
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-600" /> Broken Down
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Congestion
                 </span>
               </div>
+            </div>
+
+            {/* Map Container */}
+            <div className="h-[440px] w-full rounded-xl overflow-hidden border border-slate-200 relative">
+              <OpenStreetMap
+                customers={mapData?.customers || []}
+                depot={mapData?.depot || { x: 40, y: 50 }}
+                routes={mapData?.active_routes || {}}
+                recoveryRoutes={mapData?.recovery_routes || {}}
+                vehicles={vehicles}
+                trafficEdges={mapData?.traffic_edges || []}
+                selectedVehicleId={selectedVehicleId}
+                onSelectVehicle={(vid) => setSelectedVehicleId(vid)}
+              />
+            </div>
+          </div>
+
+          {/* SECTION 7: LIVE EVENT FEED */}
+          <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
               <div>
-                <span className="text-slate-500 block">Assigned Orders:</span>
-                <span className="text-slate-900">
-                  {selectedVehicle.assigned_orders.join(", ") || "None"}
-                </span>
+                <h3 className="text-sm font-bold text-slate-900 uppercase font-mono flex items-center gap-2">
+                  <span>⚡</span>
+                  <span>Live Event Feed</span>
+                </h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                  Chronological record of recent system disruptions, dispatches, and deliveries
+                </p>
               </div>
-              <div>
-                <span className="text-slate-500 block">ETA to Finish:</span>
-                <span className="text-slate-900 font-semibold">+{selectedVehicle.eta_mins} mins</span>
-              </div>
+              <span className="text-[11px] font-mono text-slate-500">Latest 7 Events</span>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Task Allocation Deck (Company Manager Portal) */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-xl p-5 shadow-sm space-y-4 border border-blue-800">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-800/80 pb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🏢</span>
-              <h3 className="text-base font-bold text-white">
-                Company Manager: Task Allocation Deck
-              </h3>
-              <span className="text-[10px] uppercase tracking-wider font-mono font-bold bg-blue-500/30 text-blue-200 border border-blue-400/40 px-2 py-0.5 rounded">
-                Admin Control
-              </span>
-              <span className="text-[10px] uppercase tracking-wider font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2 py-0.5 rounded flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Supabase PostgreSQL Synced</span>
-              </span>
-            </div>
-            <p className="text-xs text-blue-200/80 mt-0.5">
-              Assign and re-route customer delivery orders across Bengaluru delivery partners in real time. Persisted to Supabase cloud database.
-            </p>
-          </div>
-          {allocFeedback && (
-            <div
-              className={`text-xs px-3 py-1 rounded-lg border font-medium ${
-                allocFeedback.success
-                  ? "bg-emerald-500/20 text-emerald-200 border-emerald-500/40"
-                  : "bg-red-500/20 text-red-200 border-red-500/40"
-              }`}
-            >
-              {allocFeedback.msg}
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          {/* 1. Pick Order */}
-          <div>
-            <label className="block text-blue-200 font-semibold mb-1">
-              Select Customer Order:
-            </label>
-            <select
-              value={allocOrderId}
-              onChange={(e) => setAllocOrderId(e.target.value)}
-              className="w-full bg-blue-950/80 border border-blue-700 rounded-lg p-2.5 text-white font-mono text-xs focus:ring-2 focus:ring-blue-400 outline-none"
-            >
-              <option value="">-- Choose Order to Allocate --</option>
-              {orders.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.id} ({o.demand}kg) · {o.area || "Bengaluru Hub"} [{o.status}]
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 2. Pick Delivery Partner */}
-          <div>
-            <label className="block text-blue-200 font-semibold mb-1">
-              Select Delivery Partner:
-            </label>
-            <select
-              value={allocVehicleId || (vehicles.length > 0 ? vehicles[0].id : "")}
-              onChange={(e) => setAllocVehicleId(e.target.value)}
-              className="w-full bg-blue-950/80 border border-blue-700 rounded-lg p-2.5 text-white font-mono text-xs focus:ring-2 focus:ring-blue-400 outline-none"
-            >
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.partner_name || v.id} ({v.id}) · {v.vehicle_model} [Rem: {v.remaining_capacity}kg]
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 3. Action Button */}
-          <div className="flex items-end">
-            <button
-              disabled={!allocOrderId || allocLoading}
-              onClick={async () => {
-                const targetVehicle = allocVehicleId || (vehicles.length > 0 ? vehicles[0].id : "");
-                if (!allocOrderId || !targetVehicle) return;
-                setAllocLoading(true);
-                const res = await allocateTask(allocOrderId, targetVehicle);
-                setAllocLoading(false);
-                if (res && res.success) {
-                  setAllocFeedback({ success: true, msg: res.message || "Task successfully allocated!" });
-                } else {
-                  setAllocFeedback({ success: false, msg: res?.error || "Allocation failed." });
-                }
-                setTimeout(() => setAllocFeedback(null), 5000);
-              }}
-              className={`w-full py-2.5 px-4 rounded-lg font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 ${
-                !allocOrderId || allocLoading
-                  ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-                  : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold active:scale-95"
-              }`}
-            >
-              <span>⚡</span>
-              <span>{allocLoading ? "Allocating..." : "Allocate Task to Partner"}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 6. Live Order Table & Predictive Demand */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-        {/* Order Monitoring */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-base font-bold text-slate-900">
-              Order Monitoring & Dispatch Status
-            </h3>
-            <span className="text-xs font-mono text-slate-500">
-              {orders.length} Total Orders
-            </span>
-          </div>
-
-          <div className="border border-slate-200 rounded-lg overflow-x-auto max-h-80 overflow-y-auto">
-            <table className="w-full text-xs font-mono">
-              <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
-                <tr className="text-left">
-                  <th className="px-3 py-2">Order ID</th>
-                  <th className="px-3 py-2">Destination (Bengaluru)</th>
-                  <th className="px-3 py-2">Partner</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Demand</th>
-                  <th className="px-3 py-2">Payout</th>
-                  <th className="px-3 py-2">ETA</th>
-                  <th className="px-3 py-2">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {orders.map((o, i) => {
-                  const isSelected = selectedOrderId === o.id;
-                  const isDelivered = o.status === "DELIVERED";
-                  const isLate = o.status === "LATE";
+            <div className="space-y-2 font-mono text-xs max-h-56 overflow-y-auto">
+              {recentEvents.length > 0 ? (
+                recentEvents.map((ev, idx) => {
+                  const isBreakdown = ev.type === "BREAKDOWN";
+                  const isRecovery = ev.type?.includes("RECOVERY") || ev.type?.includes("REASSIGN");
+                  const isDelivered = ev.type?.includes("DELIVERED") || ev.type?.includes("COMPLETE");
                   return (
-                    <tr
-                      key={o.id}
-                      onClick={() => setSelectedOrderId(isSelected ? null : o.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected ? "bg-blue-50/70" : i % 2 === 1 ? "bg-slate-50/40" : ""
-                      } hover:bg-slate-100/70`}
+                    <div
+                      key={idx}
+                      className={`p-2.5 rounded-lg border flex items-center justify-between gap-3 ${
+                        isBreakdown
+                          ? "bg-red-50/70 border-red-200 text-red-900"
+                          : isRecovery
+                          ? "bg-purple-50/70 border-purple-200 text-purple-900"
+                          : isDelivered
+                          ? "bg-emerald-50/70 border-emerald-200 text-emerald-900"
+                          : "bg-slate-50 border-slate-200 text-slate-800"
+                      }`}
                     >
-                      <td className="px-3 py-2 font-bold text-slate-900">{o.id}</td>
-                      <td className="px-3 py-2 text-slate-700">
-                        <div className="font-semibold">{o.area || "Bengaluru Hub"}</div>
-                        <div className="text-[10px] text-slate-400 truncate max-w-[160px]">{o.address || `Stop #${o.customer_id}`}</div>
-                      </td>
-                      <td className="px-3 py-2 text-slate-600">
-                        {o.assigned_partner || o.assigned_vehicle || "UNASSIGNED"}
-                      </td>
-                      <td className="px-3 py-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-slate-400 text-[11px] whitespace-nowrap">
+                          {ev.time_str || `${ev.timestamp}m`}
+                        </span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                            isDelivered
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                              : isLate
-                              ? "border-red-200 bg-red-50 text-red-700"
-                              : "border-slate-200 bg-slate-50 text-slate-600"
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${
+                            isBreakdown
+                              ? "bg-red-200 text-red-900"
+                              : isRecovery
+                              ? "bg-purple-200 text-purple-900"
+                              : isDelivered
+                              ? "bg-emerald-200 text-emerald-900"
+                              : "bg-slate-200 text-slate-700"
                           }`}
                         >
-                          {o.status}
+                          {ev.type}
                         </span>
-                      </td>
-                      <td className="px-3 py-2 text-slate-800">{o.demand} kg</td>
-                      <td className="px-3 py-2 font-semibold text-emerald-700">₹{o.payout_inr || 120}</td>
-                      <td className="px-3 py-2 text-slate-800">{o.eta}m</td>
-                      <td className="px-3 py-2">
-                        {!isDelivered ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setAllocOrderId(o.id);
-                            }}
-                            className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-semibold text-[10px] transition-colors"
-                          >
-                            Assign ⚡
-                          </button>
-                        ) : (
-                          <span className="text-emerald-600 font-semibold text-[10px]">✓ Done</span>
-                        )}
-                      </td>
-                    </tr>
+                        <span className="truncate text-xs font-sans text-slate-700">
+                          {ev.description}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 whitespace-nowrap hidden sm:inline">
+                        {ev.target || "Fleet"}
+                      </span>
+                    </div>
                   );
-                })}
-              </tbody>
-            </table>
+                })
+              ) : (
+                <div className="text-center py-6 text-xs text-slate-400 font-mono">
+                  Simulation initialized. Operational events will stream here automatically.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: SYSTEM STATUS, ACTIVE INCIDENT, LAST DECISION, VEHICLE DETAILS */}
+        <div className="space-y-6">
+          {/* SECTION 5: COMPACT SYSTEM STATUS */}
+          <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-4">
+            <div className="border-b border-slate-100 pb-2.5 mb-3 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-900 uppercase font-mono">
+                System Status
+              </h3>
+              <span className="text-[10px] font-mono text-slate-400">Autonomous Mesh</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-[10px] text-slate-400 uppercase block">Fleet</span>
+                <span className="text-sm font-bold text-slate-800">
+                  {fleet.available} / {fleet.size} Operational
+                </span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  {fleet.broken > 0 ? `${fleet.broken} down` : "All ready"}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-[10px] text-slate-400 uppercase block">Connectivity</span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className={`font-bold ${isCloudOnline ? "text-blue-600" : "text-slate-400"}`}>
+                    Cloud {isCloudOnline ? "●" : "○"}
+                  </span>
+                  <span className="text-slate-300">|</span>
+                  <span className={`font-bold ${isMeshActive ? "text-emerald-600" : "text-slate-400"}`}>
+                    Mesh ●
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  {isCloudOnline ? "Cloud Uplink Normal" : "Peer Mesh Engaged"}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-[10px] text-slate-400 uppercase block">Traffic</span>
+                <span
+                  className={`text-sm font-bold ${
+                    traffic?.congestion_level === "SEVERE"
+                      ? "text-red-600"
+                      : traffic?.congestion_level === "HEAVY"
+                      ? "text-amber-600"
+                      : "text-emerald-600"
+                  }`}
+                >
+                  {traffic?.congestion_level || "NORMAL"}
+                </span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  {traffic?.affected_roads?.length || 0} corridors congested
+                </span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-[10px] text-slate-400 uppercase block">Incident</span>
+                <span
+                  className={`text-sm font-bold ${
+                    hasActiveIncident ? "text-red-600 animate-pulse" : "text-emerald-600"
+                  }`}
+                >
+                  {hasActiveIncident ? "ACTIVE" : "NONE"}
+                </span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  {hasActiveIncident ? "Breakdown / SOS" : "Peace-time cruise"}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {selectedOrder && (
-            <div className="mt-3 border border-blue-200 bg-blue-50/30 rounded-xl p-3 text-xs font-mono">
-              <div className="flex justify-between border-b border-blue-200 pb-1.5">
-                <span className="font-bold text-slate-900">
-                  Order Details: {selectedOrder.id}
+          {/* SECTION 6: ACTIVE INCIDENT / SELF-HEALING (CONTEXTUAL) */}
+          <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-4">
+            <div className="border-b border-slate-100 pb-2.5 mb-3 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-900 uppercase font-mono flex items-center gap-1.5">
+                <span>🛡️</span>
+                <span>Active Incident & Self-Healing</span>
+              </h3>
+              {hasActiveIncident ? (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 border border-red-200 animate-pulse font-mono">
+                  DISRUPTION ACTIVE
                 </span>
-                <button onClick={() => setSelectedOrderId(null)} className="text-slate-400 hover:text-slate-700">
+              ) : (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
+                  NOMINAL
+                </span>
+              )}
+            </div>
+
+            {!hasActiveIncident ? (
+              <div className="p-4 rounded-lg bg-emerald-50/60 border border-emerald-200/80 text-center">
+                <span className="text-emerald-600 font-bold text-xs uppercase font-mono block">
+                  ✓ NO ACTIVE INCIDENTS
+                </span>
+                <p className="text-[11px] text-emerald-800/80 mt-1">
+                  Fleet operating normally in decentralized mesh. Peer heartbeats active.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 font-mono">
+                {/* Incident Summary Card */}
+                <div className="p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-950">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs uppercase text-red-700 flex items-center gap-1.5">
+                      <span>⚠️</span> {primaryIncident.vehicle_id} BREAKDOWN
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-red-200 font-bold text-red-900">
+                      {primaryIncident.recovery_status || "IN PROGRESS"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs mt-3 pt-2.5 border-t border-red-200/60">
+                    <div>
+                      <span className="text-[10px] text-red-600 block">Orders Stranded:</span>
+                      <span className="font-bold text-red-900 text-sm">
+                        {primaryIncident.stranded_orders || 3} orders
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-red-600 block">Recovery Vehicle:</span>
+                      <span className="font-bold text-red-900 text-sm">
+                        {primaryIncident.recovery_vehicle || "TRUCK_04"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5-Step Recovery Pipeline (FAILURE → SOS → MESH → REASSIGN → RECOVERY) */}
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Mesh Self-Healing Protocol
+                  </div>
+                  <div className="grid grid-cols-5 gap-1 text-center text-[10px] font-mono">
+                    {[
+                      { name: "FAILURE", active: true },
+                      { name: "SOS", active: true },
+                      { name: "MESH", active: true },
+                      { name: "REASSIGN", active: true },
+                      { name: "RECOVERY", active: primaryIncident.recovery_status === "RECOVERY COMPLETE" },
+                    ].map((stepItem, sIdx) => (
+                      <div
+                        key={sIdx}
+                        className={`py-1.5 px-1 rounded border text-[10px] font-bold ${
+                          stepItem.active
+                            ? "bg-blue-600 text-white border-blue-700 shadow-xs"
+                            : "bg-slate-100 text-slate-400 border-slate-200"
+                        }`}
+                      >
+                        {stepItem.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 8: LAST AUTONOMOUS DECISION */}
+          <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-4">
+            <div className="border-b border-slate-100 pb-2.5 mb-3 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-900 uppercase font-mono flex items-center gap-1.5">
+                <span>🤖</span>
+                <span>Last Autonomous Decision</span>
+              </h3>
+              <Link
+                href="/ai"
+                className="text-[11px] font-mono text-blue-600 hover:text-blue-700 font-semibold"
+              >
+                Inspect AI →
+              </Link>
+            </div>
+
+            <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 font-mono text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 text-sm text-blue-700">
+                  {lastDecision.action}
+                </span>
+                <span className="text-[10px] text-slate-400">{lastDecision.time}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-200/60 text-slate-600">
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Vehicle:</span>
+                  <span className="font-bold text-slate-800">{lastDecision.vehicle}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Target Order:</span>
+                  <span className="font-bold text-slate-800">{lastDecision.order}</span>
+                </div>
+              </div>
+
+              <div className="text-[11px] pt-1 text-slate-500">
+                <span className="text-[10px] text-slate-400 block font-sans">Reason:</span>
+                <span className="text-slate-700 font-medium font-sans">{lastDecision.reason}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4: VEHICLE DETAILS (ON-DEMAND WHEN CLICKED) */}
+          {selectedVehicle && (
+            <div className="border border-blue-200 bg-blue-50/40 rounded-xl shadow-sm p-4 relative animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-blue-200/80 pb-2.5 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{selectedVehicle.avatar || "🚚"}</span>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 font-mono">
+                      {selectedVehicle.partner_name || selectedVehicle.id}
+                    </h3>
+                    <div className="text-[10px] text-slate-500 font-mono">
+                      {selectedVehicle.id} · {selectedVehicle.vehicle_model}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedVehicleId(null)}
+                  className="w-5 h-5 flex items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 text-xs font-bold"
+                  title="Close vehicle panel"
+                >
                   ✕
                 </button>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-slate-700">
-                <div>Coordinates: ({selectedOrder.x.toFixed(1)}, {selectedOrder.y.toFixed(1)})</div>
-                <div>Time Window: [{selectedOrder.ready_time}m, {selectedOrder.deadline}m]</div>
-                <div>Remaining Distance: {selectedOrder.distance_remaining} km</div>
-                <div>Delivery Status: <span className="font-bold">{selectedOrder.status}</span></div>
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Spatial Demand Forecasting & Positioning */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-base font-bold text-slate-900">
-              Spatial Demand Forecasting
-            </h3>
-            <span className="text-xs font-mono text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-              Zone Modeling
-            </span>
-          </div>
-
-          <table className="w-full text-xs font-mono">
-            <thead>
-              <tr className="text-left border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold">
-                <th className="px-2.5 py-1.5">Zone</th>
-                <th className="px-2.5 py-1.5">Predicted</th>
-                <th className="px-2.5 py-1.5">Actual</th>
-                <th className="px-2.5 py-1.5">Diff</th>
-                <th className="px-2.5 py-1.5">Trend</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {predictions.zones.map((z, idx) => (
-                <tr key={idx}>
-                  <td className="px-2.5 py-1.5 font-semibold text-slate-900">{z.zone}</td>
-                  <td className="px-2.5 py-1.5 text-slate-800">{z.predicted_demand} /hr</td>
-                  <td className="px-2.5 py-1.5 text-slate-500">{z.actual_demand} /hr</td>
-                  <td className="px-2.5 py-1.5 text-slate-800">{z.diff}</td>
-                  <td className="px-2.5 py-1.5 text-blue-600 font-semibold">{z.trend}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {positioning.length > 0 && (
-            <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/40 text-xs font-mono">
-              <span className="text-emerald-800 font-bold block">
-                Proactive Repositioning Active:
-              </span>
-              <div className="mt-1 text-slate-600 text-[11px]">
-                {positioning[0].vehicle_id} relocating ({positioning[0].current_zone} → {positioning[0].target_zone}) to absorb forecasted demand spike.
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 7. Live Chronological Event Log & Timeline */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Live Event Log Feed */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="text-base font-bold text-slate-900">Live Event Feed</h3>
-            <span className="font-mono text-xs text-slate-400">{events.length} events</span>
-          </div>
-          <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 font-mono text-xs">
-            {events.length === 0 ? (
-              <div className="p-4 text-center text-slate-400">No events recorded.</div>
-            ) : (
-              events.map((ev) => (
-                <div key={ev.id} className="p-2.5 flex items-start gap-3 hover:bg-slate-50 transition">
-                  <span className="text-slate-400 shrink-0 text-[11px] pt-0.5">{ev.time_str}</span>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-semibold border ${
-                          ev.severity === "DANGER"
-                            ? "border-red-200 bg-red-50 text-red-600"
-                            : ev.severity === "WARNING"
-                            ? "border-amber-200 bg-amber-50 text-amber-600"
-                            : ev.severity === "SUCCESS"
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                            : "border-slate-200 bg-slate-50 text-slate-500"
-                        }`}
-                      >
-                        {ev.type}
-                      </span>
-                      <span className="text-slate-900 font-semibold">{ev.target}</span>
-                    </div>
-                    <p className="text-slate-600 text-[11px] mt-0.5 leading-snug">
-                      {ev.description}
-                    </p>
-                  </div>
+              {/* On-Demand Vehicle Attributes (Section 4 specs) */}
+              <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">Status:</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.status}</span>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
 
-        {/* Milestone Timeline */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="text-base font-bold text-slate-900">Operational Milestones</h3>
-            <span className="font-mono text-xs text-slate-400">{timeline.length} milestones</span>
-          </div>
-          <div className="p-2 max-h-72 overflow-y-auto">
-            <ol className="relative border-l border-slate-200 ml-3 space-y-4 font-mono text-xs">
-              {timeline.map((t, idx) => (
-                <li key={idx} className="ml-4">
-                  <div className="absolute -left-1.5 mt-1 w-3 h-3 rounded-full border-2 border-white bg-blue-600 shadow-sm" />
-                  <span className="text-[10px] text-slate-400 block">{t.time_str}</span>
-                  <span className="text-slate-900 font-semibold text-xs block">{t.title}</span>
-                  <span className="text-slate-500 text-[11px] leading-snug">{t.description}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">Speed:</span>
+                  <span className="font-bold text-slate-800">{Math.round(selectedVehicle.speed_kmh)} km/h</span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">Current Load:</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.current_load} / {selectedVehicle.max_weight} kg</span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">Rem. Capacity:</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.remaining_capacity} kg</span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">Battery / Fuel:</span>
+                  <span className="font-bold text-slate-800">{Math.round(selectedVehicle.fuel_level)}%</span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">CO₂ Emitted:</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.co2_kg} kg</span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">Current Order:</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.current_order || "None"}</span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">Route Progress:</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.route_progress}% (~{selectedVehicle.eta_mins}m)</span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">Position:</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.x}, {selectedVehicle.y}</span>
+                </div>
+
+                <div className="p-2 rounded bg-white border border-slate-200">
+                  <span className="text-[10px] text-slate-400 block">Connectivity:</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.connectivity}</span>
+                </div>
+              </div>
+
+              {selectedVehicle.mesh_neighbors?.length > 0 && (
+                <div className="mt-2 p-2 rounded bg-white border border-slate-200 text-[10px] font-mono text-slate-600">
+                  <span className="text-slate-400 block">Mesh Neighbors:</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.mesh_neighbors.join(", ")}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

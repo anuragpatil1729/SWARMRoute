@@ -5,11 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../lib/AuthContext";
 
 const items = [
-  { href: "/", label: "🏢 Manager Dispatch Deck" },
-  { href: "/partner", label: "🛵 Delivery Partner Cockpit" },
-  { href: "/routes", label: "Route Map" },
-  { href: "/benchmarks", label: "Method Comparison" },
-  { href: "/disruptions", label: "Disruption Injector" },
+  { href: "/", label: "Overview" },
+  { href: "/fleet", label: "Fleet" },
+  { href: "/orders", label: "Orders" },
+  { href: "/network", label: "Network" },
+  { href: "/ai", label: "AI / Decisions" },
+  { href: "/benchmarks", label: "Analytics / Benchmark" },
+  { href: "/partner", label: "🛵 Partner Cockpit" },
 ];
 
 export default function Masthead() {
