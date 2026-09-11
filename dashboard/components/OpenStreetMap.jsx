@@ -189,17 +189,21 @@ export default function OpenStreetMap({
           fillOpacity: 0.92,
         }).addTo(map);
 
+        const stopAddress = c.address || c.area;
+        const orderIdentifier = c.order_id || (c.id !== undefined ? `#${c.id}` : "—");
+        const demandText = c.demand !== undefined ? `${c.demand} kg` : "—";
+
         marker.bindPopup(
           `<div style="font-family:sans-serif; font-size:12px; line-height:1.4;">
-            <b style="font-size:13px;">Customer Stop #${c.id}</b><br/>
-            <span style="color:#2563eb; font-weight:600;">${c.address || c.area || "Bengaluru Delivery Address"}</span><br/>
-            Order ID: <b>${c.order_id || "ORD_" + c.id}</b><br/>
-            Payload Demand: <b>${c.demand} kg</b><br/>
+            <b style="font-size:13px;">Customer Stop ${c.id !== undefined ? `#${c.id}` : ""}</b><br/>
+            ${stopAddress ? `<span style="color:#2563eb; font-weight:600;">${stopAddress}</span><br/>` : ""}
+            Order ID: <b>${orderIdentifier}</b><br/>
+            Payload Demand: <b>${demandText}</b><br/>
             Status: <span style="color:${color};font-weight:bold;text-transform:uppercase;">${c.status || "PENDING"}</span>
           </div>`
         );
         marker.on("click", () => {
-          if (onSelectOrder) onSelectOrder(c.order_id || `ORD_${c.id}`);
+          if (onSelectOrder) onSelectOrder(c.order_id || c.id);
         });
 
         layers.customers.push(marker);
@@ -287,7 +291,7 @@ export default function OpenStreetMap({
         const isBroken = v.status === "BROKEN_DOWN";
         const color = isBroken ? "#dc2626" : PALETTE[idx % PALETTE.length];
         const isSelected = selectedVehicleId === v.id;
-        const partnerName = v.partner_name || v.id.replace("TRUCK_", "Partner ");
+        const partnerName = v.partner_name || v.id;
 
         const truckIcon = L.divIcon({
           className: "truck-marker",
@@ -311,7 +315,7 @@ export default function OpenStreetMap({
             ">
               <span>${isBroken ? "⚠" : (v.avatar || "🚚")}</span>
               <span>${partnerName}</span>
-              <span style="opacity:0.9; font-size:10px; font-weight:600; background:rgba(0,0,0,0.2); padding:1px 4px; border-radius:4px;">${isBroken ? "SOS" : Math.round(v.speed_kmh) + " km/h"}</span>
+              <span style="opacity:0.9; font-size:10px; font-weight:600; background:rgba(0,0,0,0.2); padding:1px 4px; border-radius:4px;">${isBroken ? "SOS" : (v.speed_kmh !== undefined ? Math.round(v.speed_kmh) + " km/h" : "—")}</span>
             </div>
           `,
           iconSize: [120, 28],
@@ -329,23 +333,27 @@ export default function OpenStreetMap({
           layers.vehicles[v.id] = marker;
         }
 
+        const vehicleModelLine = v.vehicle_model || "";
+        const registrationLine = v.registration || v.id;
+        const subHeader = vehicleModelLine ? `${vehicleModelLine} · ${registrationLine}` : registrationLine;
+        const hubLine = v.hub ? `Hub: <b>${v.hub}</b><br/>` : "";
+
         layers.vehicles[v.id].bindPopup(`
           <div style="font-family: sans-serif; font-size: 12px; line-height: 1.45;">
             <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
               <span style="font-size:16px;">${v.avatar || "🚚"}</span>
               <div>
                 <b style="color:${color}; font-size:13px;">${v.partner_name || v.id}</b>
-                <div style="font-size:11px; color:#64748b;">${v.vehicle_model || "Delivery Fleet"} · ${v.registration || v.id}</div>
+                <div style="font-size:11px; color:#64748b;">${subHeader}</div>
               </div>
             </div>
             <div style="border-top:1px solid #e2e8f0; padding-top:4px; font-size:11px;">
-              Status: <b>${v.status}</b><br/>
-              Hub: <b>${v.hub || "Central Logistics Hub"}</b><br/>
-              Cruise Speed: <b>${v.speed_kmh} km/h</b><br/>
-              Route Progress: <b>${v.route_progress}%</b><br/>
-              Current Cargo Load: <b>${v.current_load} / ${v.max_weight} kg</b><br/>
-              Remaining Capacity: <b>${v.remaining_capacity} kg</b><br/>
-              Battery / Fuel: <b>${v.fuel_level} L/kWh</b>
+              Status: <b>${v.status || "—"}</b><br/>
+              ${hubLine}Cruise Speed: <b>${v.speed_kmh !== undefined ? `${v.speed_kmh} km/h` : "—"}</b><br/>
+              Route Progress: <b>${v.route_progress !== undefined ? `${v.route_progress}%` : "—"}</b><br/>
+              Current Cargo Load: <b>${v.current_load !== undefined ? `${v.current_load} / ${v.max_weight ?? "—"} kg` : "—"}</b><br/>
+              Remaining Capacity: <b>${v.remaining_capacity !== undefined ? `${v.remaining_capacity} kg` : "—"}</b><br/>
+              Battery / Fuel: <b>${v.fuel_level !== undefined ? `${Math.round(v.fuel_level)}%` : "—"}</b>
             </div>
           </div>
         `);

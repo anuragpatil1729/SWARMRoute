@@ -479,10 +479,31 @@ class SimulationRunner:
                 self.last_ppo_reward = round(float(step_reward), 2)
                 self.cumulative_ppo_reward = round(self.cumulative_ppo_reward + self.last_ppo_reward, 2)
 
+                target_v = None
+                target_o = None
+                action_reason = None
+                if action_name == "REASSIGN_STRANDED_ORDER":
+                    for o in self.fleet_state.active_orders.values():
+                        if o.is_reassigned:
+                            target_o = str(o.order_id)
+                            target_v = o.assigned_vehicle_id
+                            action_reason = "Peer mesh auction reallocation"
+                            break
+                elif action_name == "ASSIGN_BEST_ORDER":
+                    action_reason = "Customer deadline feasibility"
+                elif action_name == "REPOSITION_TO_DEMAND_ZONE":
+                    action_reason = "Demand surge anticipated in sector"
+                elif action_name == "HOLD_OR_CONTINUE":
+                    action_reason = "Nominal trajectory cruise"
+
                 ppo_entry = {
                     "time": round(self.env.current_time_mins, 1),
+                    "time_str": self._format_sim_time(self.env.current_time_mins),
                     "action_idx": action_idx,
                     "action": action_name,
+                    "target": target_v,
+                    "order_id": target_o,
+                    "reason": action_reason,
                     "reward": self.last_ppo_reward,
                 }
                 self.ppo_history.append(ppo_entry)
@@ -546,7 +567,7 @@ class SimulationRunner:
             winning_veh = (
                 transfers[0].get("to_vehicle") or transfers[0].get("target_vehicle_id")
                 if transfers
-                else "TRUCK_02"
+                else None
             )
 
             # Atomically apply reassignment transfers in simulation environment
@@ -580,6 +601,18 @@ class SimulationRunner:
                 "recovery_co2_kg": round(t0_fuel * 2.68, 2),
             }
             self.incidents.insert(0, incident)
+
+            # Record real autonomous decision when self-healing recovery occurs
+            if recovered_count > 0 and winning_veh:
+                self.ppo_history.append({
+                    "time": round(cur_t, 1),
+                    "time_str": self._format_sim_time(cur_t),
+                    "action": "REASSIGN_STRANDED_ORDER",
+                    "target": winning_veh,
+                    "order_id": str(transfers[0].get("order_id")) if transfers else None,
+                    "reason": f"Contract-Net auction resolved via peer mesh ({rec_time_ms} ms)",
+                    "reward": 10.0,
+                })
 
             # Record recovery route for visual rendering
             if winning_veh in self.fleet_state.vehicles:
@@ -1135,6 +1168,8 @@ class SimulationRunner:
                     "speed": self.speed,
                     "horizon": self.horizon_mins,
                     "step_size": self.step_size_mins,
+                    "city": "Bengaluru",
+                    "hub": "Bengaluru Central GIS Hub",
                 },
                 "fleet": {
                     "size": fleet_size,

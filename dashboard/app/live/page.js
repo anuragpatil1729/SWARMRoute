@@ -85,52 +85,38 @@ export default function LivePage() {
   // 2. System Status (Section 5)
   const isCloudOnline = network?.cloud_status === "ONLINE";
   const isMeshActive = network?.mesh_status === "ACTIVE";
-  const activeIncidents = incidents.filter((i) => i.status !== "RESOLVED");
+  const activeIncidents = incidents.filter(
+    (i) => i.status !== "RESOLVED" && i.recovery_status !== "RECOVERED"
+  );
+  const brokenVehicle = vehicles.find((v) => v.status === "BROKEN_DOWN");
   const hasActiveIncident = activeIncidents.length > 0 || fleet.broken > 0;
-  const primaryIncident = activeIncidents[0] || (fleet.broken > 0 ? {
-    vehicle_id: vehicles.find((v) => v.status === "BROKEN_DOWN")?.id || "TRUCK_01",
+
+  const primaryIncident = activeIncidents[0] || (brokenVehicle ? {
+    vehicle_id: brokenVehicle.id,
     type: "VEHICLE_BREAKDOWN",
-    stranded_orders: orders.filter((o) => o.status === "REASSIGNED" || o.status === "PENDING").length || 3,
-    recovery_vehicle: vehicles.find((v) => v.status !== "BROKEN_DOWN")?.id || "TRUCK_04",
+    stranded_orders: brokenVehicle.assigned_orders?.length ?? null,
+    recovery_vehicle: null,
     recovery_status: "IN PROGRESS",
-    recovery_time_min: 1.8,
+    recovery_time_sec: null,
   } : null);
 
-  // 3. Live Event Feed (Section 7: Latest 5-8 events)
+  // 3. Live Event Feed (Section 7: Latest 5-7 events)
   const recentEvents = events.slice(0, 7);
 
-  // 4. Last Autonomous Decision (Section 8)
+  // 4. Last Autonomous Decision (Section 8: 100% Real PPO / Agent Data)
   const lastDecision = useMemo(() => {
     if (ppo?.history && ppo.history.length > 0) {
       const latest = ppo.history[ppo.history.length - 1];
-      let reason = "Optimal multi-objective policy action";
-      if (latest.action?.includes("REASSIGN")) {
-        reason = "Nearest surviving peer vehicle via mesh auction";
-      } else if (latest.action?.includes("REROUTE")) {
-        reason = "Severe congestion detected on current corridor";
-      } else if (latest.action?.includes("REPOSITION")) {
-        reason = "Forecasted demand surge in sector";
-      } else if (latest.action?.includes("ASSIGN")) {
-        reason = "High priority customer deadline";
-      } else if (latest.action?.includes("HOLD")) {
-        reason = "Nominal trajectory, no intervention needed";
-      }
       return {
-        action: latest.action || "NOMINAL CRUISE",
-        vehicle: latest.target || "Fleet",
-        order: latest.order_id || (latest.action?.includes("REASSIGN") ? "O17" : "Active Stop"),
-        reason,
-        time: latest.time_str || `${latest.time}m`,
+        action: latest.action || null,
+        vehicle: latest.target || latest.vehicle || null,
+        order: latest.order_id || latest.order || null,
+        reason: latest.reason || null,
+        time: latest.time_str || (latest.time !== undefined ? `${latest.time}m` : null),
       };
     }
-    return {
-      action: ppo?.current_action || "HOLD",
-      vehicle: "TRUCK_04",
-      order: "O17",
-      reason: "Nearest feasible vehicle via peer mesh",
-      time: simulation?.time_str || "12:00",
-    };
-  }, [ppo, simulation]);
+    return null;
+  }, [ppo]);
 
   return (
     <div className="space-y-6 w-full">
@@ -154,7 +140,7 @@ export default function LivePage() {
               {simulation.time_str} · {simulation.status}
             </span>
             <span className="text-[11px] font-mono text-slate-500">
-              City: Bengaluru GIS Hub
+              Location: {simulation?.hub || simulation?.city || simulation?.region || simulation?.scenario || "Active Simulation"}
             </span>
           </div>
 
@@ -268,7 +254,7 @@ export default function LivePage() {
               <div>
                 <h3 className="text-sm font-bold text-slate-900 uppercase font-mono flex items-center gap-2">
                   <span>🗺️</span>
-                  <span>Live GIS Fleet Map — Bengaluru Operations</span>
+                  <span>Live GIS Fleet Map — {simulation?.city ? `${simulation.city} Operations` : simulation?.hub || simulation?.scenario || "Active Fleet Operations"}</span>
                 </h3>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
                   Click any vehicle to inspect real-time telematics on demand
@@ -464,13 +450,13 @@ export default function LivePage() {
               )}
             </div>
 
-            {!hasActiveIncident ? (
-              <div className="p-4 rounded-lg bg-emerald-50/60 border border-emerald-200/80 text-center">
-                <span className="text-emerald-600 font-bold text-xs uppercase font-mono block">
+            {!hasActiveIncident || !primaryIncident ? (
+              <div className="p-4 rounded-lg bg-emerald-50/60 border border-emerald-200/80 text-center font-mono">
+                <span className="text-emerald-700 font-bold text-xs uppercase block">
                   ✓ NO ACTIVE INCIDENTS
                 </span>
-                <p className="text-[11px] text-emerald-800/80 mt-1">
-                  Fleet operating normally in decentralized mesh. Peer heartbeats active.
+                <p className="text-[11px] text-emerald-800/80 mt-1 font-sans">
+                  All fleet vehicles operating normally. Peer heartbeats active.
                 </p>
               </div>
             ) : (
@@ -479,27 +465,37 @@ export default function LivePage() {
                 <div className="p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-950">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs uppercase text-red-700 flex items-center gap-1.5">
-                      <span>⚠️</span> {primaryIncident.vehicle_id} BREAKDOWN
+                      <span>⚠️</span> {primaryIncident.vehicle_id ? `${primaryIncident.vehicle_id} BREAKDOWN` : "VEHICLE BREAKDOWN"}
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-red-200 font-bold text-red-900">
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-red-200 font-bold text-red-900 uppercase">
                       {primaryIncident.recovery_status || "IN PROGRESS"}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs mt-3 pt-2.5 border-t border-red-200/60">
                     <div>
-                      <span className="text-[10px] text-red-600 block">Orders Stranded:</span>
+                      <span className="text-[10px] text-red-600 block">Affected Orders:</span>
                       <span className="font-bold text-red-900 text-sm">
-                        {primaryIncident.stranded_orders || 3} orders
+                        {Array.isArray(primaryIncident.stranded_orders)
+                          ? `${primaryIncident.stranded_orders.length} affected`
+                          : primaryIncident.stranded_orders !== null && primaryIncident.stranded_orders !== undefined
+                          ? `${primaryIncident.stranded_orders} affected`
+                          : "—"}
                       </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-red-600 block">Recovery Vehicle:</span>
                       <span className="font-bold text-red-900 text-sm">
-                        {primaryIncident.recovery_vehicle || "TRUCK_04"}
+                        {primaryIncident.recovery_vehicle || "Searching peer..."}
                       </span>
                     </div>
                   </div>
+
+                  {primaryIncident.recovery_time_sec !== undefined && primaryIncident.recovery_time_sec !== null && (
+                    <div className="mt-2 text-[10px] text-red-700">
+                      Recovery Time: <span className="font-bold">{primaryIncident.recovery_time_sec}s</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 5-Step Recovery Pipeline (FAILURE → SOS → MESH → REASSIGN → RECOVERY) */}
@@ -511,9 +507,9 @@ export default function LivePage() {
                     {[
                       { name: "FAILURE", active: true },
                       { name: "SOS", active: true },
-                      { name: "MESH", active: true },
-                      { name: "REASSIGN", active: true },
-                      { name: "RECOVERY", active: primaryIncident.recovery_status === "RECOVERY COMPLETE" },
+                      { name: "MESH", active: isMeshActive || primaryIncident.recovery_status !== undefined },
+                      { name: "REASSIGN", active: !!primaryIncident.recovery_vehicle || primaryIncident.recovery_status === "RECOVERED" },
+                      { name: "RECOVERY", active: primaryIncident.recovery_status === "RECOVERED" || primaryIncident.recovery_status === "COMPLETE" },
                     ].map((stepItem, sIdx) => (
                       <div
                         key={sIdx}
@@ -547,30 +543,43 @@ export default function LivePage() {
               </Link>
             </div>
 
-            <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 font-mono text-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-sm text-blue-700">
-                  {lastDecision.action}
+            {lastDecision ? (
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 font-mono text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 text-sm text-blue-700">
+                    {lastDecision.action || "—"}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{lastDecision.time || "—"}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-200/60 text-slate-600">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Vehicle:</span>
+                    <span className="font-bold text-slate-800">{lastDecision.vehicle || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Target Order:</span>
+                    <span className="font-bold text-slate-800">{lastDecision.order || "—"}</span>
+                  </div>
+                </div>
+
+                {lastDecision.reason && (
+                  <div className="text-[11px] pt-1 text-slate-500">
+                    <span className="text-[10px] text-slate-400 block font-sans">Reason:</span>
+                    <span className="text-slate-700 font-medium font-sans">{lastDecision.reason}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 text-center font-mono text-xs">
+                <span className="text-slate-600 font-bold uppercase block">
+                  NO AUTONOMOUS DECISION YET
                 </span>
-                <span className="text-[10px] text-slate-400">{lastDecision.time}</span>
+                <p className="text-[11px] text-slate-400 mt-1 font-sans">
+                  The dispatch agent will record decisions when interventions occur.
+                </p>
               </div>
-
-              <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-200/60 text-slate-600">
-                <div>
-                  <span className="text-[10px] text-slate-400 block">Vehicle:</span>
-                  <span className="font-bold text-slate-800">{lastDecision.vehicle}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block">Target Order:</span>
-                  <span className="font-bold text-slate-800">{lastDecision.order}</span>
-                </div>
-              </div>
-
-              <div className="text-[11px] pt-1 text-slate-500">
-                <span className="text-[10px] text-slate-400 block font-sans">Reason:</span>
-                <span className="text-slate-700 font-medium font-sans">{lastDecision.reason}</span>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* SECTION 4: VEHICLE DETAILS (ON-DEMAND WHEN CLICKED) */}

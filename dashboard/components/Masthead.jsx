@@ -38,7 +38,7 @@ export default function Masthead() {
               SwarmRoute India
             </h1>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
-              Bengaluru GIS Hub
+              Active Simulation
             </span>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
