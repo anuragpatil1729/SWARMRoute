@@ -78,9 +78,13 @@ def train_ppo_cli(
         "eval_metrics": eval_metrics,
         "episode_rewards": agent.logger_callback.episode_rewards,
         "delivery_success_rates": agent.logger_callback.delivery_success_rates,
+        "on_time_rates": agent.logger_callback.on_time_rates,
         "fuel_consumed": agent.logger_callback.fuel_consumed,
         "co2_emissions": agent.logger_callback.co2_emissions,
+        "distances": agent.logger_callback.distances,
+        "recoveries": agent.logger_callback.recoveries,
         "late_deliveries": agent.logger_callback.late_deliveries,
+        "failed_orders": agent.logger_callback.failed_orders,
         "recovery_times": agent.logger_callback.recovery_times,
     }
     with open(metrics_path, "w", encoding="utf-8") as f:

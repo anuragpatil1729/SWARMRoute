@@ -19,7 +19,7 @@ def test_disconnected_observation_no_oracle_leakage():
     env = SWARMRLEnv(dataset_name="C101", num_customers=25, num_vehicles=5, seed=42)
     obs, info = env.reset(seed=42)
 
-    assert obs.shape == (19,)
+    assert obs.shape == (SWARMRLEnv.OBS_DIM,)
     assert not np.isnan(obs).any(), "Observation must not contain NaNs"
     assert not np.isinf(obs).any(), "Observation must not contain Infs"
 
@@ -27,13 +27,13 @@ def test_disconnected_observation_no_oracle_leakage():
     env.env.fleet_state.connectivity_state = ConnectivityState.MESH_MODE
     obs_disconnected = env._get_observation()
 
-    # The connectivity flag in observation (index 6) must reflect MESH_MODE (0.5)
-    assert obs_disconnected[6] == 0.5
+    # The connectivity flag in observation (index 11) must reflect MESH_MODE (0.5)
+    assert obs_disconnected[11] == 0.5
 
     # Truck position and capacity must be normalized local values
-    assert 0.0 <= obs_disconnected[0] <= 1.0  # x_norm
-    assert 0.0 <= obs_disconnected[1] <= 1.0  # y_norm
-    assert 0.0 <= obs_disconnected[2] <= 1.0  # remaining capacity norm
+    assert 0.0 <= obs_disconnected[1] <= 1.0  # x_norm
+    assert 0.0 <= obs_disconnected[2] <= 1.0  # y_norm
+    assert 0.0 <= obs_disconnected[3] <= 1.0  # remaining capacity norm
 
 
 def test_ppo_offline_decision_making():

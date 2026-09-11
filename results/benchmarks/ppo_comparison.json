@@ -9,8 +9,8 @@
     "vehicle_utilization_pct": 28.3,
     "recovery_time_sec": 0.0,
     "failed_deliveries": 11,
-    "average_delay_mins": 156.71,
-    "computation_time_sec": 0.006
+    "average_delay_mins": 365.67,
+    "computation_time_sec": 0.004
   },
   "OR-Tools (Static)": {
     "delivery_success_pct": 84.0,
@@ -22,10 +22,36 @@
     "vehicle_utilization_pct": 9.0,
     "recovery_time_sec": 0.0,
     "failed_deliveries": 4,
-    "average_delay_mins": 1.76,
-    "computation_time_sec": 10.02
+    "average_delay_mins": 6.17,
+    "computation_time_sec": 10.008
   },
   "OR-Tools + Prediction": {
+    "delivery_success_pct": 80.0,
+    "on_time_delivery_pct": 80.0,
+    "total_distance_km": 146.67,
+    "total_fuel_liters": 50.88,
+    "total_co2_kg": 136.35,
+    "empty_kilometers": 10.2,
+    "vehicle_utilization_pct": 15.0,
+    "recovery_time_sec": 0.0,
+    "failed_deliveries": 5,
+    "average_delay_mins": 0.0,
+    "computation_time_sec": 10.03
+  },
+  "Rule-Based Decentralized": {
+    "delivery_success_pct": 92.0,
+    "on_time_delivery_pct": 52.0,
+    "total_distance_km": 178.89,
+    "total_fuel_liters": 63.74,
+    "total_co2_kg": 170.83,
+    "empty_kilometers": 18.68,
+    "vehicle_utilization_pct": 4.0,
+    "recovery_time_sec": 0.0015,
+    "failed_deliveries": 2,
+    "average_delay_mins": 287.1,
+    "computation_time_sec": 0.005
+  },
+  "PPO Adaptive Agent": {
     "delivery_success_pct": 84.0,
     "on_time_delivery_pct": 60.0,
     "total_distance_km": 151.69,
@@ -35,33 +61,20 @@
     "vehicle_utilization_pct": 9.0,
     "recovery_time_sec": 0.0,
     "failed_deliveries": 4,
-    "average_delay_mins": 1.76,
-    "computation_time_sec": 10.058
+    "average_delay_mins": 6.17,
+    "computation_time_sec": 0.066
   },
-  "Rule-Based Decentralized": {
-    "delivery_success_pct": 96.0,
-    "on_time_delivery_pct": 52.0,
-    "total_distance_km": 201.41,
-    "total_fuel_liters": 69.79,
-    "total_co2_kg": 187.03,
-    "empty_kilometers": 13.0,
-    "vehicle_utilization_pct": 11.0,
-    "recovery_time_sec": 0.0014,
-    "failed_deliveries": 0,
-    "average_delay_mins": 130.67,
-    "computation_time_sec": 0.006
-  },
-  "PPO Adaptive Agent": {
-    "delivery_success_pct": 96.0,
-    "on_time_delivery_pct": 52.0,
-    "total_distance_km": 201.41,
-    "total_fuel_liters": 69.79,
-    "total_co2_kg": 187.03,
-    "empty_kilometers": 13.0,
-    "vehicle_utilization_pct": 11.0,
-    "recovery_time_sec": 0.0006,
-    "failed_deliveries": 0,
-    "average_delay_mins": 130.67,
-    "computation_time_sec": 0.839
+  "Random Policy": {
+    "delivery_success_pct": 92.0,
+    "on_time_delivery_pct": 60.0,
+    "total_distance_km": 180.3,
+    "total_fuel_liters": 62.51,
+    "total_co2_kg": 167.52,
+    "empty_kilometers": 38.08,
+    "vehicle_utilization_pct": 13.0,
+    "recovery_time_sec": 0.0548,
+    "failed_deliveries": 2,
+    "average_delay_mins": 153.75,
+    "computation_time_sec": 0.056
   }
 }

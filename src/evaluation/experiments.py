@@ -246,10 +246,18 @@ def run_flagship_recovery_experiment(
             dest_truck.assigned_orders.append(uo.order_id)
             dest_truck.current_load += uo.demand_weight
             uo_node = node_id_map[uo.order_id]
-            if len(dest_truck.current_route) > 1:
-                dest_truck.current_route.insert(-1, uo_node)
+            if dest_truck.status == VehicleStatus.IDLE or dest_truck.next_node is None:
+                dest_truck.current_route = [0, uo_node, 0]
+                dest_truck.current_node = 0
+                dest_truck.next_node = uo_node
+                dest_truck.route_index = 0
+                c0 = road_resilient.node_coordinates.get(0, (0.0, 0.0))
+                c1 = road_resilient.node_coordinates.get(uo_node, (0.0, 0.0))
+                dest_truck.edge_total_km = math.hypot(c1[0] - c0[0], c1[1] - c0[1])
+                dest_truck.edge_progress_km = 0.0
             else:
-                dest_truck.current_route.append(uo_node)
+                dest_truck.current_route.insert(-1, uo_node)
+            dest_truck.status = VehicleStatus.EN_ROUTE
 
     # Continue simulation to completion
     while env_res.current_time_mins < simulation_duration_mins and not env_res.is_done():

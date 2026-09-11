@@ -81,9 +81,10 @@ class MeshNetwork:
 
         return self.topology
 
-    def transmit(self, message: MeshMessage) -> bool:
+    def transmit(self, message: MeshMessage, max_retries: int = 2) -> bool:
         """
         Routes message from sender to receiver across multi-hop links.
+        Simulates latency and link-layer ARQ retries on lossy wireless hops.
         If receiver is 'BROADCAST', broadcasts across the connected component.
         """
         self.build_topology()
@@ -124,21 +125,25 @@ class MeshNetwork:
         message.hop_count = hops
         message.route_taken = path
 
-        # Simulate latency and packet loss along the path
+        # Simulate latency and packet loss with link-layer ARQ retries
         latency = 0.0
-        for _ in range(hops):
-            latency += self.base_latency_per_hop_ms + self.rng.uniform(1.0, 5.0)
-            if self.rng.random() < self.packet_loss_per_hop:
-                # Packet dropped mid-flight
-                message.delivered = False
+        for _ in range(max(1, max_retries)):
+            dropped = False
+            for _ in range(hops):
+                latency += self.base_latency_per_hop_ms + self.rng.uniform(1.0, 5.0)
+                if self.rng.random() < self.packet_loss_per_hop:
+                    dropped = True
+                    break
+            if not dropped:
                 message.total_latency_ms = latency
+                message.delivered = True
                 self.transmitted_messages.append(message)
-                return False
+                return True
 
         message.total_latency_ms = latency
-        message.delivered = True
+        message.delivered = False
         self.transmitted_messages.append(message)
-        return True
+        return False
 
     def get_mesh_metrics(self) -> Dict[str, Any]:
         """Calculates authoritative empirical mesh transmission statistics."""

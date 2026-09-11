@@ -1,0 +1,92 @@
+[
+  {
+    "component": "src/models",
+    "implemented": true,
+    "actually_used": true,
+    "tested": true,
+    "scientifically_valid": true,
+    "issues": "None. Pydantic models for Vehicle, Order, RoadNetwork, and FleetState properly enforce constraints and serialization.",
+    "recommended_fix": "Preserve existing schema."
+  },
+  {
+    "component": "src/data",
+    "implemented": true,
+    "actually_used": true,
+    "tested": true,
+    "scientifically_valid": true,
+    "issues": "Solomon benchmark loader correctly parses 100-customer and subset instances. Dynamic multi-period generation is synthetic.",
+    "recommended_fix": "Maintain standard Solomon C101, R101, and RC101 benchmark instances as ground truth."
+  },
+  {
+    "component": "src/optimization",
+    "implemented": true,
+    "actually_used": true,
+    "tested": true,
+    "scientifically_valid": false,
+    "issues": "OR-Tools CVRPTW solver functions correctly with time windows and capacity. However, in evaluate_baselines.py, OR-Tools + Prediction produced identical results to Static OR-Tools because predicted travel times were not injected into edge durations before solving.",
+    "recommended_fix": "Inject TravelTimePredictor predicted edge durations into the distance/time callback matrix in RouteOptimizer."
+  },
+  {
+    "component": "src/prediction",
+    "implemented": true,
+    "actually_used": false,
+    "tested": true,
+    "scientifically_valid": false,
+    "issues": "Predictors (TravelTimePredictor, FuelConsumptionPredictor, DemandPredictor) are trained and saved as .joblib models, but are largely bypassed during baseline routing.",
+    "recommended_fix": "Wire TravelTimePredictor and FuelModel directly into RouteOptimizer and PredictiveFleetPositioner."
+  },
+  {
+    "component": "src/simulation",
+    "implemented": true,
+    "actually_used": true,
+    "tested": true,
+    "scientifically_valid": true,
+    "issues": "FleetSimulationEnvironment simulates edge traversal, service time, fuel consumption, and disruptions. Need strict validation that failed vehicles never move or deliver.",
+    "recommended_fix": "Ensure order lifecycle state transitions strictly prevent broken vehicles from completing deliveries and that failed orders are accounted for accurately."
+  },
+  {
+    "component": "src/networking",
+    "implemented": true,
+    "actually_used": true,
+    "tested": true,
+    "scientifically_valid": true,
+    "issues": "MeshNetwork correctly models Euclidean range, packet loss, and latency. Need to ensure broken or unreachable vehicles cannot bid.",
+    "recommended_fix": "Filter out unreachable or broken nodes during bid collection in the contract net protocol."
+  },
+  {
+    "component": "src/agents",
+    "implemented": true,
+    "actually_used": true,
+    "tested": true,
+    "scientifically_valid": false,
+    "issues": "In evaluate_baselines.py, FleetAgent.on_vehicle_breakdown_decentralized was invoked before PPO in the PPO evaluation branch, executing rule-based recovery first and masking PPO's true behavior.",
+    "recommended_fix": "Completely remove FleetAgent recovery from the PPO evaluation pipeline so PPO handles recovery independently."
+  },
+  {
+    "component": "src/rl",
+    "implemented": true,
+    "actually_used": false,
+    "tested": true,
+    "scientifically_valid": false,
+    "issues": "SWARMRLEnv controlled only a single hardcoded truck. Training duration (~1200 steps) was merely a smoke test. Actions relied on pre-determined deterministic helpers rather than meaningful agent decisions.",
+    "recommended_fix": "Refactor SWARMRLEnv to let PPO control fleet-wide decisions (order assignment, stranded order recovery, exchange acceptance, repositioning, and hold). Separate reward equation into src/rl/reward.py. Train with configurable timesteps."
+  },
+  {
+    "component": "src/evaluation",
+    "implemented": true,
+    "actually_used": true,
+    "tested": true,
+    "scientifically_valid": false,
+    "issues": "calculate_average_delivery_delay() had a denominator bug, dividing total delay by len(orders) instead of the count of delayed orders. PPO benchmark results were identical to rule-based recovery due to execution ordering.",
+    "recommended_fix": "Fix denominator in calculate_average_delivery_delay(). Run fair benchmarks with identical scenarios."
+  },
+  {
+    "component": "scripts",
+    "implemented": true,
+    "actually_used": true,
+    "tested": false,
+    "scientifically_valid": false,
+    "issues": "Scripts contained disparate parameter configurations (300m vs 1200m durations), and train_ppo.py logged incomplete training metrics.",
+    "recommended_fix": "Unify evaluation scripts and add comprehensive metrics logging and multi-seed evaluation."
+  }
+]

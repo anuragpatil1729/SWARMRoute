@@ -73,6 +73,19 @@ class FuelConsumptionPredictor(BasePredictor):
         preds = self.model.predict(X)
         return np.maximum(preds, 0.0)
 
+    def predict_single(
+        self,
+        distance: float,
+        vehicle_type_code: int = 0,
+        vehicle_load: float = 100.0,
+        average_speed: float = 40.0,
+        traffic_level_code: int = 1,
+        road_gradient: float = 0.0,
+        stop_count: int = 1,
+    ) -> float:
+        feat = np.array([[distance, vehicle_type_code, vehicle_load, average_speed, traffic_level_code, road_gradient, stop_count]])
+        return float(self.predict(feat)[0])
+
     def evaluate(self, X_test: np.ndarray, y_test: np.ndarray) -> Dict[str, float]:
         preds = self.predict(X_test)
         mae = float(mean_absolute_error(y_test, preds))

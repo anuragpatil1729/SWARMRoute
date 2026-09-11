@@ -7,12 +7,12 @@
   "winning_vehicle": "TRUCK_17",
   "recovered_order_tracked": "ORD_034",
   "timings": {
-    "breakdown_to_sos_ms": 0.041,
+    "breakdown_to_sos_ms": 0.047,
     "sos_propagation_latency_ms": 20.0,
-    "sos_to_bids_collected_ms": 0.411,
-    "bids_to_winner_selection_ms": 0.781,
-    "winner_to_reassignment_ms": 0.004,
-    "total_recovery_decision_time_sec": 0.0016,
+    "sos_to_bids_collected_ms": 0.473,
+    "bids_to_winner_selection_ms": 3.911,
+    "winner_to_reassignment_ms": 0.006,
+    "total_recovery_decision_time_sec": 0.0049,
     "reassignment_to_customer_delivery_mins": 540.0
   },
   "recovery_outcomes": {
@@ -25,14 +25,14 @@
     "additional_co2_kg": 164.31
   },
   "mesh_network_metrics": {
-    "total_mesh_messages": 3,
+    "total_mesh_messages": 23,
     "mesh_delivery_success": true,
-    "average_mesh_hops": 1.0,
-    "average_mesh_latency_ms": 21.19
+    "average_mesh_hops": 1.91,
+    "average_mesh_latency_ms": 43.86
   },
   "fleet_end_state": {
     "completed_deliveries": 59,
-    "failed_orders": 7,
+    "failed_orders": 41,
     "late_deliveries": 4,
     "total_cost": 2060.73
   }

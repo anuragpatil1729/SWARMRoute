@@ -37,6 +37,8 @@ class RouteOptimizer:
         objective_weights: Optional[Dict[str, float]] = None,
         time_limit_sec: int = 30,
         allow_drop: bool = False,
+        travel_time_predictor: Optional[Any] = None,
+        fuel_predictor: Optional[Any] = None,
     ) -> OptimizationResult:
         """
         Main optimization entry point required by specification:
@@ -73,6 +75,8 @@ class RouteOptimizer:
             road_network=road_network,
             time_limit_sec=time_limit_sec,
             allow_drop=allow_drop,
+            travel_time_predictor=travel_time_predictor,
+            fuel_predictor=fuel_predictor,
         )
 
         # If infeasible without drops, retry with heavy drop penalty disjunctions
@@ -84,6 +88,8 @@ class RouteOptimizer:
                 time_limit_sec=time_limit_sec,
                 allow_drop=True,
                 drop_penalty=100000,
+                travel_time_predictor=travel_time_predictor,
+                fuel_predictor=fuel_predictor,
             )
 
         # 6. Update fleet vehicle states with resulting routes and assignments

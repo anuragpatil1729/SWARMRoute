@@ -184,8 +184,12 @@ class FleetSimulationEnvironment:
 
                 # Remove from previous vehicle so it is no longer stranded
                 if from_v in self.fleet_state.vehicles:
-                    if oid in self.fleet_state.vehicles[from_v].assigned_orders:
-                        self.fleet_state.vehicles[from_v].assigned_orders.remove(oid)
+                    src_veh = self.fleet_state.vehicles[from_v]
+                    if oid in src_veh.assigned_orders:
+                        src_veh.assigned_orders.remove(oid)
+                    ord_obj_pre = self.fleet_state.active_orders.get(oid)
+                    if ord_obj_pre:
+                        src_veh.current_load = max(0.0, src_veh.current_load - ord_obj_pre.demand_weight)
                     self.failed_orders.discard(oid)
 
                 if to_v in self.fleet_state.vehicles and oid in self.fleet_state.active_orders:
@@ -272,6 +276,21 @@ class FleetSimulationEnvironment:
                         v.status = VehicleStatus.IDLE
                         v.next_node = None
                 continue
+
+            # Resume route movement if vehicle was re-activated/extended with new stops
+            if v.status == VehicleStatus.EN_ROUTE and v.next_node is None:
+                if len(v.current_route) > 1:
+                    if v.route_index < len(v.current_route) - 1:
+                        v.current_node = int(v.current_route[v.route_index])
+                        v.next_node = int(v.current_route[v.route_index + 1])
+                    else:
+                        v.route_index = 0
+                        v.current_node = int(v.current_route[0])
+                        v.next_node = int(v.current_route[1])
+                    curr_c = node_coords.get(v.current_node, (0.0, 0.0))
+                    nxt_c = node_coords.get(v.next_node, (0.0, 0.0))
+                    v.edge_total_km = math.hypot(nxt_c[0] - curr_c[0], nxt_c[1] - curr_c[1])
+                    v.edge_progress_km = 0.0
 
             # Case B: Vehicle moving along active edge
             if v.status == VehicleStatus.EN_ROUTE and v.next_node is not None:
@@ -409,12 +428,20 @@ class FleetSimulationEnvironment:
     def get_metrics(self) -> Dict[str, Any]:
         """Calculates exact, un-fabricated metrics from actual simulation history."""
         total_orders = len(self.fleet_state.active_orders)
+        
+        # Any active order not delivered by conclusion is strictly accounted as failed
+        for oid, ord_obj in self.fleet_state.active_orders.items():
+            if oid not in self.delivered_orders:
+                self.failed_orders.add(oid)
+                if ord_obj.status != OrderStatus.FAILED:
+                    ord_obj.status = OrderStatus.FAILED
+
         delivered_count = len(self.delivered_orders)
         late_count = len(self.late_orders)
         failed_count = len(self.failed_orders)
         completion_rate = calculate_completion_rate(total_orders, delivered_count)
 
-        # Max lateness and average delivery delay
+        # Max lateness and average delivery delay across delayed orders
         max_lateness = 0.0
         total_delay = 0.0
         for oid in self.late_orders:
@@ -425,7 +452,7 @@ class FleetSimulationEnvironment:
                 max_lateness = max(max_lateness, delay)
                 total_delay += delay
 
-        avg_delay = round(total_delay / max(1, delivered_count), 2)
+        avg_delay = round(total_delay / max(1, late_count), 2) if late_count > 0 else 0.0
         mesh_stats = self.mesh_network.get_mesh_metrics()
         utilization = calculate_vehicle_utilization(list(self.fleet_state.vehicles.values()))
 

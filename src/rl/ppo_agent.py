@@ -28,9 +28,13 @@ class TrainingMetricsLogger(BaseCallback):
         self.episode_rewards: List[float] = []
         self.episode_lengths: List[int] = []
         self.delivery_success_rates: List[float] = []
+        self.on_time_rates: List[float] = []
         self.fuel_consumed: List[float] = []
         self.co2_emissions: List[float] = []
         self.late_deliveries: List[int] = []
+        self.distances: List[float] = []
+        self.recoveries: List[int] = []
+        self.failed_orders: List[int] = []
         self.recovery_times: List[float] = []
         self.current_reward = 0.0
         self.current_length = 0
@@ -51,12 +55,21 @@ class TrainingMetricsLogger(BaseCallback):
             infos = self.locals.get("infos", [{}])[0]
             deliv = infos.get("delivered_orders", 0)
             failed = infos.get("failed_orders", 0)
+            late = int(infos.get("late_orders", 0))
             total = max(1, deliv + failed)
+
             succ_pct = round((deliv / total) * 100.0, 1)
+            on_time = max(0, deliv - late)
+            ontime_pct = round((on_time / total) * 100.0, 1)
+
             self.delivery_success_rates.append(succ_pct)
+            self.on_time_rates.append(ontime_pct)
             self.fuel_consumed.append(round(infos.get("total_fuel_liters", 0.0), 2))
             self.co2_emissions.append(round(infos.get("total_co2_kg", 0.0), 2))
-            self.late_deliveries.append(int(infos.get("late_orders", 0)))
+            self.late_deliveries.append(late)
+            self.distances.append(round(infos.get("total_distance_km", 0.0), 2))
+            self.recoveries.append(int(infos.get("recoveries_count", 0)))
+            self.failed_orders.append(failed)
             self.recovery_times.append(round(infos.get("recovery_time_sec", 0.0), 4))
 
         return True

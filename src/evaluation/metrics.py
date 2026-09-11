@@ -225,7 +225,7 @@ def calculate_average_delivery_delay(orders: Sequence[Order]) -> float:
                 delays.append(arr - o.latest_delivery)
     if not delays:
         return 0.0
-    return round(sum(delays) / len(orders), 2)
+    return round(sum(delays) / len(delays), 2)
 
 
 def calculate_empty_km(total_distance_km: float, loaded_distance_km: float) -> float:

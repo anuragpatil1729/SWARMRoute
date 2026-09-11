@@ -2,6 +2,7 @@ from __future__ import annotations
 import math
 import time
 from typing import Any, Dict, List, Optional, Tuple, Union
+import numpy as np
 from pydantic import BaseModel, Field
 
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
@@ -69,6 +70,8 @@ class VRPTWSolver:
         time_limit_sec: int = 30,
         allow_drop: bool = False,
         drop_penalty: int = 100000,
+        travel_time_predictor: Optional[Any] = None,
+        fuel_predictor: Optional[Any] = None,
     ) -> OptimizationResult:
         """
         Solves the CVRPTW problem instance using OR-Tools.
@@ -99,6 +102,33 @@ class VRPTWSolver:
         SCALE = 100  # 2 decimal places precision
 
         dist_matrix_raw, time_matrix_raw = road_network.build_complete_euclidean_matrix(node_ids)
+
+        if travel_time_predictor is not None and getattr(travel_time_predictor, "is_trained", False):
+            pairs = []
+            pair_indices = []
+            for i in range(num_nodes):
+                for j in range(num_nodes):
+                    if i != j:
+                        pairs.append([dist_matrix_raw[i][j], 10.0, 2, 45.0, 1, 1, 0, 100.0])
+                        pair_indices.append((i, j))
+            if pairs:
+                pred_hrs_batch = travel_time_predictor.predict(np.array(pairs))
+                for (i, j), pred_hrs in zip(pair_indices, pred_hrs_batch):
+                    time_matrix_raw[i][j] = float(pred_hrs) * 60.0
+
+        if fuel_predictor is not None and getattr(fuel_predictor, "is_trained", False):
+            fuel_wt = self.objective_weights.get("fuel", 1.5)
+            pairs = []
+            pair_indices = []
+            for i in range(num_nodes):
+                for j in range(num_nodes):
+                    if i != j:
+                        pairs.append([dist_matrix_raw[i][j], 0, 100.0, 40.0, 1, 0.0, 1])
+                        pair_indices.append((i, j))
+            if pairs:
+                pred_fuel_batch = fuel_predictor.predict(np.array(pairs))
+                for (i, j), pred_fuel in zip(pair_indices, pred_fuel_batch):
+                    dist_matrix_raw[i][j] = dist_matrix_raw[i][j] + (fuel_wt * float(pred_fuel))
 
         int_dist_matrix = [
             [int(round(dist_matrix_raw[i][j] * SCALE)) for j in range(num_nodes)]

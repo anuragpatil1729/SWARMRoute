@@ -81,15 +81,26 @@ class FleetAgent:
                 continue
 
             # In MESH_MODE, verify peer is reachable in mesh topology
-            if self.mesh_network.topology.has_node(v_id):
-                if hasattr(peer_agent, "generate_bids_for_breakdown"):
-                    peer_bids = peer_agent.generate_bids_for_breakdown(sos_msg, node_coords)
-                else:
-                    msg = peer_agent.receive_message(sos_msg, node_coords)
-                    peer_bids = [msg] if msg else []
+            import networkx as nx
+            topo = self.mesh_network.topology
+            if not (topo.has_node(failed_vehicle_id) and topo.has_node(v_id) and nx.has_path(topo, failed_vehicle_id, v_id)):
+                continue
 
-                for bid_msg in peer_bids:
-                    if bid_msg and bid_msg.payload:
+            # Transmit SOS message to peer over physical mesh
+            sos_to_peer = sos_msg.model_copy(deep=True)
+            sos_to_peer.receiver_id = v_id
+            if not self.mesh_network.transmit(sos_to_peer):
+                continue
+
+            if hasattr(peer_agent, "generate_bids_for_breakdown"):
+                peer_bids = peer_agent.generate_bids_for_breakdown(sos_to_peer, node_coords)
+            else:
+                msg = peer_agent.receive_message(sos_to_peer, node_coords)
+                peer_bids = [msg] if msg else []
+
+            for bid_msg in peer_bids:
+                if bid_msg and bid_msg.payload:
+                    if self.mesh_network.transmit(bid_msg):
                         self.total_mesh_messages += 1
                         bids.append(bid_msg.payload)
 
@@ -140,7 +151,8 @@ class FleetAgent:
                     "insert_index": winner.get("insert_index"),
                 },
             )
-            self.mesh_network.transmit(confirm_msg)
+            if not self.mesh_network.transmit(confirm_msg):
+                continue
             self.total_mesh_messages += 1
             self.total_mesh_hops += max(1, confirm_msg.hop_count)
 
@@ -161,6 +173,12 @@ class FleetAgent:
             oid for oid in broken_agent.state.assigned_orders
             if not any(t["order_id"] == oid for t in assigned_transfers)
         ]
+        transferred_weight = sum(
+            self.fleet_state.active_orders[t["order_id"]].demand_weight
+            for t in assigned_transfers
+            if t["order_id"] in self.fleet_state.active_orders
+        )
+        broken_agent.state.current_load = max(0.0, broken_agent.state.current_load - transferred_weight)
         self.mesh_network.set_node_failed(failed_vehicle_id, failed=True)
 
         return {
