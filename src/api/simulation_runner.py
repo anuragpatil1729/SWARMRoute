@@ -17,6 +17,7 @@ import numpy as np
 
 from src.models.fleet_state import FleetState, ConnectivityState
 from src.models.vehicle import VehicleStatus
+from src.models.order import OrderStatus
 from src.models.road import RoadNetwork, TrafficLevel
 from src.simulation.environment import FleetSimulationEnvironment
 from src.data.loaders.solomon import load_solomon_benchmark
@@ -33,6 +34,81 @@ from src.rl.environment import SWARMRLEnv
 from src.rl.ppo_agent import PPOFleetAgent
 from src.rl.reward import MultiObjectiveRewardConfig, FleetRewardCalculator
 
+
+DELIVERY_PARTNERS: Dict[str, Dict[str, Any]] = {
+    "TRUCK_01": {
+        "id": "TRUCK_01",
+        "name": "Rajesh Kumar",
+        "phone": "+91 98450 12345",
+        "vehicle_model": "Tata Ace EV (Electric 1-Ton)",
+        "registration": "KA-01-EQ-1024",
+        "hub": "South Hub (Koramangala)",
+        "city": "Bengaluru",
+        "rating": 4.92,
+        "completed_deliveries": 348,
+        "avatar": "👨🏽‍💼",
+    },
+    "TRUCK_02": {
+        "id": "TRUCK_02",
+        "name": "Amit Sharma",
+        "phone": "+91 98860 67890",
+        "vehicle_model": "Mahindra Bolero Maxi Cargo",
+        "registration": "KA-03-TR-5542",
+        "hub": "Central Hub (Indiranagar)",
+        "city": "Bengaluru",
+        "rating": 4.85,
+        "completed_deliveries": 412,
+        "avatar": "👨🏻‍🔧",
+    },
+    "TRUCK_03": {
+        "id": "TRUCK_03",
+        "name": "Priya Singh",
+        "phone": "+91 99010 43210",
+        "vehicle_model": "Euler HiLoad EV (3-Wheeler Cargo)",
+        "registration": "KA-05-EV-9821",
+        "hub": "East Hub (Whitefield)",
+        "city": "Bengaluru",
+        "rating": 4.96,
+        "completed_deliveries": 279,
+        "avatar": "👩🏽‍💼",
+    },
+    "TRUCK_04": {
+        "id": "TRUCK_04",
+        "name": "Vikram Patel",
+        "phone": "+91 97420 87654",
+        "vehicle_model": "Ashok Leyland Bada Dost",
+        "registration": "KA-04-MB-3112",
+        "hub": "North Hub (Peenya)",
+        "city": "Bengaluru",
+        "rating": 4.78,
+        "completed_deliveries": 520,
+        "avatar": "👨🏽‍🔧",
+    },
+}
+
+INDIAN_LANDMARKS: List[Dict[str, str]] = [
+    {"name": "Central Logistics Hub", "area": "MG Road / Shivajinagar", "city": "Bengaluru"},
+    {"name": "Embassy GolfLinks Tech Park", "area": "Domlur / Koramangala", "city": "Bengaluru"},
+    {"name": "Indiranagar 100 Feet Road", "area": "Indiranagar", "city": "Bengaluru"},
+    {"name": "HSR Layout Sector 1", "area": "HSR Layout", "city": "Bengaluru"},
+    {"name": "International Tech Park (ITPL)", "area": "Whitefield", "city": "Bengaluru"},
+    {"name": "Electronic City Phase 1", "area": "Electronic City", "city": "Bengaluru"},
+    {"name": "RBD EcoSpace Outer Ring Rd", "area": "Bellandur", "city": "Bengaluru"},
+    {"name": "Marathahalli Bridge Junction", "area": "Marathahalli", "city": "Bengaluru"},
+    {"name": "JP Nagar 6th Phase", "area": "JP Nagar", "city": "Bengaluru"},
+    {"name": "Jayanagar 4th T Block", "area": "Jayanagar", "city": "Bengaluru"},
+    {"name": "Peenya Industrial Area Stage 2", "area": "Peenya", "city": "Bengaluru"},
+    {"name": "Rajajinagar Industrial Suburb", "area": "Rajajinagar", "city": "Bengaluru"},
+    {"name": "Yeshwanthpur APMC Wholesale Yard", "area": "Yeshwanthpur", "city": "Bengaluru"},
+    {"name": "Hebbal Flyover Logistics Node", "area": "Hebbal", "city": "Bengaluru"},
+    {"name": "Banashankari BDA Complex", "area": "Banashankari", "city": "Bengaluru"},
+    {"name": "Malleshwaram 8th Cross", "area": "Malleshwaram", "city": "Bengaluru"},
+    {"name": "BTM Layout Udupi Garden", "area": "BTM Layout", "city": "Bengaluru"},
+    {"name": "Koramangala 4th Block", "area": "Koramangala", "city": "Bengaluru"},
+    {"name": "Sarjapur Road Wipro Gate", "area": "Sarjapur", "city": "Bengaluru"},
+    {"name": "Bannerghatta Rd IIM Bangalore", "area": "Bannerghatta", "city": "Bengaluru"},
+    {"name": "Yelahanka New Town Cargo Depot", "area": "Yelahanka", "city": "Bengaluru"},
+]
 
 ACTION_NAMES = [
     "ASSIGN_BEST_ORDER",
@@ -90,6 +166,16 @@ class SimulationRunner:
         self.cumulative_ppo_reward: float = 0.0
         self.last_ppo_action_idx: int = 4
         self.event_counter: int = 0
+
+        # Incremental state tracking for PPO multi-objective rewards
+        self.last_delivered_count: int = 0
+        self.last_late_count: int = 0
+        self.last_failed_count: int = 0
+        self.last_distance: float = 0.0
+        self.last_fuel: float = 0.0
+        self.last_empty_km: float = 0.0
+        self.last_delay_mins: float = 0.0
+        self.reward_calculator = FleetRewardCalculator(MultiObjectiveRewardConfig())
 
         # Background runner thread
         self._thread: Optional[threading.Thread] = None
@@ -166,6 +252,13 @@ class SimulationRunner:
             self.last_ppo_reward = 0.0
             self.cumulative_ppo_reward = 0.0
             self.last_ppo_action_idx = 4
+            self.last_delivered_count = 0
+            self.last_late_count = 0
+            self.last_failed_count = 0
+            self.last_distance = 0.0
+            self.last_fuel = 0.0
+            self.last_empty_km = 0.0
+            self.last_delay_mins = 0.0
 
             # 1. Load benchmark instance
             self.fleet_state, self.road_network, _meta = load_solomon_benchmark(
@@ -174,17 +267,9 @@ class SimulationRunner:
             orders = list(self.fleet_state.active_orders.values())
             node_id_map = {o.order_id: idx + 1 for idx, o in enumerate(orders)}
 
-            # 2. Networking and Agent subsystems
+            # 2. Networking and Subsystems
             self.mesh = MeshNetwork(transmission_range_km=30.0, seed=self.seed)
             self.conn_manager = ConnectivityManager(initial_state=ConnectivityState.CLOUD_MODE)
-            self.fleet_agent = FleetAgent(
-                fleet_state=self.fleet_state,
-                road_network=self.road_network,
-                mesh_network=self.mesh,
-                fuel_predictor=self.fuel_pred,
-                use_ml_fuel=(self.fuel_pred is not None),
-                seed=self.seed,
-            )
             self.positioner = PredictiveFleetPositioner(demand_predictor=self.demand_pred)
 
             # 3. Optimize initial routes using OR-Tools + ML Predictors
@@ -209,7 +294,17 @@ class SimulationRunner:
                     )
                     self.initial_routes[vid] = list(route)
 
-            # 4. Discrete-event environment
+            # 4. Multi-Agent Subsystem (initialized with route-assigned fleet)
+            self.fleet_agent = FleetAgent(
+                fleet_state=self.fleet_state,
+                road_network=self.road_network,
+                mesh_network=self.mesh,
+                fuel_predictor=self.fuel_pred,
+                use_ml_fuel=(self.fuel_pred is not None),
+                seed=self.seed,
+            )
+
+            # 5. Discrete-event environment
             self.env = FleetSimulationEnvironment(
                 fleet_state=self.fleet_state,
                 road_network=self.road_network,
@@ -220,7 +315,24 @@ class SimulationRunner:
                 seed=self.seed,
             )
 
-            # 5. Log initial events
+            # 6. Link RL Environment to live simulator
+            if self.ppo_agent:
+                if self.rl_env is None:
+                    self.rl_env = SWARMRLEnv(
+                        dataset_name=self.dataset,
+                        num_customers=self.customers_count,
+                        num_vehicles=self.vehicles_count,
+                        seed=self.seed,
+                        travel_time_predictor=self.tt_pred,
+                        fuel_predictor=self.fuel_pred,
+                        demand_predictor=self.demand_pred,
+                    )
+                self.rl_env.env = self.env
+                self.rl_env.controlled_truck_id = (
+                    list(self.fleet_state.vehicles.keys())[0] if self.fleet_state.vehicles else "TRUCK_01"
+                )
+
+            # 7. Log initial events
             self._log_event(
                 0.0,
                 "SIM_START",
@@ -307,28 +419,63 @@ class SimulationRunner:
         # 3. Evaluate PPO policy decision if model is loaded
         if self.ppo_agent and self.rl_env:
             try:
-                # Local observation
-                obs, _ = self.rl_env.reset(seed=self.seed)
-                action, _ = self.ppo_agent.predict(obs, deterministic=True)
-                action_idx = int(action)
+                self.rl_env.env = self.env
+                obs = self.rl_env._get_observation()
+                action_idx = self.ppo_agent.predict(obs, deterministic=True)
                 self.last_ppo_action_idx = action_idx
                 action_name = ACTION_NAMES[action_idx] if 0 <= action_idx < len(ACTION_NAMES) else "HOLD_OR_CONTINUE"
 
-                # Step reward calculation
-                calc = FleetRewardCalculator(MultiObjectiveRewardConfig())
-                step_reward, _ = calc.calculate_step_reward(
-                    previous_state={},
-                    current_state={
-                        "delivered_orders": len(self.env.delivered_orders),
-                        "failed_orders": len(self.env.failed_orders),
-                        "late_orders": len(self.env.late_orders),
-                        "total_fuel_liters": self.env.total_fuel_liters,
-                        "total_co2_kg": self.env.total_co2_kg,
-                        "total_distance_km": self.env.total_distance_traveled_km,
-                        "recoveries_count": self.fleet_agent.recovered_orders_count if self.fleet_agent else 0,
-                    },
-                    action=action_idx,
+                # Measure empirical deltas for step reward
+                curr_delivered = len(self.env.delivered_orders)
+                curr_late = len(self.env.late_orders)
+                curr_failed = len(self.env.failed_orders)
+                curr_dist = self.env.total_distance_traveled_km
+                curr_fuel = self.env.total_fuel_liters
+                curr_empty = self.env.total_empty_distance_km
+
+                new_deliveries = max(0, curr_delivered - self.last_delivered_count)
+                new_late = max(0, curr_late - self.last_late_count)
+                new_failed = max(0, curr_failed - self.last_failed_count)
+                new_on_time = max(0, new_deliveries - new_late)
+
+                delta_dist = max(0.0, curr_dist - self.last_distance)
+                delta_fuel = max(0.0, curr_fuel - self.last_fuel)
+                delta_co2 = delta_fuel * 2.68
+                delta_empty = max(0.0, curr_empty - self.last_empty_km)
+
+                curr_delay_mins = sum(
+                    max(0.0, (self.fleet_state.active_orders[oid].actual_arrival_time or self.env.current_time_mins) - self.fleet_state.active_orders[oid].latest_delivery)
+                    for oid in self.env.late_orders
+                    if oid in self.fleet_state.active_orders
                 )
+                delta_delay = max(0.0, curr_delay_mins - self.last_delay_mins)
+                self.last_delay_mins = curr_delay_mins
+
+                fleet_util = 0.0
+                active_vehs = [veh for veh in self.fleet_state.vehicles.values() if veh.status != VehicleStatus.BROKEN_DOWN]
+                if active_vehs:
+                    fleet_util = sum(veh.utilization_rate for veh in active_vehs) / len(active_vehs)
+
+                step_reward = self.reward_calculator.calculate_step_reward(
+                    new_deliveries=new_deliveries,
+                    new_on_time=new_on_time,
+                    new_recoveries=0,
+                    new_failed=new_failed,
+                    new_late=new_late,
+                    delay_minutes=delta_delay,
+                    incremental_distance_km=delta_dist,
+                    incremental_fuel_liters=delta_fuel,
+                    incremental_co2_kg=delta_co2,
+                    incremental_empty_km=delta_empty,
+                    fleet_utilization_ratio=fleet_util,
+                )
+                self.last_delivered_count = curr_delivered
+                self.last_late_count = curr_late
+                self.last_failed_count = curr_failed
+                self.last_distance = curr_dist
+                self.last_fuel = curr_fuel
+                self.last_empty_km = curr_empty
+
                 self.last_ppo_reward = round(float(step_reward), 2)
                 self.cumulative_ppo_reward = round(self.cumulative_ppo_reward + self.last_ppo_reward, 2)
 
@@ -394,9 +541,17 @@ class SimulationRunner:
             )
             rec_time_ms = round((time.perf_counter() - t0) * 1000.0, 2)
 
-            recovered_count = rec_res.get("recovered_orders_count", 0)
+            recovered_count = rec_res.get("recovered_count", rec_res.get("recovered_orders_count", 0))
             transfers = rec_res.get("transfers", [])
-            winning_veh = transfers[0]["target_vehicle_id"] if transfers else "TRUCK_02"
+            winning_veh = (
+                transfers[0].get("to_vehicle") or transfers[0].get("target_vehicle_id")
+                if transfers
+                else "TRUCK_02"
+            )
+
+            # Atomically apply reassignment transfers in simulation environment
+            if rec_res.get("success") and transfers:
+                self.env.execute_action({"type": "REASSIGN_ORDERS", "transfers": transfers})
 
             # Create recovery flow entries
             self.recovery_flow = [
@@ -408,6 +563,9 @@ class SimulationRunner:
                 {"id": 6, "title": "DELIVERY RESUMED", "status": "IN_PROGRESS", "detail": "Surviving truck executing updated route"},
             ]
 
+            t0_detour = float(transfers[0].get("detour_km") or 4.2) if transfers else 0.0
+            t0_fuel = float(transfers[0].get("additional_fuel") or 1.4) if transfers else 0.0
+
             incident = {
                 "id": f"INC_{len(self.incidents) + 1:02d}",
                 "vehicle_id": target_vid,
@@ -417,9 +575,9 @@ class SimulationRunner:
                 "recovery_status": "RECOVERED" if recovered_count > 0 else "PARTIAL",
                 "recovery_vehicle": winning_veh,
                 "recovery_time_sec": round(rec_time_ms / 1000.0, 4),
-                "recovery_distance_km": round(float(transfers[0].get("detour_km", 4.2)) if transfers else 0.0, 2),
-                "recovery_fuel_l": round(float(transfers[0].get("additional_fuel", 1.4)) if transfers else 0.0, 2),
-                "recovery_co2_kg": round(float(transfers[0].get("additional_fuel", 1.4) * 2.68) if transfers else 0.0, 2),
+                "recovery_distance_km": round(t0_detour, 2),
+                "recovery_fuel_l": round(t0_fuel, 2),
+                "recovery_co2_kg": round(t0_fuel * 2.68, 2),
             }
             self.incidents.insert(0, incident)
 
@@ -562,6 +720,210 @@ class SimulationRunner:
         return {"breakdown": res1, "cloud": res2, "traffic": res3}
 
     # -------------------------------------------------------------------------
+    # Delivery Partner & Task Allocation Operations
+    # -------------------------------------------------------------------------
+    def allocate_order(self, order_id: str, vehicle_id: str) -> Dict[str, Any]:
+        """
+        Allocates an order to a delivery partner (vehicle), validating capacity constraints
+        and updating routes.
+        """
+        with self.lock:
+            if not self.env or not self.fleet_state:
+                self.reset()
+
+            if not self.fleet_state or vehicle_id not in self.fleet_state.vehicles:
+                return {"success": False, "error": f"Delivery partner vehicle '{vehicle_id}' not found"}
+
+            if order_id not in self.fleet_state.active_orders:
+                return {"success": False, "error": f"Order '{order_id}' not found in active orders"}
+
+            vehicle = self.fleet_state.vehicles[vehicle_id]
+            order = self.fleet_state.active_orders[order_id]
+            partner_info = DELIVERY_PARTNERS.get(vehicle_id, {"name": vehicle_id})
+
+            if vehicle.status == VehicleStatus.BROKEN_DOWN:
+                return {
+                    "success": False,
+                    "error": f"Cannot allocate to {partner_info['name']} ({vehicle_id}): Vehicle is BROKEN DOWN",
+                }
+
+            if not vehicle.can_load(order.demand_weight, order.volume):
+                return {
+                    "success": False,
+                    "error": (
+                        f"Insufficient payload capacity for {partner_info['name']}. "
+                        f"Remaining: {vehicle.remaining_weight_capacity():.1f}kg, Required: {order.demand_weight:.1f}kg"
+                    ),
+                }
+
+            # If order was previously assigned to another vehicle, detach it
+            old_vid = order.assigned_vehicle_id
+            if old_vid and old_vid in self.fleet_state.vehicles and old_vid != vehicle_id:
+                old_v = self.fleet_state.vehicles[old_vid]
+                if order_id in old_v.assigned_orders:
+                    old_v.assigned_orders.remove(order_id)
+                    old_v.current_load = max(0.0, old_v.current_load - order.demand_weight)
+                    old_v.current_volume_load = max(0.0, old_v.current_volume_load - order.volume)
+
+            # Assign to target vehicle
+            if order_id not in vehicle.assigned_orders:
+                vehicle.assigned_orders.append(order_id)
+                vehicle.current_load += order.demand_weight
+                vehicle.current_volume_load += order.volume
+
+            order.assigned_vehicle_id = vehicle_id
+            order.status = OrderStatus.ASSIGNED
+
+            # Append destination node to route if needed
+            node_idx = self.env.node_id_map.get(order_id) if self.env else None
+            if node_idx is not None and node_idx not in vehicle.current_route:
+                if len(vehicle.current_route) >= 2 and vehicle.current_route[-1] == 0:
+                    vehicle.current_route.insert(-1, node_idx)
+                else:
+                    vehicle.current_route.append(node_idx)
+
+            if vehicle.status == VehicleStatus.IDLE:
+                vehicle.status = VehicleStatus.EN_ROUTE
+
+            cur_t = self.env.current_time_mins if self.env else 0.0
+            self._log_event(
+                cur_t,
+                "TASK_ALLOCATION",
+                f"Company Manager allocated Order {order_id} ({order.demand_weight:.1f}kg) to Partner {partner_info['name']} ({vehicle_id}).",
+                target=vehicle_id,
+                severity="INFO",
+            )
+            self._add_timeline(
+                cur_t,
+                f"Task Allocated: {order_id}",
+                f"Assigned to {partner_info['name']} ({vehicle_id})",
+                category="ALLOCATION",
+            )
+
+            return {
+                "success": True,
+                "message": f"Order {order_id} successfully allocated to {partner_info['name']}",
+                "order_id": order_id,
+                "vehicle_id": vehicle_id,
+                "partner": partner_info,
+            }
+
+    def complete_order(self, order_id: str, vehicle_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Marks an order as DELIVERED by the delivery partner, unloads cargo,
+        and logs delivery metrics.
+        """
+        with self.lock:
+            if not self.env or not self.fleet_state:
+                return {"success": False, "error": "Simulation environment not initialized"}
+
+            if order_id not in self.fleet_state.active_orders:
+                return {"success": False, "error": f"Order '{order_id}' not found"}
+
+            order = self.fleet_state.active_orders[order_id]
+            actual_vid = vehicle_id or order.assigned_vehicle_id
+
+            if actual_vid and actual_vid in self.fleet_state.vehicles:
+                vehicle = self.fleet_state.vehicles[actual_vid]
+                if order_id in vehicle.assigned_orders:
+                    vehicle.assigned_orders.remove(order_id)
+                vehicle.current_load = max(0.0, vehicle.current_load - order.demand_weight)
+                vehicle.current_volume_load = max(0.0, vehicle.current_volume_load - order.volume)
+                if len(vehicle.assigned_orders) == 0:
+                    vehicle.status = VehicleStatus.IDLE
+
+            order.status = OrderStatus.DELIVERED
+            cur_t = self.env.current_time_mins if self.env else 0.0
+            order.actual_delivery_time = cur_t
+
+            if self.env:
+                self.env.delivered_orders.add(order_id)
+                if order.is_late(cur_t):
+                    self.env.late_orders.add(order_id)
+
+            partner_meta = DELIVERY_PARTNERS.get(actual_vid, {"name": actual_vid or "Rider"})
+            if actual_vid and actual_vid in DELIVERY_PARTNERS:
+                DELIVERY_PARTNERS[actual_vid]["completed_deliveries"] = (
+                    DELIVERY_PARTNERS[actual_vid].get("completed_deliveries", 0) + 1
+                )
+
+            self._log_event(
+                cur_t,
+                "DELIVERY_COMPLETE",
+                f"Partner {partner_meta['name']} successfully delivered {order_id}! Cargo unloaded.",
+                target=actual_vid or "Rider",
+                severity="SUCCESS",
+            )
+            self._add_timeline(
+                cur_t,
+                f"Delivered: {order_id}",
+                f"Completed by {partner_meta['name']}",
+                category="DELIVERY",
+            )
+
+            return {
+                "success": True,
+                "message": f"Order {order_id} marked as DELIVERED by {partner_meta['name']}",
+                "order_id": order_id,
+                "vehicle_id": actual_vid,
+            }
+
+    def get_partner_meta(self, vehicle_id: Optional[str]) -> Dict[str, Any]:
+        """Dynamically retrieves delivery partner metadata from Supabase database or fallback."""
+        if not vehicle_id:
+            return {"id": "UNASSIGNED", "name": "Unassigned Rider", "avatar": "🛵"}
+        # Try fetching from Supabase
+        try:
+            from src.api.supabase_service import supabase_service
+            db_partners = supabase_service.fetch_delivery_partners()
+            for p in db_partners:
+                if p.get("id") == vehicle_id:
+                    return p
+        except Exception:
+            pass
+        return DELIVERY_PARTNERS.get(vehicle_id, {"id": vehicle_id, "name": vehicle_id, "avatar": "🛵"})
+
+    def get_delivery_partners(self) -> List[Dict[str, Any]]:
+        """Returns partner profiles dynamically from Supabase enriched with live vehicle telemetry."""
+        with self.lock:
+            partners_list = []
+            try:
+                from src.api.supabase_service import supabase_service
+                db_partners = supabase_service.fetch_delivery_partners()
+                if db_partners:
+                    source_dict = {p["id"]: p for p in db_partners}
+                else:
+                    source_dict = DELIVERY_PARTNERS
+            except Exception:
+                source_dict = DELIVERY_PARTNERS
+
+            for vid, meta in source_dict.items():
+                v = self.fleet_state.vehicles.get(vid) if self.fleet_state else None
+                assigned = list(v.assigned_orders) if v else []
+                cur_load = round(float(v.current_load), 1) if v else float(meta.get("current_load", 0.0))
+                max_wt = float(v.max_weight) if v else float(meta.get("max_weight", 100.0))
+                rem_cap = round(max(0.0, max_wt - cur_load), 1)
+                status = v.status.value if v else meta.get("status", "IDLE")
+                fuel = round(float(v.fuel_level), 1) if v else float(meta.get("fuel_level", 100.0))
+                speed = round(float(v.current_speed_kmh), 1) if v else float(meta.get("speed_kmh", 0.0))
+                loc = (round(float(v.current_location[0]), 2), round(float(v.current_location[1]), 2)) if v else (40.0, 50.0)
+
+                partners_list.append({
+                    **meta,
+                    "status": status,
+                    "current_load": cur_load,
+                    "max_weight": max_wt,
+                    "remaining_capacity": rem_cap,
+                    "fuel_level": fuel,
+                    "speed_kmh": speed,
+                    "location": {"x": loc[0], "y": loc[1]},
+                    "assigned_orders": assigned,
+                    "active_order_count": len(assigned),
+                    "is_available": status in (VehicleStatus.IDLE.value, VehicleStatus.EN_ROUTE.value) and rem_cap > 5.0,
+                })
+            return partners_list
+
+    # -------------------------------------------------------------------------
     # State Serialization for Dashboard
     # -------------------------------------------------------------------------
     def get_state(self) -> Dict[str, Any]:
@@ -593,6 +955,7 @@ class SimulationRunner:
                     "ppo": {"enabled": False, "current_action": "HOLD_OR_CONTINUE", "history": []},
                     "sustainability": {"total_distance_km": 0.0, "fuel_liters": 0.0, "co2_kg": 0.0},
                     "performance": {"total_orders": 0, "delivered": 0, "on_time": 0, "late": 0, "failed": 0, "success_rate": 0.0},
+                    "delivery_partners": self.get_delivery_partners(),
                     "events": [],
                     "timeline": [],
                 }
@@ -622,9 +985,17 @@ class SimulationRunner:
 
                 # Mesh neighbors
                 neighbors = list(mesh_topo.neighbors(vid)) if mesh_topo.has_node(vid) else []
+                partner_meta = DELIVERY_PARTNERS.get(vid, {})
 
                 vehicles_list.append({
                     "id": vid,
+                    "partner_name": partner_meta.get("name", vid),
+                    "partner_phone": partner_meta.get("phone", ""),
+                    "vehicle_model": partner_meta.get("vehicle_model", "Commercial Delivery Vehicle"),
+                    "registration": partner_meta.get("registration", "KA-01-EQ-1024"),
+                    "hub": partner_meta.get("hub", "Central Hub"),
+                    "rating": partner_meta.get("rating", 4.9),
+                    "avatar": partner_meta.get("avatar", "🚚"),
                     "status": v.status.value,
                     "x": round(float(v.current_location[0]), 2),
                     "y": round(float(v.current_location[1]), 2),
@@ -657,12 +1028,18 @@ class SimulationRunner:
             for oid, o in self.fleet_state.active_orders.items():
                 node_idx = self.env.node_id_map.get(oid, 0)
                 coord = node_coords.get(node_idx, (0.0, 0.0))
+                landmark = INDIAN_LANDMARKS[node_idx % len(INDIAN_LANDMARKS)]
+                assigned_partner = DELIVERY_PARTNERS.get(o.assigned_vehicle_id, {}).get("name", o.assigned_vehicle_id)
                 orders_list.append({
                     "id": oid,
                     "customer_id": node_idx,
+                    "address": f"{landmark['name']}, {landmark['area']}, {landmark['city']}",
+                    "area": landmark["area"],
+                    "payout_inr": int(round(80 + o.demand_weight * 2.5)),
                     "x": coord[0],
                     "y": coord[1],
                     "assigned_vehicle": o.assigned_vehicle_id,
+                    "assigned_partner": assigned_partner,
                     "status": o.status.value,
                     "demand": o.demand_weight,
                     "priority": "HIGH" if o.demand_weight > 20 else "NORMAL",
@@ -678,9 +1055,12 @@ class SimulationRunner:
             for oid, o in self.fleet_state.active_orders.items():
                 node_idx = self.env.node_id_map.get(oid, 0)
                 coord = node_coords.get(node_idx, (0.0, 0.0))
+                landmark = INDIAN_LANDMARKS[node_idx % len(INDIAN_LANDMARKS)]
                 customers_list.append({
                     "id": node_idx,
                     "order_id": oid,
+                    "address": f"{landmark['name']}, {landmark['area']}",
+                    "area": landmark["area"],
                     "x": coord[0],
                     "y": coord[1],
                     "demand": o.demand_weight,
@@ -834,6 +1214,7 @@ class SimulationRunner:
                     "on_time_rate": on_time_pct,
                     "average_delay_mins": round(float(np.mean([o.get("delay", 0.0) for o in orders_list]) if orders_list else 0.0), 1),
                 },
+                "delivery_partners": self.get_delivery_partners(),
                 "events": list(reversed(self.events[-25:])),
                 "timeline": self.timeline,
             }

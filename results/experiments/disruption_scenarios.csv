@@ -1,25 +1,25 @@
 Scenario_Code,Scenario_Name,Method,Delivery_Success_Pct,On_Time_Delivery_Pct,Total_Distance_Km,Total_Fuel_Liters,CO2_Emissions_Kg,Failed_Deliveries,Average_Delay_Mins,Recovery_Time_Sec,Communication_Overhead,Cloud_Dependency
-A,Scenario_A_Single_truck_breakdown,Static OR-Tools,80.0,56.0,146.69,50.37,134.99,5,6.17,0.0,0,1.0
-A,Scenario_A_Single_truck_breakdown,Rule-Based SWARMRoute,96.0,52.0,196.41,68.1,182.51,1,285.09,0.0018,26,0.5
-A,Scenario_A_Single_truck_breakdown,PPO-SWARMRoute,80.0,56.0,146.69,50.37,134.99,5,6.17,0.0,0,0.5
-B,Scenario_B_Two_truck_breakdowns,Static OR-Tools,64.0,48.0,110.38,39.08,104.73,9,6.0,0.0,0,1.0
-B,Scenario_B_Two_truck_breakdowns,Rule-Based SWARMRoute,76.0,40.0,170.63,59.29,158.89,6,363.89,0.0009,24,0.5
-B,Scenario_B_Two_truck_breakdowns,PPO-SWARMRoute,64.0,48.0,110.38,39.08,104.73,9,6.0,0.0,0,0.5
-C,Scenario_C_Traffic_congestion,Static OR-Tools,100.0,76.0,173.13,58.78,157.52,0,6.17,0.0,0,1.0
-C,Scenario_C_Traffic_congestion,Rule-Based SWARMRoute,100.0,76.0,173.13,58.78,157.52,0,6.17,0.0,0,0.5
-C,Scenario_C_Traffic_congestion,PPO-SWARMRoute,100.0,76.0,173.13,58.78,157.52,0,6.17,0.0,0,0.5
-D,Scenario_D_Cloud_outage,Static OR-Tools,100.0,76.0,173.13,58.78,157.52,0,6.17,0.0,0,1.0
-D,Scenario_D_Cloud_outage,Rule-Based SWARMRoute,100.0,76.0,173.13,58.78,157.52,0,6.17,0.0,0,0.0
-D,Scenario_D_Cloud_outage,PPO-SWARMRoute,100.0,76.0,173.13,58.78,157.52,0,6.17,0.0,0,0.0
-E,Scenario_E_Cloud_outage_+_truck_breakdown,Static OR-Tools,80.0,56.0,146.69,50.37,134.99,5,6.17,0.0,0,1.0
-E,Scenario_E_Cloud_outage_+_truck_breakdown,Rule-Based SWARMRoute,96.0,52.0,196.41,68.1,182.51,1,285.09,0.0038,26,0.0
-E,Scenario_E_Cloud_outage_+_truck_breakdown,PPO-SWARMRoute,80.0,56.0,146.69,50.37,134.99,5,6.17,0.0,0,0.0
-F,Scenario_F_Cloud_outage_+_breakdown_+_traffic,Static OR-Tools,80.0,56.0,146.69,50.37,134.99,5,6.17,0.0,0,1.0
-F,Scenario_F_Cloud_outage_+_breakdown_+_traffic,Rule-Based SWARMRoute,96.0,52.0,196.41,68.1,182.51,1,285.09,0.0007,26,0.0
-F,Scenario_F_Cloud_outage_+_breakdown_+_traffic,PPO-SWARMRoute,80.0,56.0,146.69,50.37,134.99,5,6.17,0.0,0,0.0
-G,Scenario_G_Sudden_demand_burst,Static OR-Tools,48.3,34.5,139.59,48.06,128.81,15,6.0,0.0,0,1.0
-G,Scenario_G_Sudden_demand_burst,Rule-Based SWARMRoute,48.3,34.5,139.59,48.06,128.81,15,6.0,0.0,0,0.5
-G,Scenario_G_Sudden_demand_burst,PPO-SWARMRoute,48.3,34.5,139.59,48.06,128.81,15,6.0,0.0,0,0.5
-H,Scenario_H_Combined_disruption,Static OR-Tools,20.7,20.7,74.43,27.34,73.26,23,0.0,0.0,0,1.0
-H,Scenario_H_Combined_disruption,Rule-Based SWARMRoute,20.7,20.7,74.43,27.49,73.67,23,0.0,0.0016,47,0.0
-H,Scenario_H_Combined_disruption,PPO-SWARMRoute,20.7,20.7,74.43,27.34,73.26,23,0.0,0.0,0,0.0
+A,Scenario_A_Single_truck_breakdown,Static OR-Tools,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,1.0
+A,Scenario_A_Single_truck_breakdown,Rule-Based SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0005,1,0.5
+A,Scenario_A_Single_truck_breakdown,PPO-SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,0.5
+B,Scenario_B_Two_truck_breakdowns,Static OR-Tools,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,1.0
+B,Scenario_B_Two_truck_breakdowns,Rule-Based SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0001,1,0.5
+B,Scenario_B_Two_truck_breakdowns,PPO-SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,0.5
+C,Scenario_C_Traffic_congestion,Static OR-Tools,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,1.0
+C,Scenario_C_Traffic_congestion,Rule-Based SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,0.5
+C,Scenario_C_Traffic_congestion,PPO-SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,0.5
+D,Scenario_D_Cloud_outage,Static OR-Tools,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,1.0
+D,Scenario_D_Cloud_outage,Rule-Based SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,0.0
+D,Scenario_D_Cloud_outage,PPO-SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,0.0
+E,Scenario_E_Cloud_outage_+_truck_breakdown,Static OR-Tools,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,1.0
+E,Scenario_E_Cloud_outage_+_truck_breakdown,Rule-Based SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,1,0.0
+E,Scenario_E_Cloud_outage_+_truck_breakdown,PPO-SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,0.0
+F,Scenario_F_Cloud_outage_+_breakdown_+_traffic,Static OR-Tools,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,1.0
+F,Scenario_F_Cloud_outage_+_breakdown_+_traffic,Rule-Based SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,1,0.0
+F,Scenario_F_Cloud_outage_+_breakdown_+_traffic,PPO-SWARMRoute,100.0,100.0,39.64,13.76,36.86,0,0.0,0.0,0,0.0
+G,Scenario_G_Sudden_demand_burst,Static OR-Tools,28.6,28.6,32.29,11.37,30.47,10,0.0,0.0,0,1.0
+G,Scenario_G_Sudden_demand_burst,Rule-Based SWARMRoute,28.6,28.6,32.29,11.37,30.47,10,0.0,0.0,0,0.5
+G,Scenario_G_Sudden_demand_burst,PPO-SWARMRoute,28.6,28.6,32.29,11.37,30.47,10,0.0,0.0,0,0.5
+H,Scenario_H_Combined_disruption,Static OR-Tools,28.6,28.6,32.29,11.37,30.47,10,0.0,0.0,0,1.0
+H,Scenario_H_Combined_disruption,Rule-Based SWARMRoute,28.6,28.6,32.29,11.37,30.47,10,0.0,0.0001,2,0.0
+H,Scenario_H_Combined_disruption,PPO-SWARMRoute,28.6,28.6,32.29,11.37,30.47,10,0.0,0.0,0,0.0

@@ -21,6 +21,8 @@ export default function LivePage() {
     injectTraffic,
     injectDemand,
     injectCombined,
+    allocateTask,
+    completeTask,
   } = useDashboardState();
 
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
@@ -30,6 +32,12 @@ export default function LivePage() {
   const [resetCustomers, setResetCustomers] = useState(20);
   const [resetVehicles, setResetVehicles] = useState(4);
   const [resetSeed, setResetSeed] = useState(42);
+
+  // Task Allocation Deck States (Company Manager)
+  const [allocOrderId, setAllocOrderId] = useState("");
+  const [allocVehicleId, setAllocVehicleId] = useState("");
+  const [allocFeedback, setAllocFeedback] = useState(null);
+  const [allocLoading, setAllocLoading] = useState(false);
 
   // Offline or Waiting State
   if (connectionStatus === "OFFLINE" && !state) {
@@ -530,7 +538,7 @@ export default function LivePage() {
           <table className="w-full text-xs font-mono">
             <thead>
               <tr className="text-left border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold">
-                <th className="px-3 py-2.5">Vehicle</th>
+                <th className="px-3 py-2.5">Delivery Partner / Truck</th>
                 <th className="px-3 py-2.5">Status</th>
                 <th className="px-3 py-2.5">Position</th>
                 <th className="px-3 py-2.5">Speed</th>
@@ -538,7 +546,7 @@ export default function LivePage() {
                 <th className="px-3 py-2.5">Load / Cap</th>
                 <th className="px-3 py-2.5">Fuel Left</th>
                 <th className="px-3 py-2.5">CO2</th>
-                <th className="px-3 py-2.5">Neighbors</th>
+                <th className="px-3 py-2.5">Hub / Registration</th>
                 <th className="px-3 py-2.5">Action</th>
               </tr>
             </thead>
@@ -560,7 +568,15 @@ export default function LivePage() {
                         : ""
                     } hover:bg-slate-100/70`}
                   >
-                    <td className="px-3 py-2.5 font-bold text-slate-900">{v.id}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{v.avatar || "🚚"}</span>
+                        <div>
+                          <span className="font-bold text-slate-900 block">{v.partner_name || v.id}</span>
+                          <span className="text-[10px] text-slate-500 block">{v.vehicle_model || v.id}</span>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-3 py-2.5">
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
@@ -594,8 +610,11 @@ export default function LivePage() {
                     </td>
                     <td className="px-3 py-2.5 text-slate-800">{v.fuel_level} L</td>
                     <td className="px-3 py-2.5 text-slate-800">{v.co2_kg} kg</td>
-                    <td className="px-3 py-2.5 text-slate-500">
-                      {v.mesh_neighbors.length > 0 ? v.mesh_neighbors.join(", ") : "—"}
+                    <td className="px-3 py-2.5 text-slate-600">
+                      <div>
+                        <span className="font-semibold block">{v.registration || v.id}</span>
+                        <span className="text-[10px] text-slate-400 block">{v.hub || "Central Hub"}</span>
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 text-slate-900 font-semibold">{v.last_action}</td>
                   </tr>
@@ -645,6 +664,108 @@ export default function LivePage() {
         )}
       </div>
 
+      {/* Task Allocation Deck (Company Manager Portal) */}
+      <div className="bg-gradient-to-r from-blue-900 to-indigo-950 text-white rounded-xl p-5 shadow-sm space-y-4 border border-blue-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-800/80 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🏢</span>
+              <h3 className="text-base font-bold text-white">
+                Company Manager: Task Allocation Deck
+              </h3>
+              <span className="text-[10px] uppercase tracking-wider font-mono font-bold bg-blue-500/30 text-blue-200 border border-blue-400/40 px-2 py-0.5 rounded">
+                Admin Control
+              </span>
+              <span className="text-[10px] uppercase tracking-wider font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2 py-0.5 rounded flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Supabase PostgreSQL Synced</span>
+              </span>
+            </div>
+            <p className="text-xs text-blue-200/80 mt-0.5">
+              Assign and re-route customer delivery orders across Bengaluru delivery partners in real time. Persisted to Supabase cloud database.
+            </p>
+          </div>
+          {allocFeedback && (
+            <div
+              className={`text-xs px-3 py-1 rounded-lg border font-medium ${
+                allocFeedback.success
+                  ? "bg-emerald-500/20 text-emerald-200 border-emerald-500/40"
+                  : "bg-red-500/20 text-red-200 border-red-500/40"
+              }`}
+            >
+              {allocFeedback.msg}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          {/* 1. Pick Order */}
+          <div>
+            <label className="block text-blue-200 font-semibold mb-1">
+              Select Customer Order:
+            </label>
+            <select
+              value={allocOrderId}
+              onChange={(e) => setAllocOrderId(e.target.value)}
+              className="w-full bg-blue-950/80 border border-blue-700 rounded-lg p-2.5 text-white font-mono text-xs focus:ring-2 focus:ring-blue-400 outline-none"
+            >
+              <option value="">-- Choose Order to Allocate --</option>
+              {orders.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.id} ({o.demand}kg) · {o.area || "Bengaluru Hub"} [{o.status}]
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 2. Pick Delivery Partner */}
+          <div>
+            <label className="block text-blue-200 font-semibold mb-1">
+              Select Delivery Partner:
+            </label>
+            <select
+              value={allocVehicleId || (vehicles.length > 0 ? vehicles[0].id : "")}
+              onChange={(e) => setAllocVehicleId(e.target.value)}
+              className="w-full bg-blue-950/80 border border-blue-700 rounded-lg p-2.5 text-white font-mono text-xs focus:ring-2 focus:ring-blue-400 outline-none"
+            >
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.partner_name || v.id} ({v.id}) · {v.vehicle_model} [Rem: {v.remaining_capacity}kg]
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 3. Action Button */}
+          <div className="flex items-end">
+            <button
+              disabled={!allocOrderId || allocLoading}
+              onClick={async () => {
+                const targetVehicle = allocVehicleId || (vehicles.length > 0 ? vehicles[0].id : "");
+                if (!allocOrderId || !targetVehicle) return;
+                setAllocLoading(true);
+                const res = await allocateTask(allocOrderId, targetVehicle);
+                setAllocLoading(false);
+                if (res && res.success) {
+                  setAllocFeedback({ success: true, msg: res.message || "Task successfully allocated!" });
+                } else {
+                  setAllocFeedback({ success: false, msg: res?.error || "Allocation failed." });
+                }
+                setTimeout(() => setAllocFeedback(null), 5000);
+              }}
+              className={`w-full py-2.5 px-4 rounded-lg font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 ${
+                !allocOrderId || allocLoading
+                  ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                  : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold active:scale-95"
+              }`}
+            >
+              <span>⚡</span>
+              <span>{allocLoading ? "Allocating..." : "Allocate Task to Partner"}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* 6. Live Order Table & Predictive Demand */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         {/* Order Monitoring */}
@@ -663,13 +784,13 @@ export default function LivePage() {
               <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
                 <tr className="text-left">
                   <th className="px-3 py-2">Order ID</th>
-                  <th className="px-3 py-2">Customer</th>
-                  <th className="px-3 py-2">Assigned Truck</th>
+                  <th className="px-3 py-2">Destination (Bengaluru)</th>
+                  <th className="px-3 py-2">Partner</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Demand</th>
-                  <th className="px-3 py-2">Deadline</th>
+                  <th className="px-3 py-2">Payout</th>
                   <th className="px-3 py-2">ETA</th>
-                  <th className="px-3 py-2">Delay</th>
+                  <th className="px-3 py-2">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -686,8 +807,13 @@ export default function LivePage() {
                       } hover:bg-slate-100/70`}
                     >
                       <td className="px-3 py-2 font-bold text-slate-900">{o.id}</td>
-                      <td className="px-3 py-2 text-slate-600">Customer #{o.customer_id}</td>
-                      <td className="px-3 py-2 text-slate-600">{o.assigned_vehicle || "UNASSIGNED"}</td>
+                      <td className="px-3 py-2 text-slate-700">
+                        <div className="font-semibold">{o.area || "Bengaluru Hub"}</div>
+                        <div className="text-[10px] text-slate-400 truncate max-w-[160px]">{o.address || `Stop #${o.customer_id}`}</div>
+                      </td>
+                      <td className="px-3 py-2 text-slate-600">
+                        {o.assigned_partner || o.assigned_vehicle || "UNASSIGNED"}
+                      </td>
                       <td className="px-3 py-2">
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
@@ -702,13 +828,21 @@ export default function LivePage() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-slate-800">{o.demand} kg</td>
-                      <td className="px-3 py-2 text-slate-800">{o.deadline}m</td>
+                      <td className="px-3 py-2 font-semibold text-emerald-700">₹{o.payout_inr || 120}</td>
                       <td className="px-3 py-2 text-slate-800">{o.eta}m</td>
                       <td className="px-3 py-2">
-                        {o.delay > 0 ? (
-                          <span className="text-red-600 font-semibold">+{o.delay}m</span>
+                        {!isDelivered ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAllocOrderId(o.id);
+                            }}
+                            className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded font-semibold text-[10px] transition-colors"
+                          >
+                            Assign ⚡
+                          </button>
                         ) : (
-                          "—"
+                          <span className="text-emerald-600 font-semibold text-[10px]">✓ Done</span>
                         )}
                       </td>
                     </tr>

@@ -26,8 +26,12 @@ share/python-wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual environments & secrets
 .env
+.env.*
+.env.local
+.env.*.local
+*.env.local
 .venv
 env/
 venv/

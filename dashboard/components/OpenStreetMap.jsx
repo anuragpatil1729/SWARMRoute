@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 
 const PALETTE = [
@@ -12,13 +12,40 @@ const PALETTE = [
   "#e11d48", // Rose
 ];
 
-// Logistics hub reference coordinate (San Francisco / Bay Area)
-const BASE_LAT = 37.7749;
-const BASE_LNG = -122.4194;
+export const CITIES = {
+  Bengaluru: {
+    name: "Bengaluru (KA)",
+    lat: 12.9716,
+    lng: 77.5946,
+    hubName: "Bengaluru Central Logistics Hub (MG Road / Shivajinagar)",
+    zoom: 13,
+  },
+  Mumbai: {
+    name: "Mumbai (MH)",
+    lat: 19.076,
+    lng: 72.8777,
+    hubName: "Mumbai Central Cargo Terminal (BKC / Kurla)",
+    zoom: 13,
+  },
+  Delhi: {
+    name: "Delhi NCR",
+    lat: 28.6139,
+    lng: 77.209,
+    hubName: "Delhi NCR Logistics Hub (Okhla Industrial Area)",
+    zoom: 13,
+  },
+  Hyderabad: {
+    name: "Hyderabad (TS)",
+    lat: 17.385,
+    lng: 78.4867,
+    hubName: "Hyderabad Cargo Gateway (HITEC City / Gachibowli)",
+    zoom: 13,
+  },
+};
 
-function toLatLng(x, y) {
-  const lat = BASE_LAT + (y - 50) * 0.0025;
-  const lng = BASE_LNG + (x - 40) * 0.0035;
+function toLatLng(x, y, city = CITIES.Bengaluru) {
+  const lat = city.lat + (y - 50) * 0.003;
+  const lng = city.lng + (x - 40) * 0.0035;
   return [lat, lng];
 }
 
@@ -35,6 +62,9 @@ export default function OpenStreetMap({
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const [selectedCityKey, setSelectedCityKey] = useState("Bengaluru");
+  const selectedCity = CITIES[selectedCityKey] || CITIES.Bengaluru;
+
   const layersRef = useRef({
     routes: [],
     recoveryRoutes: [],
@@ -56,10 +86,10 @@ export default function OpenStreetMap({
       L = leaflet.default || leaflet;
 
       if (!mapInstanceRef.current) {
-        const depotPos = toLatLng(depot?.x ?? 40, depot?.y ?? 50);
+        const depotPos = toLatLng(depot?.x ?? 40, depot?.y ?? 50, selectedCity);
         const map = L.map(mapContainerRef.current, {
           center: depotPos,
-          zoom: 13,
+          zoom: selectedCity.zoom,
           zoomControl: true,
           attributionControl: true,
         });
@@ -82,6 +112,14 @@ export default function OpenStreetMap({
       }
     };
   }, []);
+
+  // Recenter map when city selection changes
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    const centerPos = toLatLng(depot?.x ?? 40, depot?.y ?? 50, selectedCity);
+    map.flyTo(centerPos, selectedCity.zoom, { duration: 1.2 });
+  }, [selectedCityKey, depot?.x, depot?.y]);
 
   // Update Map Layers dynamically whenever state changes
   useEffect(() => {
@@ -118,35 +156,47 @@ export default function OpenStreetMap({
 
       // 2. Draw Depot
       if (depot) {
-        const depotPos = toLatLng(depot.x, depot.y);
+        const depotPos = toLatLng(depot.x, depot.y, selectedCity);
         const depotIcon = L.divIcon({
           className: "depot-marker",
-          html: `<div style="background:#dc2626; color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; border:2px solid white; box-shadow:0 2px 4px rgba(0,0,0,0.3); text-align:center;">DEPOT</div>`,
-          iconSize: [52, 20],
-          iconAnchor: [26, 10],
+          html: `<div style="background:#dc2626; color:white; font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px; border:2px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.35); text-align:center; white-space:nowrap;">🏢 DEPOT (HUB)</div>`,
+          iconSize: [110, 24],
+          iconAnchor: [55, 12],
         });
         layers.depot = L.marker(depotPos, { icon: depotIcon }).addTo(map);
-        layers.depot.bindPopup("<b>Central Logistics Depot</b><br/>Coordinates: (" + depot.x + ", " + depot.y + ")");
+        layers.depot.bindPopup(
+          `<div style="font-family:sans-serif; font-size:12px; line-height:1.4;">
+            <b style="color:#dc2626; font-size:13px;">${selectedCity.hubName}</b><br/>
+            <span>Central Dispatch Station & EV Fast Charging Terminal</span><br/>
+            <span style="color:#64748b; font-size:11px;">Grid Coordinates: (${depot.x}, ${depot.y})</span>
+          </div>`
+        );
       }
 
       // 3. Draw Customer Stops
       customers.forEach((c) => {
-        const pos = toLatLng(c.x, c.y);
+        const pos = toLatLng(c.x, c.y, selectedCity);
         const isDelivered = c.status === "DELIVERED";
         const isLate = c.status === "LATE";
         const color = isDelivered ? "#16a34a" : isLate ? "#dc2626" : "#64748b";
 
         const marker = L.circleMarker(pos, {
-          radius: isDelivered ? 6 : 5,
+          radius: isDelivered ? 7 : 6,
           fillColor: color,
           color: "#ffffff",
           weight: 2,
           opacity: 1,
-          fillOpacity: 0.9,
+          fillOpacity: 0.92,
         }).addTo(map);
 
         marker.bindPopup(
-          `<b>Customer #${c.id}</b><br/>Order: ${c.order_id || "ORD_" + c.id}<br/>Demand: ${c.demand} kg<br/>Status: <span style="color:${color};font-weight:bold">${c.status || "PENDING"}</span>`
+          `<div style="font-family:sans-serif; font-size:12px; line-height:1.4;">
+            <b style="font-size:13px;">Customer Stop #${c.id}</b><br/>
+            <span style="color:#2563eb; font-weight:600;">${c.address || c.area || "Bengaluru Delivery Address"}</span><br/>
+            Order ID: <b>${c.order_id || "ORD_" + c.id}</b><br/>
+            Payload Demand: <b>${c.demand} kg</b><br/>
+            Status: <span style="color:${color};font-weight:bold;text-transform:uppercase;">${c.status || "PENDING"}</span>
+          </div>`
         );
         marker.on("click", () => {
           if (onSelectOrder) onSelectOrder(c.order_id || `ORD_${c.id}`);
@@ -160,21 +210,21 @@ export default function OpenStreetMap({
         const c1 = coordsById[te.u];
         const c2 = coordsById[te.v];
         if (!c1 || !c2) return;
-        const pts = [toLatLng(c1.x, c1.y), toLatLng(c2.x, c2.y)];
+        const pts = [toLatLng(c1.x, c1.y, selectedCity), toLatLng(c2.x, c2.y, selectedCity)];
         const line = L.polyline(pts, {
           color: "#dc2626",
           weight: 6,
-          opacity: 0.7,
+          opacity: 0.75,
           dashArray: "6, 6",
         }).addTo(map);
-        line.bindPopup(`<b>Traffic Congestion</b><br/>Road: ${te.u} &rarr; ${te.v}<br/>Level: ${te.level} (${te.speed} km/h)`);
+        line.bindPopup(`<b>Traffic Congestion Bottleneck</b><br/>Corridor: Node ${te.u} &rarr; ${te.v}<br/>Severity: ${te.level} (${te.speed} km/h)`);
         layers.traffic.push(line);
       });
 
       // 5. Draw Active Vehicle Tour Polylines
       const routeList = Array.isArray(routes)
         ? routes.map((r, i) => ({
-            id: r.truckId !== undefined ? `TRUCK_${r.truckId}` : `R_${i}`,
+            id: r.truck || (r.truckId !== undefined ? `TRUCK_${r.truckId}` : `R_${i}`),
             stops: r.stops || r,
           }))
         : Object.entries(routes).map(([k, v]) => ({ id: k, stops: v }));
@@ -186,18 +236,18 @@ export default function OpenStreetMap({
         const pts = (r.stops || [])
           .map((id) => coordsById[id])
           .filter(Boolean)
-          .map((c) => toLatLng(c.x, c.y));
+          .map((c) => toLatLng(c.x, c.y, selectedCity));
 
         if (pts.length < 2) return;
 
         const line = L.polyline(pts, {
           color: color,
           weight: isDimmed ? 2 : 4,
-          opacity: isDimmed ? 0.2 : 0.85,
+          opacity: isDimmed ? 0.25 : 0.88,
           smoothFactor: 1,
         }).addTo(map);
 
-        line.bindPopup(`<b>${r.id} Tour</b><br/>Stops: ${r.stops.length - 2}<br/>Color: ${color}`);
+        line.bindPopup(`<b>${r.id} Active Delivery Route</b><br/>Stops: ${r.stops.length - 2} deliveries<br/>Color: ${color}`);
         layers.routes.push(line);
       });
 
@@ -206,7 +256,7 @@ export default function OpenStreetMap({
         const pts = stopIds
           .map((id) => coordsById[id])
           .filter(Boolean)
-          .map((c) => toLatLng(c.x, c.y));
+          .map((c) => toLatLng(c.x, c.y, selectedCity));
 
         if (pts.length < 2) return;
 
@@ -217,7 +267,7 @@ export default function OpenStreetMap({
           opacity: 0.95,
         }).addTo(map);
 
-        line.bindPopup(`<b>Peer Recovery Route: ${truckId}</b><br/>Autonomous Contract-Net Auction Detour`);
+        line.bindPopup(`<b>Peer Swarm Recovery Route: ${truckId}</b><br/>P2P Mesh Auction Re-route`);
         layers.recoveryRoutes.push(line);
       });
 
@@ -233,10 +283,11 @@ export default function OpenStreetMap({
       });
 
       vehicles.forEach((v, idx) => {
-        const pos = toLatLng(v.x, v.y);
+        const pos = toLatLng(v.x, v.y, selectedCity);
         const isBroken = v.status === "BROKEN_DOWN";
         const color = isBroken ? "#dc2626" : PALETTE[idx % PALETTE.length];
         const isSelected = selectedVehicleId === v.id;
+        const partnerName = v.partner_name || v.id.replace("TRUCK_", "Partner ");
 
         const truckIcon = L.divIcon({
           className: "truck-marker",
@@ -244,27 +295,27 @@ export default function OpenStreetMap({
             <div style="
               display: flex;
               align-items: center;
-              gap: 4px;
+              gap: 5px;
               background: ${isBroken ? "#dc2626" : color};
               color: white;
-              padding: 3px 8px;
+              padding: 4px 9px;
               border-radius: 9999px;
               border: 2px solid white;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-              font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+              box-shadow: 0 4px 8px -1px rgba(0, 0, 0, 0.35);
+              font-family: ui-sans-serif, system-ui, sans-serif;
               font-size: 11px;
               font-weight: 700;
               white-space: nowrap;
               transform: ${isSelected ? "scale(1.2)" : "scale(1)"};
               transition: all 0.2s ease;
             ">
-              <span>${isBroken ? "⚠" : "🚚"}</span>
-              <span>${v.id.replace("TRUCK_", "T")}</span>
-              <span style="opacity:0.85; font-size:10px;">${isBroken ? "FAULT" : Math.round(v.speed_kmh) + "km/h"}</span>
+              <span>${isBroken ? "⚠" : (v.avatar || "🚚")}</span>
+              <span>${partnerName}</span>
+              <span style="opacity:0.9; font-size:10px; font-weight:600; background:rgba(0,0,0,0.2); padding:1px 4px; border-radius:4px;">${isBroken ? "SOS" : Math.round(v.speed_kmh) + " km/h"}</span>
             </div>
           `,
-          iconSize: [85, 26],
-          iconAnchor: [42, 13],
+          iconSize: [120, 28],
+          iconAnchor: [60, 14],
         });
 
         if (layers.vehicles[v.id]) {
@@ -279,27 +330,54 @@ export default function OpenStreetMap({
         }
 
         layers.vehicles[v.id].bindPopup(`
-          <div style="font-family: sans-serif; font-size: 12px; line-height: 1.4;">
-            <b style="color:${color}; font-size:13px;">${v.id}</b><br/>
-            Status: <b>${v.status}</b><br/>
-            Speed: ${v.speed_kmh} km/h<br/>
-            Progress: ${v.route_progress}%<br/>
-            Load: ${v.current_load} / ${v.max_weight} kg<br/>
-            Fuel: ${v.fuel_level} L | CO2: ${v.co2_kg} kg
+          <div style="font-family: sans-serif; font-size: 12px; line-height: 1.45;">
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <span style="font-size:16px;">${v.avatar || "🚚"}</span>
+              <div>
+                <b style="color:${color}; font-size:13px;">${v.partner_name || v.id}</b>
+                <div style="font-size:11px; color:#64748b;">${v.vehicle_model || "Delivery Fleet"} · ${v.registration || v.id}</div>
+              </div>
+            </div>
+            <div style="border-top:1px solid #e2e8f0; padding-top:4px; font-size:11px;">
+              Status: <b>${v.status}</b><br/>
+              Hub: <b>${v.hub || "Central Logistics Hub"}</b><br/>
+              Cruise Speed: <b>${v.speed_kmh} km/h</b><br/>
+              Route Progress: <b>${v.route_progress}%</b><br/>
+              Current Cargo Load: <b>${v.current_load} / ${v.max_weight} kg</b><br/>
+              Remaining Capacity: <b>${v.remaining_capacity} kg</b><br/>
+              Battery / Fuel: <b>${v.fuel_level} L/kWh</b>
+            </div>
           </div>
         `);
       });
     });
-  }, [customers, depot, routes, recoveryRoutes, vehicles, trafficEdges, selectedVehicleId, onSelectVehicle, onSelectOrder]);
+  }, [customers, depot, routes, recoveryRoutes, vehicles, trafficEdges, selectedVehicleId, onSelectVehicle, onSelectOrder, selectedCity]);
 
   return (
-    <div className="w-full h-[520px] rounded-xl overflow-hidden shadow-sm border border-slate-200 relative">
+    <div className="w-full h-[540px] rounded-xl overflow-hidden shadow-sm border border-slate-200 relative">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
-      {/* Interactive Legend Overlay */}
+
+      {/* City & GIS Hub Selector (Top-Left) */}
+      <div className="absolute top-3 left-12 z-[1000] bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow border border-slate-200 flex items-center gap-2">
+        <span className="text-xs font-semibold text-slate-700">📍 Indian GIS Hub:</span>
+        <select
+          value={selectedCityKey}
+          onChange={(e) => setSelectedCityKey(e.target.value)}
+          className="text-xs font-semibold bg-slate-50 border border-slate-300 rounded px-2 py-1 text-blue-700 outline-none cursor-pointer focus:ring-1 focus:ring-blue-500"
+        >
+          {Object.entries(CITIES).map(([key, c]) => (
+            <option key={key} value={key}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Interactive Legend Overlay (Top-Right) */}
       <div className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow border border-slate-200 text-xs font-mono space-y-1">
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 bg-red-600 rounded-sm inline-block" />
-          <span className="text-slate-800 font-semibold">Depot</span>
+          <span className="text-slate-800 font-semibold">Central Hub (Depot)</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 bg-green-600 rounded-full inline-block" />
@@ -311,7 +389,7 @@ export default function OpenStreetMap({
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-1 bg-amber-500 inline-block" />
-          <span className="text-amber-700 font-semibold">Recovery Route</span>
+          <span className="text-amber-700 font-semibold">Swarm Recovery Tour</span>
         </div>
       </div>
     </div>

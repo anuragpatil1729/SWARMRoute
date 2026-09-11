@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from src.api.simulation_runner import runner
+from src.api.supabase_service import supabase_service
 
 
 app = FastAPI(
@@ -61,6 +62,16 @@ class TrafficRequest(BaseModel):
 
 class DemandRequest(BaseModel):
     zone: str = "North-East"
+
+
+class AllocateRequest(BaseModel):
+    order_id: str
+    vehicle_id: str
+
+
+class CompleteRequest(BaseModel):
+    order_id: str
+    vehicle_id: Optional[str] = None
 
 
 @app.get("/api/health")
@@ -188,3 +199,34 @@ def get_ppo_history() -> Dict[str, Any]:
         "cumulative_reward": runner.cumulative_ppo_reward,
         "last_action_idx": runner.last_ppo_action_idx,
     }
+
+
+@app.post("/api/task/allocate")
+def allocate_task(req: AllocateRequest) -> Dict[str, Any]:
+    """Allocates an order to a delivery partner vehicle and syncs to Supabase."""
+    res = runner.allocate_order(order_id=req.order_id, vehicle_id=req.vehicle_id)
+    if res.get("success"):
+        supabase_service.record_task_allocation(order_id=req.order_id, vehicle_id=req.vehicle_id)
+    return res
+
+
+@app.post("/api/task/complete")
+def complete_task(req: CompleteRequest) -> Dict[str, Any]:
+    """Marks an order as delivered by the partner, unloads cargo, and updates Supabase."""
+    res = runner.complete_order(order_id=req.order_id, vehicle_id=req.vehicle_id)
+    if res.get("success"):
+        supabase_service.record_task_completion(order_id=req.order_id, vehicle_id=req.vehicle_id)
+    return res
+
+
+@app.get("/api/partners")
+def get_delivery_partners() -> Dict[str, Any]:
+    """Returns active delivery partner profiles with live vehicle telemetry."""
+    return {"partners": runner.get_delivery_partners()}
+
+
+@app.get("/api/supabase/status")
+def get_supabase_status() -> Dict[str, Any]:
+    """Returns live Supabase PostgreSQL connection status and metrics."""
+    return supabase_service.get_status()
+

@@ -231,6 +231,45 @@ export function useDashboardState() {
     }
   }, [fetchState]);
 
+  // Task Allocation & Completion
+  const allocateTask = useCallback(
+    async (orderId, vehicleId) => {
+      try {
+        const res = await fetch("/api/task/allocate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: orderId, vehicle_id: vehicleId }),
+        });
+        const data = await res.json();
+        await fetchState();
+        return data;
+      } catch (e) {
+        console.error("Task allocation error:", e);
+        return { success: false, error: e.message };
+      }
+    },
+    [fetchState]
+  );
+
+  const completeTask = useCallback(
+    async (orderId, vehicleId = null) => {
+      try {
+        const res = await fetch("/api/task/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order_id: orderId, vehicle_id: vehicleId }),
+        });
+        const data = await res.json();
+        await fetchState();
+        return data;
+      } catch (e) {
+        console.error("Task completion error:", e);
+        return { success: false, error: e.message };
+      }
+    },
+    [fetchState]
+  );
+
   return {
     state,
     connectionStatus,
@@ -245,6 +284,9 @@ export function useDashboardState() {
     injectTraffic,
     injectDemand,
     injectCombined,
+    allocateTask,
+    completeTask,
     refresh: fetchState,
   };
 }
+

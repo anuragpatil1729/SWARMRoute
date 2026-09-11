@@ -28,7 +28,11 @@ SYNC_MAPPINGS = [
         "name": "PPO Training & Episode Metrics",
     },
     {
-        "source": PROJECT_ROOT / "results" / "disruptions" / "disruption_scenarios.json",
+        "source": (
+            PROJECT_ROOT / "results" / "experiments" / "disruption_scenarios.json"
+            if (PROJECT_ROOT / "results" / "experiments" / "disruption_scenarios.json").exists()
+            else PROJECT_ROOT / "results" / "disruptions" / "disruption_scenarios.json"
+        ),
         "target": DASHBOARD_DATA_DIR / "disruptionScenarios.json",
         "name": "Disruption Scenarios (A-H)",
     },

@@ -70,6 +70,7 @@ def run_scenario_evaluation(
     ppo_agent: Optional[PPOFleetAgent] = None,
     predictors: Optional[Dict[str, Any]] = None,
     seed: int = 42,
+    initial_sol: Optional[Any] = None,
 ) -> Dict[str, Any]:
     fleet = scenario.get_fleet_copy()
     road = scenario.get_road_copy()
@@ -77,8 +78,12 @@ def run_scenario_evaluation(
     orders_list = scenario.get_orders_list()
 
     # 1. Initial Route Optimization with OR-Tools
-    opt = RouteOptimizer(fuel_model=fuel_model)
-    sol = opt.optimize(fleet, orders_list, road, time_limit_sec=4)
+    if initial_sol is not None:
+        sol = initial_sol
+    else:
+        opt = RouteOptimizer(fuel_model=fuel_model)
+        sol = opt.optimize(fleet, orders_list, road, time_limit_sec=4)
+
     for vid, r in sol.routes.items():
         if vid in fleet.vehicles:
             fleet.vehicles[vid].current_route = list(r)
@@ -142,6 +147,7 @@ def run_scenario_evaluation(
                     target_vid = d.payload.get("vehicle_id", "TRUCK_01")
                     if target_vid in fleet.vehicles:
                         fleet.vehicles[target_vid].status = VehicleStatus.BROKEN_DOWN
+                        mesh.set_node_failed(target_vid, failed=True)
 
                         if mode == "RULE_BASED" and fleet_agent:
                             t_r0 = time.perf_counter()
@@ -270,15 +276,24 @@ def run_all_disruptions(
     methods = ["Static OR-Tools", "Rule-Based SWARMRoute", "PPO-SWARMRoute"]
 
     for sc_code, sc_obj in scenarios.items():
-        print(f"\n=======================================================")
-        print(f"Running Scenario {sc_code}: {sc_obj.scenario_id}")
-        print(f"=======================================================")
+        print(f"\n=======================================================", flush=True)
+        print(f"Running Scenario {sc_code}: {sc_obj.scenario_id}", flush=True)
+        print(f"=======================================================", flush=True)
         results[sc_code] = {
             "scenario_name": sc_obj.scenario_id,
             "disruptions_count": len(sc_obj.disruptions),
             "urgent_orders_count": len(sc_obj.urgent_orders),
             "methods": {},
         }
+
+        # Pre-compute initial OR-Tools dispatch once per scenario for consistency and speed
+        init_opt = RouteOptimizer(fuel_model=DeterministicFuelModel())
+        init_sol = init_opt.optimize(
+            sc_obj.get_fleet_copy(),
+            sc_obj.get_orders_list(),
+            sc_obj.get_road_copy(),
+            time_limit_sec=4,
+        )
 
         for method in methods:
             mode = "STATIC" if method == "Static OR-Tools" else (
@@ -290,9 +305,10 @@ def run_all_disruptions(
                 ppo_agent=ppo_agent,
                 predictors=predictors,
                 seed=seed,
+                initial_sol=init_sol,
             )
             results[sc_code]["methods"][method] = m_res
-            print(f"  {method:<24}: Success={m_res['delivery_success_pct']:5.1f}%, Fuel={m_res['total_fuel_liters']:5.1f}L, Delay={m_res['average_delay_mins']:5.1f}m, RecTime={m_res['recovery_time_sec']:.3f}s")
+            print(f"  {method:<24}: Success={m_res['delivery_success_pct']:5.1f}%, Fuel={m_res['total_fuel_liters']:5.1f}L, Delay={m_res['average_delay_mins']:5.1f}m, RecTime={m_res['recovery_time_sec']:.3f}s", flush=True)
 
     return results
 
@@ -306,7 +322,7 @@ def save_and_plot_disruption_results(results: Dict[str, Any], output_dir: Path) 
     json_path = output_dir / "disruption_scenarios.json"
     with open(json_path, "w") as f:
         json.dump(results, f, indent=2)
-    print(f"\n[Saved JSON] -> {json_path}")
+    print(f"\n[Saved JSON] -> {json_path}", flush=True)
 
     # 2. CSV
     csv_path = output_dir / "disruption_scenarios.csv"
@@ -329,7 +345,7 @@ def save_and_plot_disruption_results(results: Dict[str, Any], output_dir: Path) 
                     m["failed_deliveries"], m["average_delay_mins"], m["recovery_time_sec"],
                     m["communication_overhead"], m["cloud_dependency"],
                 ])
-    print(f"[Saved CSV]  -> {csv_path}")
+    print(f"[Saved CSV]  -> {csv_path}", flush=True)
 
     # 3. Markdown
     headers = [
@@ -360,8 +376,8 @@ def save_and_plot_disruption_results(results: Dict[str, Any], output_dir: Path) 
     md_path = output_dir / "disruption_scenarios.md"
     with open(md_path, "w") as f:
         f.write(md_content)
-    print(f"[Saved MD]   -> {md_path}")
-    print("\n" + tabulate(table_rows, headers=headers, tablefmt="grid"))
+    print(f"[Saved MD]   -> {md_path}", flush=True)
+    print("\n" + tabulate(table_rows, headers=headers, tablefmt="grid"), flush=True)
 
     # 4. Multi-bar plot
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
@@ -405,7 +421,7 @@ def save_and_plot_disruption_results(results: Dict[str, Any], output_dir: Path) 
     plot_path = plots_dir / "disruption_performance.png"
     plt.savefig(plot_path, dpi=300)
     plt.close()
-    print(f"[Saved Plot] -> {plot_path}")
+    print(f"[Saved Plot] -> {plot_path}", flush=True)
 
 
 def main() -> None:
