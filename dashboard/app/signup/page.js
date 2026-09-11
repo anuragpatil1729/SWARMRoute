@@ -75,27 +75,29 @@ function SignupForm() {
 
         const hub = HUBS.find((h) => h.name === selectedHub) || HUBS[0];
 
-        // Insert into public.delivery_partners
+        // Insert into public.delivery_partners matching database schema
         const { error: partnerInsertErr } = await supabase.from('delivery_partners').upsert({
           id: createdPartnerId,
           name: fullName,
           phone: phone,
           vehicle_model: vehicleModel,
-          registration_plate: registrationPlate.trim().toUpperCase(),
-          battery_pct: 95.0,
-          current_lat: hub.lat,
-          current_lon: hub.lon,
-          status: 'AVAILABLE',
-          capacity_kg: parseFloat(capacityKg) || 500,
-          assigned_order_count: 0,
-          total_completed_trips: 0,
-          total_payout_inr: 0.0,
+          registration: registrationPlate.trim().toUpperCase() || 'KA-01-EQ-5544',
+          hub: selectedHub,
+          city: 'Bengaluru',
           rating: 5.0,
+          completed_deliveries: 0,
+          avatar: '🛵',
+          status: 'AVAILABLE',
+          current_load: 0.0,
+          max_weight: parseFloat(capacityKg) || 100.0,
+          fuel_level: 100.0,
+          speed_kmh: 0.0,
+          location_x: 40.0,
+          location_y: 50.0,
         });
 
         if (partnerInsertErr) {
-          console.error('Failed to register vehicle in delivery_partners:', partnerInsertErr);
-          // Continue if already exists or non-fatal
+          console.error('Failed to register vehicle in delivery_partners:', partnerInsertErr.message);
         }
       }
 

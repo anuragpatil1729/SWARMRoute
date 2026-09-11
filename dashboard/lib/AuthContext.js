@@ -184,9 +184,10 @@ export function AuthProvider({ children }) {
       if (insertErr) {
         console.warn('Profiles upsert with city column returned error, retrying without city:', insertErr.message);
         const { city: _, ...fallbackData } = profileData;
-        await supabase.from('profiles').upsert(fallbackData).catch((e) => {
-          console.warn('Secondary profile upsert error:', e);
-        });
+        const { error: fallbackErr } = await supabase.from('profiles').upsert(fallbackData);
+        if (fallbackErr) {
+          console.warn('Secondary profile upsert error:', fallbackErr.message);
+        }
       }
     }
 
