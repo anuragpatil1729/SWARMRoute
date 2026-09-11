@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Section from "../../components/Section";
 import Stat from "../../components/Stat";
@@ -104,19 +104,15 @@ export default function LivePage() {
   const recentEvents = events.slice(0, 7);
 
   // 4. Last Autonomous Decision (Section 8: 100% Real PPO / Agent Data)
-  const lastDecision = useMemo(() => {
-    if (ppo?.history && ppo.history.length > 0) {
-      const latest = ppo.history[ppo.history.length - 1];
-      return {
-        action: latest.action || null,
-        vehicle: latest.target || latest.vehicle || null,
-        order: latest.order_id || latest.order || null,
-        reason: latest.reason || null,
-        time: latest.time_str || (latest.time !== undefined ? `${latest.time}m` : null),
-      };
-    }
-    return null;
-  }, [ppo]);
+  const ppoHistory = ppo?.history || [];
+  const latestDecision = ppoHistory.length > 0 ? ppoHistory[ppoHistory.length - 1] : null;
+  const lastDecision = latestDecision ? {
+    action: latestDecision.action || null,
+    vehicle: latestDecision.target || latestDecision.vehicle || null,
+    order: latestDecision.order_id || latestDecision.order || null,
+    reason: latestDecision.reason || null,
+    time: latestDecision.time_str || (latestDecision.time !== undefined ? `${latestDecision.time}m` : null),
+  } : null;
 
   return (
     <div className="space-y-6 w-full">
