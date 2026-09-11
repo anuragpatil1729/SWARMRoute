@@ -63,6 +63,7 @@ export function AuthProvider({ children }) {
           city: userCity,
         };
 
+        let insertedProfile = null;
         const { data: inserted, error: insertError } = await supabase
           .from('profiles')
           .upsert(newProfile)
@@ -70,10 +71,18 @@ export function AuthProvider({ children }) {
           .maybeSingle();
 
         if (!insertError && inserted) {
-          setProfile(inserted);
-        } else {
-          setProfile(newProfile);
+          insertedProfile = inserted;
+        } else if (insertError) {
+          console.warn('Profile insert error, retrying without city column:', insertError);
+          const { city: _, ...fallbackNewProfile } = newProfile;
+          const { data: fallbackInserted } = await supabase
+            .from('profiles')
+            .upsert(fallbackNewProfile)
+            .select()
+            .maybeSingle();
+          insertedProfile = fallbackInserted;
         }
+        setProfile({ ...newProfile, ...(insertedProfile || {}) });
       }
     } catch (err) {
       console.error('Failed to load profile:', err);
@@ -160,28 +169,24 @@ export function AuthProvider({ children }) {
 
     if (data.user) {
       // Upsert into public.profiles table
-      try {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: data.user.email,
-          full_name: fullName,
-          role: role || 'manager',
-          phone: phone || null,
-          company_name: companyName || null,
-          partner_id: partnerId || null,
-          city: userCity,
+      const profileData = {
+        id: data.user.id,
+        email: data.user.email,
+        full_name: fullName,
+        role: role || 'manager',
+        phone: phone || null,
+        company_name: companyName || null,
+        partner_id: partnerId || null,
+        city: userCity,
+      };
+
+      const { error: insertErr } = await supabase.from('profiles').upsert(profileData);
+      if (insertErr) {
+        console.warn('Profiles upsert with city column returned error, retrying without city:', insertErr.message);
+        const { city: _, ...fallbackData } = profileData;
+        await supabase.from('profiles').upsert(fallbackData).catch((e) => {
+          console.warn('Secondary profile upsert error:', e);
         });
-      } catch (upsertErr) {
-        console.warn('Profiles upsert with city error, retrying without:', upsertErr);
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: data.user.email,
-          full_name: fullName,
-          role: role || 'manager',
-          phone: phone || null,
-          company_name: companyName || null,
-          partner_id: partnerId || null,
-        }).catch((e) => console.warn('Secondary profile upsert error:', e));
       }
     }
 
