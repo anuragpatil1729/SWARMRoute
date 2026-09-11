@@ -128,84 +128,77 @@ function SignupForm() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
-      {/* Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-tr from-cyan-500/10 via-emerald-500/10 to-indigo-500/10 blur-[140px] rounded-full pointer-events-none -z-10" />
-
+    <main className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 py-12">
       <div className="w-full max-w-xl">
         {/* Header Branding */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-3">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            SWARMRoute Decentralized Mesh Onboarding
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Create an Account
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Join the autonomous green logistics network across India
+          <p className="mt-1 text-xs text-slate-500">
+            Join the autonomous fleet dispatch and dynamic mesh network
           </p>
         </div>
 
         {/* Role Switcher Tabs */}
-        <div className="grid grid-cols-2 p-1.5 mb-6 bg-slate-900/80 border border-slate-800 rounded-xl backdrop-blur-md">
+        <div className="grid grid-cols-2 p-1 mb-6 bg-slate-100 border border-slate-200 rounded-lg">
           <button
             type="button"
             onClick={() => { setRole('manager'); setErrorMessage(''); }}
-            className={`py-2.5 px-4 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+            className={`py-2 px-3 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
               role === 'manager'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-blue-700 shadow-xs border border-slate-200 font-bold'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <span>🏢</span>
-            <span>Company Manager (Admin)</span>
+            <span>Company Manager</span>
           </button>
           <button
             type="button"
             onClick={() => { setRole('partner'); setErrorMessage(''); }}
-            className={`py-2.5 px-4 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+            className={`py-2 px-3 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
               role === 'partner'
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-emerald-700 shadow-xs border border-slate-200 font-bold'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <span>🛵</span>
-            <span>Delivery Partner (User)</span>
+            <span>Delivery Partner</span>
           </button>
         </div>
 
         {/* Form Container */}
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 sm:p-8 backdrop-blur-xl shadow-2xl">
-          <div className="mb-6">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-sm">
+          <div className="mb-5 pb-4 border-b border-slate-100">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               {role === 'manager' ? (
                 <>
-                  <span className="text-cyan-400">🏢</span> Enterprise Dispatch Manager Registration
+                  <span>🏢</span> Enterprise Dispatch Manager Registration
                 </>
               ) : (
                 <>
-                  <span className="text-emerald-400">🛵</span> Electric Vehicle Partner Onboarding
+                  <span>🛵</span> Delivery Vehicle Partner Onboarding
                 </>
               )}
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               {role === 'manager'
                 ? 'Create an administrative profile to assign orders, trigger AI optimization, and monitor hub metrics.'
-                : 'Register your electric vehicle to receive optimized stops, execute deliveries, and receive instant INR payouts.'}
+                : 'Register your delivery vehicle to receive optimized stops, execute deliveries, and receive payouts.'}
             </p>
           </div>
 
           {errorMessage && (
-            <div className="mb-5 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
-              <span className="text-rose-400 mt-0.5">⚠️</span>
+            <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+              <span className="text-rose-600 font-bold mt-0.5">⚠️</span>
               <div>{errorMessage}</div>
             </div>
           )}
 
           {successMessage && (
-            <div className="mb-5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-start gap-2">
-              <span className="text-emerald-400 mt-0.5">✓</span>
+            <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-2">
+              <span className="text-emerald-600 font-bold mt-0.5">✓</span>
               <div>{successMessage}</div>
             </div>
           )}
@@ -214,7 +207,7 @@ function SignupForm() {
             {/* Common Info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Full Name
                 </label>
                 <input
@@ -223,12 +216,12 @@ function SignupForm() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder={role === 'manager' ? 'Aarav Sharma' : 'Rajesh Kumar'}
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Phone Number
                 </label>
                 <input
@@ -237,14 +230,14 @@ function SignupForm() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+91 98765 43210"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Email Address
                 </label>
                 <input
@@ -253,12 +246,12 @@ function SignupForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Password
                 </label>
                 <input
@@ -268,17 +261,17 @@ function SignupForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min 6 characters"
-                  className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 />
               </div>
             </div>
 
             {/* Role Specific Section: MANAGER */}
             {role === 'manager' && (
-              <div className="pt-2 border-t border-slate-800 space-y-4">
+              <div className="pt-2 border-t border-slate-100 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Company / Organization Name
                     </label>
                     <input
@@ -287,19 +280,19 @@ function SignupForm() {
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                       placeholder="e.g. Zepto Express / SWARM Logistics"
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Operations City
                     </label>
                     <input
                       type="text"
                       value={operationsCity}
                       onChange={(e) => setOperationsCity(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     />
                   </div>
                 </div>
@@ -308,19 +301,19 @@ function SignupForm() {
 
             {/* Role Specific Section: DELIVERY PARTNER */}
             {role === 'partner' && (
-              <div className="pt-2 border-t border-slate-800 space-y-4">
+              <div className="pt-2 border-t border-slate-100 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Vehicle Model
                     </label>
                     <select
                       value={vehicleModel}
                       onChange={(e) => setVehicleModel(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     >
                       {VEHICLE_PRESETS.map((v) => (
-                        <option key={v.name} value={v.name} className="bg-slate-900 text-slate-100">
+                        <option key={v.name} value={v.name}>
                           {v.name} ({v.type})
                         </option>
                       ))}
@@ -328,7 +321,7 @@ function SignupForm() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Registration Plate Number
                     </label>
                     <input
@@ -337,14 +330,14 @@ function SignupForm() {
                       value={registrationPlate}
                       onChange={(e) => setRegistrationPlate(e.target.value)}
                       placeholder="e.g. KA-01-EQ-5544"
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm uppercase focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="sm:col-span-1">
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Max Payload (kg)
                     </label>
                     <input
@@ -352,21 +345,21 @@ function SignupForm() {
                       required
                       value={capacityKg}
                       onChange={(e) => setCapacityKg(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Home Base Hub (Bengaluru)
                     </label>
                     <select
                       value={selectedHub}
                       onChange={(e) => setSelectedHub(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     >
                       {HUBS.map((h) => (
-                        <option key={h.name} value={h.name} className="bg-slate-900 text-slate-100">
+                        <option key={h.name} value={h.name}>
                           {h.name}
                         </option>
                       ))}
@@ -380,10 +373,10 @@ function SignupForm() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full mt-4 py-3 px-4 rounded-xl font-bold text-sm tracking-wide text-white transition-all shadow-lg flex items-center justify-center gap-2 ${
+              className={`w-full mt-5 py-2.5 px-4 rounded-lg font-bold text-xs tracking-wide text-white transition shadow-xs flex items-center justify-center gap-2 ${
                 role === 'manager'
-                  ? 'bg-gradient-to-r from-cyan-500 hover:from-cyan-400 to-blue-600 hover:to-blue-500 shadow-cyan-500/25'
-                  : 'bg-gradient-to-r from-emerald-500 hover:from-emerald-400 to-teal-600 hover:to-teal-500 shadow-emerald-500/25'
+                  ? 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
               } ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
               {loading ? (
@@ -392,7 +385,7 @@ function SignupForm() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Registering to Supabase...</span>
+                  <span>Registering...</span>
                 </>
               ) : (
                 <span>Complete Registration & Launch</span>
@@ -402,11 +395,11 @@ function SignupForm() {
         </div>
 
         {/* Footer Navigation */}
-        <p className="text-center text-xs text-slate-400 mt-6">
+        <p className="text-center text-xs text-slate-500 mt-5">
           Already have an account?{' '}
           <Link
             href="/login"
-            className="text-cyan-400 hover:text-cyan-300 font-semibold underline underline-offset-4"
+            className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2"
           >
             Log in here
           </Link>
@@ -420,7 +413,7 @@ export default function SignupPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 font-mono text-sm">
+        <main className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-mono text-xs">
           Loading Registration Portal...
         </main>
       }
