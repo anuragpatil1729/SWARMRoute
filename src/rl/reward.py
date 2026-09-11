@@ -100,3 +100,96 @@ class FleetRewardCalculator:
             reward -= cfg.excessive_reassignment_penalty
 
         return float(round(reward, 3))
+
+    def calculate_step_reward_decomposed(
+        self,
+        new_deliveries: int,
+        new_on_time: int,
+        new_recoveries: int,
+        new_failed: int,
+        new_late: int,
+        delay_minutes: float,
+        incremental_distance_km: float,
+        incremental_fuel_liters: float,
+        incremental_co2_kg: float,
+        incremental_empty_km: float,
+        fleet_utilization_ratio: float = 0.0,
+        useful_repositioning: bool = False,
+        infeasible_action: bool = False,
+        excessive_reassignment: bool = False,
+    ) -> Tuple[float, Dict[str, float]]:
+        cfg = self.config
+
+        delivery_reward = cfg.delivery_reward * max(0, new_deliveries)
+        ontime_reward = cfg.on_time_bonus * max(0, new_on_time)
+        recovery_reward = cfg.recovery_bonus * max(0, new_recoveries)
+        utilization_reward = cfg.load_utilization_weight * min(1.0, max(0.0, fleet_utilization_ratio))
+        repositioning_reward = cfg.useful_repositioning_bonus if useful_repositioning else 0.0
+
+        failure_penalty = cfg.failure_penalty * max(0, new_failed)
+        late_penalty = cfg.late_delivery_penalty * max(0, new_late)
+        delay_penalty = cfg.delay_penalty_weight * max(0.0, delay_minutes)
+        distance_penalty = cfg.distance_penalty_weight * max(0.0, incremental_distance_km)
+        fuel_penalty = cfg.fuel_penalty_weight * max(0.0, incremental_fuel_liters)
+        co2_penalty = cfg.co2_penalty_weight * max(0.0, incremental_co2_kg)
+        empty_km_penalty = cfg.empty_km_penalty_weight * max(0.0, incremental_empty_km)
+        infeasible_penalty = cfg.infeasible_action_penalty if infeasible_action else 0.0
+        reassignment_penalty = cfg.excessive_reassignment_penalty if excessive_reassignment else 0.0
+
+        total_positive = delivery_reward + ontime_reward + recovery_reward + utilization_reward + repositioning_reward
+        total_negative = (
+            failure_penalty + late_penalty + delay_penalty + distance_penalty
+            + fuel_penalty + co2_penalty + empty_km_penalty + infeasible_penalty + reassignment_penalty
+        )
+        total_reward = float(round(total_positive - total_negative, 3))
+
+        decomp = {
+            "delivery_reward": round(delivery_reward, 3),
+            "ontime_reward": round(ontime_reward, 3),
+            "recovery_reward": round(recovery_reward, 3),
+            "fuel_penalty": round(fuel_penalty, 3),
+            "distance_penalty": round(distance_penalty, 3),
+            "delay_penalty": round(delay_penalty, 3),
+            "failure_penalty": round(failure_penalty, 3),
+            "total_reward": total_reward,
+        }
+
+        return total_reward, decomp
+
+
+def calculate_step_reward_decomposed(
+    new_deliveries: int = 0,
+    new_on_time: int = 0,
+    new_recoveries: int = 0,
+    new_failed: int = 0,
+    new_late: int = 0,
+    delay_minutes: float = 0.0,
+    incremental_distance_km: float = 0.0,
+    incremental_fuel_liters: float = 0.0,
+    incremental_co2_kg: float = 0.0,
+    incremental_empty_km: float = 0.0,
+    fleet_utilization_ratio: float = 0.0,
+    useful_repositioning: bool = False,
+    infeasible_action: bool = False,
+    excessive_reassignment: bool = False,
+    config: Optional[MultiObjectiveRewardConfig] = None,
+) -> Tuple[float, Dict[str, float]]:
+    """Module-level convenience wrapper for decomposed reward calculation."""
+    calc = FleetRewardCalculator(config)
+    return calc.calculate_step_reward_decomposed(
+        new_deliveries=new_deliveries,
+        new_on_time=new_on_time,
+        new_recoveries=new_recoveries,
+        new_failed=new_failed,
+        new_late=new_late,
+        delay_minutes=delay_minutes,
+        incremental_distance_km=incremental_distance_km,
+        incremental_fuel_liters=incremental_fuel_liters,
+        incremental_co2_kg=incremental_co2_kg,
+        incremental_empty_km=incremental_empty_km,
+        fleet_utilization_ratio=fleet_utilization_ratio,
+        useful_repositioning=useful_repositioning,
+        infeasible_action=infeasible_action,
+        excessive_reassignment=excessive_reassignment,
+    )
+

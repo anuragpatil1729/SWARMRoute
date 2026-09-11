@@ -56,6 +56,8 @@ from src.networking.mesh import MeshNetwork
 from src.agents.fleet_agent import FleetAgent
 from src.rl.environment import SWARMRLEnv
 from src.rl.ppo_agent import PPOFleetAgent
+from src.evaluation.scenario_generator import generate_benchmark_scenario
+from src.evaluation.metrics import calculate_communication_overhead
 
 
 def run_single_benchmark_scenario(
@@ -68,15 +70,24 @@ def run_single_benchmark_scenario(
     ppo_model_path: str = "results/models/ppo_agent.zip",
 ) -> Dict[str, Any]:
     """Runs fair comparative benchmark on one problem scenario across all algorithms."""
-    # 1. Load common problem instance
-    fleet_base, road_base, meta = load_solomon_benchmark(
-        dataset_name, max_customers=customers, vehicle_count=vehicles_count
+    # 1. Generate standardized, seed-controlled scenario
+    scenario = generate_benchmark_scenario(
+        seed=seed,
+        dataset_name=dataset_name,
+        customers_count=customers,
+        vehicles_count=vehicles_count,
+        simulation_duration_mins=duration_mins,
+        base_disruption_time=disruption_time,
     )
-    orders_list = list(fleet_base.active_orders.values())
-    node_id_map = {o.order_id: idx + 1 for idx, o in enumerate(orders_list)}
+    fleet_base = scenario.get_fleet_copy()
+    road_base = scenario.get_road_copy()
+    orders_list = scenario.get_orders_list()
+    node_id_map = scenario.node_id_map
     fuel_model = DeterministicFuelModel()
 
-    breakdown_veh_id = "TRUCK_01"
+    brk_spec = scenario.get_breakdown_spec()
+    breakdown_veh_id = brk_spec.payload.get("vehicle_id", "TRUCK_01") if brk_spec else "TRUCK_01"
+    disruption_time = brk_spec.timestamp_mins if brk_spec else disruption_time
 
     # Pre-load ML prediction models if available
     tt_pred = TravelTimePredictor(random_state=seed)
@@ -123,6 +134,20 @@ def run_single_benchmark_scenario(
         if breakdown_veh_id in fleet.vehicles:
             fleet.vehicles[breakdown_veh_id].status = VehicleStatus.BROKEN_DOWN
 
+        # Apply traffic spikes from scenario
+        for d in scenario.disruptions:
+            if d.event_type == "TRAFFIC_SPIKE":
+                u = d.payload.get("u")
+                v = d.payload.get("v")
+                t_lvl = d.payload.get("traffic_level") or d.payload.get("level")
+                if isinstance(t_lvl, str):
+                    try:
+                        t_lvl = TrafficLevel(t_lvl)
+                    except ValueError:
+                        t_lvl = TrafficLevel.SEVERE
+                if u is not None and v is not None and road.graph.has_edge(u, v):
+                    road.graph.edges[u, v]["traffic_level"] = t_lvl
+
         rec_time = 0.0
 
         if mode == "RULE_BASED":
@@ -144,7 +169,14 @@ def run_single_benchmark_scenario(
 
         elif mode in ("PPO", "RANDOM"):
             # PPO / Random actively controls actions at each tick without rule-based pre-emption
-            rl_env = SWARMRLEnv(dataset_name=dataset_name, num_customers=customers, num_vehicles=vehicles_count, seed=seed)
+            rl_env = SWARMRLEnv(
+                dataset_name=dataset_name,
+                num_customers=customers,
+                num_vehicles=vehicles_count,
+                seed=seed,
+                travel_time_predictor=tt_pred,
+                fuel_predictor=fuel_pred,
+            )
             rl_env.env = env
             rl_env.controlled_truck_id = "TRUCK_02"
             rl_env.last_delivered_count = len(env.delivered_orders)
@@ -175,6 +207,11 @@ def run_single_benchmark_scenario(
 
         m = env.get_metrics()
         m["recovery_time_sec"] = rec_time
+        comm_stats = calculate_communication_overhead(mesh)
+        m["communication_overhead"] = comm_stats["messages_exchanged"]
+        m["cloud_dependency"] = 1.0 if mode == "STATIC" else (
+            0.0 if fleet.connectivity_state == ConnectivityState.MESH_MODE else 0.5
+        )
         return m
 
     # -------------------------------------------------------------------------

@@ -59,6 +59,9 @@ class SWARMRLEnv(gym.Env):
         max_steps: int = 300,
         seed: int = 42,
         reward_config: Optional[MultiObjectiveRewardConfig] = None,
+        travel_time_predictor: Optional[TravelTimePredictor] = None,
+        fuel_predictor: Optional[FuelConsumptionPredictor] = None,
+        demand_predictor: Optional[DemandPredictor] = None,
     ) -> None:
         super().__init__()
         self.dataset_name = dataset_name
@@ -68,6 +71,9 @@ class SWARMRLEnv(gym.Env):
         self.max_steps = max_steps
         self.seed_val = seed
         self.reward_calculator = FleetRewardCalculator(reward_config)
+        self.travel_time_predictor = travel_time_predictor
+        self.fuel_predictor = fuel_predictor
+        self.demand_predictor = demand_predictor
 
         self.observation_space = spaces.Box(
             low=-5.0, high=10.0, shape=(self.OBS_DIM,), dtype=np.float32
@@ -75,7 +81,7 @@ class SWARMRLEnv(gym.Env):
         self.action_space = spaces.Discrete(self.ACTION_DIM)
 
         self.fuel_model = DeterministicFuelModel()
-        self.positioner = PredictiveFleetPositioner(seed=seed)
+        self.positioner = PredictiveFleetPositioner(demand_predictor=demand_predictor, seed=seed)
         self.env: Optional[FleetSimulationEnvironment] = None
         self.controlled_truck_id = "TRUCK_01"
         self.step_count = 0
@@ -331,13 +337,38 @@ class SWARMRLEnv(gym.Env):
             ]
             assigned_order = None
             if v and pending_orders:
-                # Rank orders by urgency and proximity
-                pending_orders.sort(
-                    key=lambda o: (
-                        o.latest_delivery,
-                        math.hypot(v.current_location[0] - o.destination[0], v.current_location[1] - o.destination[1])
-                    )
-                )
+                # Rank orders using ML-predicted travel times, arrival feasibility, and fuel
+                def score_order(cand: Order) -> Tuple[float, float, float]:
+                    dist = math.hypot(v.current_location[0] - cand.destination[0], v.current_location[1] - cand.destination[1])
+                    pred_mins = (dist / max(1.0, v.average_speed)) * 60.0
+                    if self.travel_time_predictor and getattr(self.travel_time_predictor, "is_trained", False):
+                        try:
+                            pred_hrs = self.travel_time_predictor.predict_trip(
+                                distance_km=dist,
+                                traffic_level=TrafficLevel.NORMAL.value,
+                                hour_of_day=int((self.env.current_time_mins / 60.0) % 24),
+                                is_weekend=False,
+                            )
+                            pred_mins = pred_hrs * 60.0
+                        except Exception:
+                            pass
+                    eta = self.env.current_time_mins + pred_mins
+                    lateness_risk = max(0.0, eta - cand.latest_delivery)
+
+                    pred_f = (v.fuel_efficiency / 100.0) * dist
+                    if self.fuel_predictor and getattr(self.fuel_predictor, "is_trained", False):
+                        try:
+                            pred_f = self.fuel_predictor.predict_fuel(
+                                distance_km=dist,
+                                vehicle_load_kg=v.current_load + cand.demand_weight,
+                                max_payload_kg=v.max_weight,
+                                average_speed_kmh=v.average_speed,
+                            )
+                        except Exception:
+                            pass
+                    return (lateness_risk, pred_f, dist)
+
+                pending_orders.sort(key=score_order)
                 for cand in pending_orders:
                     if v.can_load(cand.demand_weight):
                         assigned_order = cand
@@ -382,8 +413,21 @@ class SWARMRLEnv(gym.Env):
                             truck.current_location[0] - ord_obj.destination[0],
                             truck.current_location[1] - ord_obj.destination[1]
                         )
-                        if detour < best_detour:
-                            best_detour = detour
+                        detour_cost = detour
+                        if self.fuel_predictor and getattr(self.fuel_predictor, "is_trained", False):
+                            try:
+                                pred_fuel = self.fuel_predictor.predict_fuel(
+                                    distance_km=detour,
+                                    vehicle_load_kg=truck.current_load + ord_obj.demand_weight,
+                                    max_payload_kg=truck.max_weight,
+                                    average_speed_kmh=truck.average_speed,
+                                )
+                                detour_cost = detour + pred_fuel * 2.0
+                            except Exception:
+                                pass
+
+                        if detour_cost < best_detour:
+                            best_detour = detour_cost
                             best_recipient = truck
 
                 if best_recipient and ord_obj:
@@ -493,7 +537,7 @@ class SWARMRLEnv(gym.Env):
         if active_vehs:
             fleet_util = sum(veh.utilization_rate for veh in active_vehs) / len(active_vehs)
 
-        reward = self.reward_calculator.calculate_step_reward(
+        reward, decomp = self.reward_calculator.calculate_step_reward_decomposed(
             new_deliveries=new_deliveries,
             new_on_time=new_on_time,
             new_recoveries=recoveries_this_step,
@@ -532,6 +576,7 @@ class SWARMRLEnv(gym.Env):
             "total_fuel_liters": round(curr_fuel, 2),
             "total_co2_kg": round(curr_fuel * 2.68, 2),
             "reward": reward,
+            "reward_decomposition": decomp,
         }
 
         return obs, reward, terminated, truncated, info

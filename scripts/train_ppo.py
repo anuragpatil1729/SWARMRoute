@@ -30,6 +30,7 @@ def train_ppo_cli(
     seed: int = 42,
     customers: int = 20,
     vehicles: int = 5,
+    eval_episodes: int = 5,
     save_path: str = "results/models/ppo_agent.zip",
     metrics_path: str = "results/logs/ppo_training_metrics.json",
 ) -> None:
@@ -39,13 +40,36 @@ def train_ppo_cli(
     print(f" Timesteps: {timesteps} | Seed: {seed} | Policy: MlpPolicy (PPO)")
     print("================================================================================")
 
+    # Pre-load ML prediction models if available
+    from src.prediction.travel_time import TravelTimePredictor
+    from src.prediction.fuel_ml import FuelConsumptionPredictor
+    from src.prediction.demand import DemandPredictor
+
+    tt_pred = TravelTimePredictor(random_state=seed)
+    tt_path = Path("results/models/travel_time.joblib")
+    if tt_path.exists():
+        tt_pred.load(tt_path)
+
+    fuel_pred = FuelConsumptionPredictor(random_state=seed)
+    fuel_path = Path("results/models/fuel.joblib")
+    if fuel_path.exists():
+        fuel_pred.load(fuel_path)
+
+    demand_pred = DemandPredictor(random_state=seed)
+    demand_path = Path("results/models/demand.joblib")
+    if demand_path.exists():
+        demand_pred.load(demand_path)
+
     env = SWARMRLEnv(
         dataset_name=dataset,
         num_customers=customers,
         num_vehicles=vehicles,
         step_size_mins=2.0,
-        max_steps=100,
+        max_steps=150,
         seed=seed,
+        travel_time_predictor=tt_pred,
+        fuel_predictor=fuel_pred,
+        demand_predictor=demand_pred,
     )
 
     agent = PPOFleetAgent(env=env, seed=seed)
@@ -59,12 +83,13 @@ def train_ppo_cli(
     print(f"  Mean Episode Reward: {train_results['mean_episode_reward']:.2f}")
 
     # Evaluate trained policy
-    print("\nRunning Evaluation (3 episodes)...")
-    eval_metrics = agent.evaluate(num_episodes=3)
+    print(f"\nRunning Evaluation ({eval_episodes} episodes)...")
+    eval_metrics = agent.evaluate(num_episodes=eval_episodes)
     print(f"  Mean Eval Reward:    {eval_metrics['mean_reward']:.2f} +/- {eval_metrics['std_reward']:.2f}")
     print(f"  Mean Deliveries:     {eval_metrics['mean_deliveries']:.1f}")
 
     # Save Model
+    Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     agent.save(save_path)
     print(f"\nSaved trained PPO model checkpoint to: {save_path}")
 
@@ -95,11 +120,13 @@ def train_ppo_cli(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train PPO policy for SWARMRoute.")
     parser.add_argument("--dataset", default="C101", help="Solomon benchmark instance")
-    parser.add_argument("--timesteps", type=int, default=1500, help="Total training timesteps")
+    parser.add_argument("--timesteps", type=int, default=50000, help="Total training timesteps")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--customers", type=int, default=20, help="Number of customers")
     parser.add_argument("--vehicles", type=int, default=5, help="Number of vehicles")
+    parser.add_argument("--eval", type=int, default=5, help="Evaluation episodes")
     parser.add_argument("--save-path", default="results/models/ppo_agent.zip", help="Path to save PPO zip model")
+    parser.add_argument("--metrics-path", default="results/logs/ppo_training_metrics.json", help="Path to save metrics json")
     args = parser.parse_args()
 
     train_ppo_cli(
@@ -108,7 +135,9 @@ def main() -> None:
         seed=args.seed,
         customers=args.customers,
         vehicles=args.vehicles,
+        eval_episodes=args.eval,
         save_path=args.save_path,
+        metrics_path=args.metrics_path,
     )
 
 

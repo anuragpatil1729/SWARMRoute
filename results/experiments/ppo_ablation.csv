@@ -1,0 +1,6 @@
+Configuration,Description,Delivery_Success_Mean,Delivery_Success_Std,On_Time_Delivery_Mean,On_Time_Delivery_Std,Total_Distance_Mean,Total_Distance_Std,Total_Fuel_Mean,Total_Fuel_Std,CO2_Emissions_Mean,CO2_Emissions_Std,Avg_Delay_Mean,Avg_Delay_Std,Recovery_Time_Mean,Recovery_Time_Std
+"Config A (Baseline PPO, No ML)",PPO agent without predictive model inputs,76.32,7.62,59.28,6.65,174.2,23.93,58.73,7.39,157.39,19.8,6.65,0.89,0.0,0.0
+Config B (PPO + Travel Time),PPO with travel time regression,76.32,7.62,59.28,6.65,174.2,23.93,58.73,7.39,157.39,19.8,6.65,0.89,0.0,0.0
+Config C (PPO + Fuel Predictor),PPO with ML fuel consumption model,76.32,7.62,59.28,6.65,174.2,23.93,58.73,7.39,157.39,19.8,6.65,0.89,0.0,0.0
+Config D (PPO + Demand Predictor),PPO with spatial demand forecasting,76.32,7.62,59.28,6.65,174.2,23.93,58.73,7.39,157.39,19.8,6.65,0.89,0.0,0.0
+Config E (Full SWARMRoute),PPO with all ML predictors integrated,76.32,7.62,59.28,6.65,174.2,23.93,58.73,7.39,157.39,19.8,6.65,0.89,0.0,0.0

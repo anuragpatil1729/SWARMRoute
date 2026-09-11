@@ -1,0 +1,394 @@
+{
+  "A": {
+    "scenario_name": "Scenario_A_Single_truck_breakdown",
+    "disruptions_count": 1,
+    "urgent_orders_count": 0,
+    "methods": {
+      "Static OR-Tools": {
+        "delivery_success_pct": 80.0,
+        "on_time_delivery_pct": 56.0,
+        "total_distance_km": 146.69,
+        "total_fuel_liters": 50.37,
+        "total_co2_kg": 134.99,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 5,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 10.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 1.0
+      },
+      "Rule-Based SWARMRoute": {
+        "delivery_success_pct": 96.0,
+        "on_time_delivery_pct": 52.0,
+        "total_distance_km": 196.41,
+        "total_fuel_liters": 68.1,
+        "total_co2_kg": 182.51,
+        "empty_kilometers": 13.0,
+        "recovery_time_sec": 0.0018,
+        "failed_deliveries": 1,
+        "average_delay_mins": 285.09,
+        "vehicle_utilization_pct": 2.0,
+        "communication_overhead": 26,
+        "cloud_dependency": 0.5
+      },
+      "PPO-SWARMRoute": {
+        "delivery_success_pct": 80.0,
+        "on_time_delivery_pct": 56.0,
+        "total_distance_km": 146.69,
+        "total_fuel_liters": 50.37,
+        "total_co2_kg": 134.99,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 5,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 10.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.5
+      }
+    }
+  },
+  "B": {
+    "scenario_name": "Scenario_B_Two_truck_breakdowns",
+    "disruptions_count": 1,
+    "urgent_orders_count": 0,
+    "methods": {
+      "Static OR-Tools": {
+        "delivery_success_pct": 64.0,
+        "on_time_delivery_pct": 48.0,
+        "total_distance_km": 110.38,
+        "total_fuel_liters": 39.08,
+        "total_co2_kg": 104.73,
+        "empty_kilometers": 10.2,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 9,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 14.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 1.0
+      },
+      "Rule-Based SWARMRoute": {
+        "delivery_success_pct": 76.0,
+        "on_time_delivery_pct": 40.0,
+        "total_distance_km": 170.63,
+        "total_fuel_liters": 59.29,
+        "total_co2_kg": 158.89,
+        "empty_kilometers": 16.0,
+        "recovery_time_sec": 0.0009,
+        "failed_deliveries": 6,
+        "average_delay_mins": 363.89,
+        "vehicle_utilization_pct": 8.0,
+        "communication_overhead": 24,
+        "cloud_dependency": 0.5
+      },
+      "PPO-SWARMRoute": {
+        "delivery_success_pct": 64.0,
+        "on_time_delivery_pct": 48.0,
+        "total_distance_km": 110.38,
+        "total_fuel_liters": 39.08,
+        "total_co2_kg": 104.73,
+        "empty_kilometers": 10.2,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 9,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 14.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.5
+      }
+    }
+  },
+  "C": {
+    "scenario_name": "Scenario_C_Traffic_congestion",
+    "disruptions_count": 0,
+    "urgent_orders_count": 0,
+    "methods": {
+      "Static OR-Tools": {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 76.0,
+        "total_distance_km": 173.13,
+        "total_fuel_liters": 58.78,
+        "total_co2_kg": 157.52,
+        "empty_kilometers": 48.28,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 1.0
+      },
+      "Rule-Based SWARMRoute": {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 76.0,
+        "total_distance_km": 173.13,
+        "total_fuel_liters": 58.78,
+        "total_co2_kg": 157.52,
+        "empty_kilometers": 48.28,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.5
+      },
+      "PPO-SWARMRoute": {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 76.0,
+        "total_distance_km": 173.13,
+        "total_fuel_liters": 58.78,
+        "total_co2_kg": 157.52,
+        "empty_kilometers": 48.28,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.5
+      }
+    }
+  },
+  "D": {
+    "scenario_name": "Scenario_D_Cloud_outage",
+    "disruptions_count": 1,
+    "urgent_orders_count": 0,
+    "methods": {
+      "Static OR-Tools": {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 76.0,
+        "total_distance_km": 173.13,
+        "total_fuel_liters": 58.78,
+        "total_co2_kg": 157.52,
+        "empty_kilometers": 48.28,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 1.0
+      },
+      "Rule-Based SWARMRoute": {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 76.0,
+        "total_distance_km": 173.13,
+        "total_fuel_liters": 58.78,
+        "total_co2_kg": 157.52,
+        "empty_kilometers": 48.28,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.0
+      },
+      "PPO-SWARMRoute": {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 76.0,
+        "total_distance_km": 173.13,
+        "total_fuel_liters": 58.78,
+        "total_co2_kg": 157.52,
+        "empty_kilometers": 48.28,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.0
+      }
+    }
+  },
+  "E": {
+    "scenario_name": "Scenario_E_Cloud_outage_+_truck_breakdown",
+    "disruptions_count": 2,
+    "urgent_orders_count": 0,
+    "methods": {
+      "Static OR-Tools": {
+        "delivery_success_pct": 80.0,
+        "on_time_delivery_pct": 56.0,
+        "total_distance_km": 146.69,
+        "total_fuel_liters": 50.37,
+        "total_co2_kg": 134.99,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 5,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 10.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 1.0
+      },
+      "Rule-Based SWARMRoute": {
+        "delivery_success_pct": 96.0,
+        "on_time_delivery_pct": 52.0,
+        "total_distance_km": 196.41,
+        "total_fuel_liters": 68.1,
+        "total_co2_kg": 182.51,
+        "empty_kilometers": 13.0,
+        "recovery_time_sec": 0.0038,
+        "failed_deliveries": 1,
+        "average_delay_mins": 285.09,
+        "vehicle_utilization_pct": 2.0,
+        "communication_overhead": 26,
+        "cloud_dependency": 0.0
+      },
+      "PPO-SWARMRoute": {
+        "delivery_success_pct": 80.0,
+        "on_time_delivery_pct": 56.0,
+        "total_distance_km": 146.69,
+        "total_fuel_liters": 50.37,
+        "total_co2_kg": 134.99,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 5,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 10.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.0
+      }
+    }
+  },
+  "F": {
+    "scenario_name": "Scenario_F_Cloud_outage_+_breakdown_+_traffic",
+    "disruptions_count": 2,
+    "urgent_orders_count": 0,
+    "methods": {
+      "Static OR-Tools": {
+        "delivery_success_pct": 80.0,
+        "on_time_delivery_pct": 56.0,
+        "total_distance_km": 146.69,
+        "total_fuel_liters": 50.37,
+        "total_co2_kg": 134.99,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 5,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 10.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 1.0
+      },
+      "Rule-Based SWARMRoute": {
+        "delivery_success_pct": 96.0,
+        "on_time_delivery_pct": 52.0,
+        "total_distance_km": 196.41,
+        "total_fuel_liters": 68.1,
+        "total_co2_kg": 182.51,
+        "empty_kilometers": 13.0,
+        "recovery_time_sec": 0.0007,
+        "failed_deliveries": 1,
+        "average_delay_mins": 285.09,
+        "vehicle_utilization_pct": 2.0,
+        "communication_overhead": 26,
+        "cloud_dependency": 0.0
+      },
+      "PPO-SWARMRoute": {
+        "delivery_success_pct": 80.0,
+        "on_time_delivery_pct": 56.0,
+        "total_distance_km": 146.69,
+        "total_fuel_liters": 50.37,
+        "total_co2_kg": 134.99,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 5,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 10.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.0
+      }
+    }
+  },
+  "G": {
+    "scenario_name": "Scenario_G_Sudden_demand_burst",
+    "disruptions_count": 0,
+    "urgent_orders_count": 4,
+    "methods": {
+      "Static OR-Tools": {
+        "delivery_success_pct": 48.3,
+        "on_time_delivery_pct": 34.5,
+        "total_distance_km": 139.59,
+        "total_fuel_liters": 48.06,
+        "total_co2_kg": 128.81,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 15,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 25.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 1.0
+      },
+      "Rule-Based SWARMRoute": {
+        "delivery_success_pct": 48.3,
+        "on_time_delivery_pct": 34.5,
+        "total_distance_km": 139.59,
+        "total_fuel_liters": 48.06,
+        "total_co2_kg": 128.81,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 15,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 25.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.5
+      },
+      "PPO-SWARMRoute": {
+        "delivery_success_pct": 48.3,
+        "on_time_delivery_pct": 34.5,
+        "total_distance_km": 139.59,
+        "total_fuel_liters": 48.06,
+        "total_co2_kg": 128.81,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 15,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 25.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.5
+      }
+    }
+  },
+  "H": {
+    "scenario_name": "Scenario_H_Combined_disruption",
+    "disruptions_count": 3,
+    "urgent_orders_count": 4,
+    "methods": {
+      "Static OR-Tools": {
+        "delivery_success_pct": 20.7,
+        "on_time_delivery_pct": 20.7,
+        "total_distance_km": 74.43,
+        "total_fuel_liters": 27.34,
+        "total_co2_kg": 73.26,
+        "empty_kilometers": 0.0,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 23,
+        "average_delay_mins": 0.0,
+        "vehicle_utilization_pct": 42.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 1.0
+      },
+      "Rule-Based SWARMRoute": {
+        "delivery_success_pct": 20.7,
+        "on_time_delivery_pct": 20.7,
+        "total_distance_km": 74.43,
+        "total_fuel_liters": 27.49,
+        "total_co2_kg": 73.67,
+        "empty_kilometers": 0.0,
+        "recovery_time_sec": 0.0016,
+        "failed_deliveries": 23,
+        "average_delay_mins": 0.0,
+        "vehicle_utilization_pct": 43.0,
+        "communication_overhead": 47,
+        "cloud_dependency": 0.0
+      },
+      "PPO-SWARMRoute": {
+        "delivery_success_pct": 20.7,
+        "on_time_delivery_pct": 20.7,
+        "total_distance_km": 74.43,
+        "total_fuel_liters": 27.34,
+        "total_co2_kg": 73.26,
+        "empty_kilometers": 0.0,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 23,
+        "average_delay_mins": 0.0,
+        "vehicle_utilization_pct": 42.0,
+        "communication_overhead": 0,
+        "cloud_dependency": 0.0
+      }
+    }
+  }
+}

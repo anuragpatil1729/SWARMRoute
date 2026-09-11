@@ -228,14 +228,51 @@ def calculate_average_delivery_delay(orders: Sequence[Order]) -> float:
     return round(sum(delays) / len(delays), 2)
 
 
-def calculate_empty_km(total_distance_km: float, loaded_distance_km: float) -> float:
-    """Calculates empty kilometers traveled."""
-    return round(max(0.0, total_distance_km - loaded_distance_km), 2)
+def calculate_recovery_rate(recovered_orders: int, stranded_orders: int) -> float:
+    """
+    Formula: (recovered_orders / max(1, stranded_orders)) * 100.0
+    Unit: Percentage (%)
+    Source: Decentralized recovery engine / simulation order lifecycle.
+    Edge cases: Returns 100.0 if stranded_orders == 0 (no disruption occurred).
+    """
+    if stranded_orders <= 0:
+        return 100.0
+    return round((max(0, recovered_orders) / stranded_orders) * 100.0, 1)
+
+
+def calculate_communication_overhead(mesh_or_messages: Any, recovered_orders: int = 1) -> Any:
+    """
+    Calculates communication overhead metrics.
+    Supports either passing a MeshNetwork instance directly or integer/float packet count.
+    
+    Returns:
+      - If MeshNetwork passed: dict with {"messages_exchanged", "bytes_transmitted", "overhead_per_order"}
+      - If int/float passed: float of messages per recovered order
+    """
+    if isinstance(mesh_or_messages, (int, float)):
+        if mesh_or_messages <= 0:
+            return 0.0
+        return round(float(mesh_or_messages) / max(1, recovered_orders), 2)
+
+    pkts = getattr(mesh_or_messages, "total_packets_transmitted", None)
+    if pkts is None:
+        msgs = getattr(mesh_or_messages, "transmitted_messages", [])
+        pkts = len(msgs)
+    
+    bytes_tx = getattr(mesh_or_messages, "total_bytes_transmitted", 0)
+    if bytes_tx == 0 and pkts > 0:
+        bytes_tx = pkts * 130  # Standard telemetry frame payload size
+
+    return {
+        "messages_exchanged": pkts,
+        "bytes_transmitted": bytes_tx,
+        "overhead_per_order": round(pkts / max(1, recovered_orders), 2) if pkts > 0 else 0.0,
+    }
 
 
 class AuthoritativeFleetMetrics(BaseModel):
     """
-    Centralized authoritative container for all 16 standardized empirical metrics.
+    Centralized authoritative container for all standardized empirical metrics.
     Guarantees that every reported metric originates strictly from the simulation.
     """
     total_distance_km: float = Field(default=0.0, description="Total distance traveled by active fleet (km)")
@@ -248,6 +285,12 @@ class AuthoritativeFleetMetrics(BaseModel):
     vehicle_utilization_pct: float = Field(default=0.0, description="Average capacity utilization percentage")
     empty_kilometers: float = Field(default=0.0, description="Distance driven with zero payload (km)")
     recovery_time_sec: float = Field(default=0.0, description="Wall-clock or simulation recovery time")
+    recovery_rate_pct: float = Field(default=0.0, description="Percentage of stranded orders absorbed and completed")
+    recovery_distance_km: float = Field(default=0.0, description="Additional distance incurred during recovery detours (km)")
+    recovery_fuel_liters: float = Field(default=0.0, description="Additional fuel burned by recovery detours (L)")
+    recovery_co2_kg: float = Field(default=0.0, description="Additional CO2 emitted by recovery detours (kg)")
+    communication_overhead: float = Field(default=0.0, description="Mesh messages exchanged per recovered order")
+    cloud_dependency: bool = Field(default=False, description="True if centralized cloud access was required for recovery")
     reassigned_deliveries_count: int = Field(default=0, description="Number of orders transferred between trucks")
     breakdowns_count: int = Field(default=0, description="Number of mechanical breakdown events")
     mesh_messages_count: int = Field(default=0, description="Total messages routed over wireless mesh")

@@ -289,3 +289,96 @@ def test_seed_reproducibility():
     assert seq1 == seq2
     assert seq1 != seq3
 
+
+def test_reward_decomposition_explainability():
+    """Verify that calculate_step_reward_decomposed returns consistent scalar and explainable dict."""
+    from src.rl.reward import calculate_step_reward_decomposed
+    
+    total, decomp = calculate_step_reward_decomposed(
+        new_deliveries=2,
+        new_on_time=2,
+        new_recoveries=1,
+        new_failed=0,
+        new_late=0,
+        delay_minutes=5.0,
+        incremental_distance_km=12.0,
+        incremental_fuel_liters=3.5,
+        incremental_co2_kg=9.2,
+        incremental_empty_km=1.5,
+        useful_repositioning=True,
+    )
+    
+    # Check that all expected keys exist
+    expected_keys = [
+        "delivery_reward", "ontime_reward", "recovery_reward",
+        "fuel_penalty", "distance_penalty", "delay_penalty", "failure_penalty", "total_reward"
+    ]
+    for k in expected_keys:
+        assert k in decomp
+    
+    assert total == decomp["total_reward"]
+    assert decomp["delivery_reward"] > 0.0
+    assert decomp["fuel_penalty"] > 0.0
+    assert decomp["recovery_reward"] > 0.0
+
+
+def test_scenario_generator_determinism_and_variance():
+    """Verify that scenario generator is deterministic per seed, and produces real variance across different seeds."""
+    from src.evaluation.scenario_generator import generate_benchmark_scenario
+    
+    scen_42_a = generate_benchmark_scenario(seed=42, dataset_name="C101", customers_count=20, vehicles_count=5)
+    scen_42_b = generate_benchmark_scenario(seed=42, dataset_name="C101", customers_count=20, vehicles_count=5)
+    scen_99 = generate_benchmark_scenario(seed=99, dataset_name="C101", customers_count=20, vehicles_count=5)
+    
+    brk_a = scen_42_a.get_breakdown_spec()
+    brk_b = scen_42_b.get_breakdown_spec()
+    brk_99 = scen_99.get_breakdown_spec()
+    
+    # Identical seeds must match exactly
+    assert brk_a.timestamp_mins == brk_b.timestamp_mins
+    assert brk_a.payload["vehicle_id"] == brk_b.payload["vehicle_id"]
+    
+    # Different seeds must produce variation in timing or vehicle
+    assert (brk_a.timestamp_mins != brk_99.timestamp_mins) or (brk_a.payload["vehicle_id"] != brk_99.payload["vehicle_id"])
+
+
+def test_observation_vector_bounded_and_leak_free():
+    """Verify that observation vector matches OBS_DIM, is finite, and strictly bounded with no NaN/Inf."""
+    env = SWARMRLEnv(dataset_name="C101", num_customers=15, num_vehicles=3, seed=42)
+    obs, info = env.reset(seed=42)
+    
+    assert obs.shape == (env.OBS_DIM,)
+    assert not np.isnan(obs).any()
+    assert not np.isinf(obs).any()
+    
+    # Check normalized bounds
+    assert np.all(obs >= -1.5)
+    assert np.all(obs <= 2.5)
+    
+    # Observation must dynamically change when state changes
+    v = env.env.fleet_state.vehicles[list(env.env.fleet_state.vehicles.keys())[0]]
+    v.status = VehicleStatus.BROKEN_DOWN
+    obs_after = env._get_observation()
+    assert not np.array_equal(obs, obs_after)
+
+
+def test_calculate_recovery_rate_and_communication_overhead():
+    """Verify recovery rate and communication overhead calculations."""
+    from src.evaluation.metrics import calculate_recovery_rate, calculate_communication_overhead
+    
+    # Recovery rate
+    rate = calculate_recovery_rate(recovered_orders=3, stranded_orders=4)
+    assert rate == 75.0
+    
+    rate_zero = calculate_recovery_rate(recovered_orders=0, stranded_orders=0)
+    assert rate_zero == 100.0  # No stranded orders means 100% operational intactness
+    
+    # Communication overhead
+    mesh = MeshNetwork(transmission_range_km=25.0, seed=42)
+    mesh.total_packets_transmitted = 18
+    mesh.total_bytes_transmitted = 2340
+    comm = calculate_communication_overhead(mesh)
+    assert comm["messages_exchanged"] == 18
+    assert comm["bytes_transmitted"] == 2340
+
+
