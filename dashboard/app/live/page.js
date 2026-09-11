@@ -6,6 +6,7 @@ import Section from "../../components/Section";
 import Stat from "../../components/Stat";
 import OpenStreetMap from "../../components/OpenStreetMap";
 import { useDashboardState } from "../../lib/useDashboardState";
+import { useAuth } from "../../lib/AuthContext";
 
 export default function LivePage() {
   const {
@@ -20,8 +21,30 @@ export default function LivePage() {
     injectTraffic,
     injectCombined,
   } = useDashboardState();
+  const { role } = useAuth();
 
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
+
+  // If a Delivery Partner visits Manager deck, guide them to their cockpit
+  if (role === "partner") {
+    return (
+      <div className="py-16 text-center max-w-lg mx-auto">
+        <div className="border border-slate-200 bg-white rounded-2xl shadow-sm p-8">
+          <span className="text-3xl">🛵</span>
+          <h2 className="text-lg font-bold text-slate-900 mt-2">Delivery Partner Account</h2>
+          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            You are logged in as a Delivery Partner. The Manager Dispatch Deck is reserved for central fleet operations.
+          </p>
+          <Link
+            href="/partner"
+            className="inline-block mt-4 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition shadow-xs"
+          >
+            Open My Partner Delivery Cockpit →
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Offline / Loading State Handling
   if (connectionStatus === "OFFLINE" && !state) {

@@ -4,21 +4,25 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../lib/AuthContext";
 
-const items = [
+const managerItems = [
   { href: "/", label: "Overview" },
   { href: "/fleet", label: "Fleet" },
   { href: "/orders", label: "Orders" },
   { href: "/network", label: "Network" },
   { href: "/ai", label: "AI / Decisions" },
   { href: "/benchmarks", label: "Analytics / Benchmark" },
-  { href: "/partner", label: "🛵 Partner Cockpit" },
+];
+
+const partnerItems = [
+  { href: "/partner", label: "🛵 My Deliveries & Active Route" },
 ];
 
 export default function Masthead() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, role, signOut, loading } = useAuth();
-  const isPartner = pathname === "/partner";
+  const isPartner = role === "partner";
+  const navItems = isPartner ? partnerItems : managerItems;
 
   const handleSignOut = async () => {
     try {
@@ -88,38 +92,12 @@ export default function Masthead() {
               </Link>
             </div>
           )}
-
-          {/* Quick role navigation switch */}
-          <div className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <Link
-              href="/"
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
-                !isPartner
-                  ? "bg-white text-blue-700 shadow-xs border border-slate-200"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <span>🏢</span>
-              <span>Manager</span>
-            </Link>
-            <Link
-              href="/partner"
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
-                isPartner
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <span>🛵</span>
-              <span>Partner</span>
-            </Link>
-          </div>
         </div>
       </div>
 
       <nav className="w-full px-4 sm:px-6 lg:px-10 border-t border-slate-100">
         <ul className="flex flex-wrap gap-x-6 text-[13px] font-medium">
-          {items.map((item) => {
+          {navItems.map((item) => {
             const active =
               item.href === "/"
                 ? pathname === "/" || pathname === "/live"

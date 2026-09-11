@@ -36,6 +36,27 @@ export default function DeliveryPartnerCockpit() {
     }
   }, [profile, state]);
 
+  // If a Manager visits Partner Cockpit, guide them back to Manager Deck
+  if (role === "manager") {
+    return (
+      <div className="py-16 text-center max-w-lg mx-auto">
+        <div className="border border-slate-200 bg-white rounded-2xl shadow-sm p-8">
+          <span className="text-3xl">🏢</span>
+          <h2 className="text-lg font-bold text-slate-900 mt-2">Company Manager Account</h2>
+          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            You are logged in as a Company Manager. The Delivery Cockpit is reserved for registered delivery riders.
+          </p>
+          <Link
+            href="/"
+            className="inline-block mt-4 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-xs"
+          >
+            Return to Manager Operational Overview →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (connectionStatus === "OFFLINE" && !state) {
     return (
       <div className="py-16 text-center">
