@@ -40,10 +40,18 @@ export function AuthProvider({ children }) {
       }
 
       if (data) {
-        setProfile(data);
+        const userCity = data.city || supabaseUser.user_metadata?.city || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || 'Bengaluru';
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('swarm_registered_city', userCity);
+        }
+        setProfile({ ...data, city: userCity });
       } else {
         // Fallback or self-heal: create profile from user_metadata if absent
         const meta = supabaseUser.user_metadata || {};
+        const userCity = meta.city || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || 'Bengaluru';
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('swarm_registered_city', userCity);
+        }
         const newProfile = {
           id: supabaseUser.id,
           email: supabaseUser.email,
@@ -52,6 +60,7 @@ export function AuthProvider({ children }) {
           phone: meta.phone || null,
           company_name: meta.company_name || 'SWARM Logistics',
           partner_id: meta.partner_id || null,
+          city: userCity,
         };
 
         const { data: inserted, error: insertError } = await supabase
@@ -70,12 +79,14 @@ export function AuthProvider({ children }) {
       console.error('Failed to load profile:', err);
       // Construct minimal fallback from user session metadata
       const meta = supabaseUser.user_metadata || {};
+      const userCity = meta.city || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || 'Bengaluru';
       setProfile({
         id: supabaseUser.id,
         email: supabaseUser.email,
         full_name: meta.full_name || supabaseUser.email || 'User',
         role: meta.role || 'manager',
         partner_id: meta.partner_id || null,
+        city: userCity,
       });
     } finally {
       setLoading(false);
@@ -119,10 +130,18 @@ export function AuthProvider({ children }) {
       password,
     });
     if (error) throw error;
+    if (data?.user?.user_metadata?.city && typeof window !== 'undefined') {
+      localStorage.setItem('swarm_registered_city', data.user.user_metadata.city);
+    }
     return data;
   };
 
-  const signUp = async ({ email, password, fullName, role, phone, companyName, partnerId }) => {
+  const signUp = async ({ email, password, fullName, role, phone, companyName, partnerId, city }) => {
+    const userCity = city?.trim() || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || 'Bengaluru';
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('swarm_registered_city', userCity);
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -133,6 +152,7 @@ export function AuthProvider({ children }) {
           phone: phone || null,
           company_name: companyName || null,
           partner_id: partnerId || null,
+          city: userCity,
         },
       },
     });
@@ -140,15 +160,29 @@ export function AuthProvider({ children }) {
 
     if (data.user) {
       // Upsert into public.profiles table
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        email: data.user.email,
-        full_name: fullName,
-        role: role || 'manager',
-        phone: phone || null,
-        company_name: companyName || null,
-        partner_id: partnerId || null,
-      });
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email: data.user.email,
+          full_name: fullName,
+          role: role || 'manager',
+          phone: phone || null,
+          company_name: companyName || null,
+          partner_id: partnerId || null,
+          city: userCity,
+        });
+      } catch (upsertErr) {
+        console.warn('Profiles upsert with city error, retrying without:', upsertErr);
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email: data.user.email,
+          full_name: fullName,
+          role: role || 'manager',
+          phone: phone || null,
+          company_name: companyName || null,
+          partner_id: partnerId || null,
+        }).catch((e) => console.warn('Secondary profile upsert error:', e));
+      }
     }
 
     return data;

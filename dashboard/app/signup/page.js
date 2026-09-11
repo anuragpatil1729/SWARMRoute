@@ -38,7 +38,7 @@ function SignupForm() {
 
   // Manager specific
   const [companyName, setCompanyName] = useState('');
-  const [operationsCity, setOperationsCity] = useState('Bengaluru');
+  const [operationsCity, setOperationsCity] = useState('');
 
   // Partner specific
   const [vehicleModel, setVehicleModel] = useState(VEHICLE_PRESETS[0].name);
@@ -99,6 +99,22 @@ function SignupForm() {
         }
       }
 
+      const registeredCity = (role === 'manager' ? operationsCity.trim() : 'Bengaluru') || 'Bengaluru';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('swarm_registered_city', registeredCity);
+      }
+
+      // Sync registered city with simulation engine
+      try {
+        await fetch('/api/simulation/city', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ city: registeredCity }),
+        });
+      } catch (cityErr) {
+        console.warn('Could not sync city with simulation runner:', cityErr);
+      }
+
       // 2. Sign up user via Supabase Auth
       await signUp({
         email,
@@ -108,6 +124,7 @@ function SignupForm() {
         phone,
         companyName: role === 'manager' ? companyName : 'Independent Fleet Contractor',
         partnerId: createdPartnerId,
+        city: registeredCity,
       });
 
       setSuccessMessage('Account registered successfully! Redirecting...');
@@ -290,8 +307,10 @@ function SignupForm() {
                     </label>
                     <input
                       type="text"
+                      required
                       value={operationsCity}
                       onChange={(e) => setOperationsCity(e.target.value)}
+                      placeholder="e.g. Mumbai, Delhi, Bengaluru, Pune"
                       className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     />
                   </div>
@@ -351,7 +370,7 @@ function SignupForm() {
 
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Home Base Hub (Bengaluru)
+                      Home Base Hub
                     </label>
                     <select
                       value={selectedHub}

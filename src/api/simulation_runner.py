@@ -133,6 +133,7 @@ class SimulationRunner:
         self.seed = 42
         self.horizon_mins = 1200.0
         self.step_size_mins = 2.0
+        self.city = "Bengaluru"
 
         # Core objects
         self.fleet_state: Optional[FleetState] = None
@@ -225,6 +226,13 @@ class SimulationRunner:
             except Exception:
                 self.ppo_agent = None
 
+    def set_city(self, city: str) -> None:
+        with self.lock:
+            if city and city.strip():
+                self.city = city.strip()
+                t = getattr(self.env, "current_time_mins", 0.0) if self.env else 0.0
+                self._log_event(t, "ADMIN", f"Operations city updated to {self.city}.")
+
     def reset(
         self,
         dataset: str = "C101",
@@ -232,9 +240,12 @@ class SimulationRunner:
         vehicles: int = 4,
         seed: int = 42,
         horizon: float = 1200.0,
+        city: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Resets the simulation session with configured parameters."""
         with self.lock:
+            if city and city.strip():
+                self.city = city.strip()
             self.dataset = dataset
             self.customers_count = max(5, min(100, customers))
             self.vehicles_count = max(2, min(25, vehicles))
@@ -1168,8 +1179,8 @@ class SimulationRunner:
                     "speed": self.speed,
                     "horizon": self.horizon_mins,
                     "step_size": self.step_size_mins,
-                    "city": "Bengaluru",
-                    "hub": "Bengaluru Central GIS Hub",
+                    "city": self.city,
+                    "hub": f"{self.city} Central GIS Hub",
                 },
                 "fleet": {
                     "size": fleet_size,

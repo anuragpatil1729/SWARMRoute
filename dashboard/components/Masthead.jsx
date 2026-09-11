@@ -61,8 +61,10 @@ export default function Masthead() {
                   <div className="text-xs font-bold text-slate-800 leading-tight">
                     {profile?.full_name || user.email?.split("@")[0]}
                   </div>
-                  <div className="text-[10px] text-slate-500 capitalize font-mono leading-tight">
-                    {role === "manager" ? "Company Manager" : "Delivery Partner"}
+                  <div className="text-[10px] text-slate-500 font-mono leading-tight">
+                    {role === "manager"
+                      ? `Company Manager${profile?.city ? ` · ${profile.city}` : ""}`
+                      : `Delivery Partner${profile?.city ? ` · ${profile.city}` : ""}`}
                   </div>
                 </div>
               </div>

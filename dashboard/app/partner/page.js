@@ -111,12 +111,14 @@ export default function DeliveryPartnerCockpit() {
 
   const activeId = selectedPartnerId || partnerProfiles[0]?.id || vehicles[0]?.id;
   const currentVehicle = vehicles.find((v) => v.id === activeId) || vehicles[0];
+  const partnerCity = profile?.city || user?.user_metadata?.city || (typeof window !== "undefined" ? localStorage.getItem("swarm_registered_city") : null) || "Bengaluru";
   const currentPartner = partnerProfiles.find((p) => p.id === activeId) || partnerProfiles[0] || {
     id: activeId || "PARTNER_01",
     name: profile?.full_name || "Delivery Partner",
     vehicle_model: "Electric Fleet Vehicle",
     registration: "KA-01-EQ-1024",
-    hub: "Bengaluru Hub",
+    hub: `${partnerCity} Central Hub`,
+    city: partnerCity,
     avatar: "🛵",
     rating: 5.0,
   };
@@ -230,7 +232,7 @@ export default function DeliveryPartnerCockpit() {
           <Stat
             label="Current Speed"
             value={`${Math.round(currentVehicle?.speed_kmh || 0)} km/h`}
-            help="Bengaluru Urban Cruise"
+            help={`${partnerCity} Urban Cruise`}
           />
           <Stat
             label="Cargo Load"
@@ -349,7 +351,7 @@ export default function DeliveryPartnerCockpit() {
 
                       {/* Delivery Address & Landmark */}
                       <div className="text-xs text-slate-800 font-medium mb-1">
-                        📍 {order.address || order.area || "Bengaluru Customer Destination"}
+                        📍 {order.address || order.area || `${partnerCity} Customer Destination`}
                       </div>
 
                       {/* Details row */}
@@ -404,10 +406,10 @@ export default function DeliveryPartnerCockpit() {
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <span>🗺️</span>
-                  <span>Live Turn-by-Turn Bengaluru GIS Navigation</span>
+                  <span>Live Turn-by-Turn {partnerCity} GIS Navigation</span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Tracking Rider {currentPartner.name} across Bengaluru logistics corridors.
+                  Tracking Rider {currentPartner.name} across {partnerCity} logistics corridors.
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs font-mono">
@@ -427,6 +429,7 @@ export default function DeliveryPartnerCockpit() {
               trafficEdges={traffic?.affected_roads || []}
               selectedVehicleId={selectedPartnerId}
               onSelectVehicle={(vid) => setSelectedPartnerId(vid)}
+              activeCity={partnerCity}
             />
 
             {/* Peer Swarm Mesh Status Bar */}

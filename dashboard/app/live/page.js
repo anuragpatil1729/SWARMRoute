@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Section from "../../components/Section";
 import Stat from "../../components/Stat";
@@ -21,9 +21,25 @@ export default function LivePage() {
     injectTraffic,
     injectCombined,
   } = useDashboardState();
-  const { role } = useAuth();
+  const { user, profile, role } = useAuth();
 
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
+
+  // Dynamic operations city registered by admin
+  const registeredCity = profile?.city || user?.user_metadata?.city;
+  const [adminCity, setAdminCity] = useState("Bengaluru");
+
+  useEffect(() => {
+    if (registeredCity) {
+      setAdminCity(registeredCity);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("swarm_registered_city", registeredCity);
+      }
+    } else if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("swarm_registered_city");
+      if (stored) setAdminCity(stored);
+    }
+  }, [registeredCity]);
 
   // If a Delivery Partner visits Manager deck, guide them to their cockpit
   if (role === "partner") {
@@ -273,7 +289,7 @@ export default function LivePage() {
               <div>
                 <h3 className="text-sm font-bold text-slate-900 uppercase font-mono flex items-center gap-2">
                   <span>🗺️</span>
-                  <span>Live GIS Fleet Map — {simulation?.city ? `${simulation.city} Operations` : simulation?.hub || simulation?.scenario || "Active Fleet Operations"}</span>
+                  <span>Live GIS Fleet Map — {adminCity.toUpperCase()} OPERATIONS</span>
                 </h3>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
                   Click any vehicle to inspect real-time telematics on demand
@@ -305,6 +321,7 @@ export default function LivePage() {
                 trafficEdges={mapData?.traffic_edges || []}
                 selectedVehicleId={selectedVehicleId}
                 onSelectVehicle={(vid) => setSelectedVehicleId(vid)}
+                activeCity={adminCity}
               />
             </div>
           </div>

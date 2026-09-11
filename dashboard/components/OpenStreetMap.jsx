@@ -41,7 +41,97 @@ export const CITIES = {
     hubName: "Hyderabad Cargo Gateway (HITEC City / Gachibowli)",
     zoom: 13,
   },
+  Pune: {
+    name: "Pune (MH)",
+    lat: 18.5204,
+    lng: 73.8567,
+    hubName: "Pune Logistics Hub (Hinjawadi / Shivaji Nagar)",
+    zoom: 13,
+  },
+  Chennai: {
+    name: "Chennai (TN)",
+    lat: 13.0827,
+    lng: 80.2707,
+    hubName: "Chennai Freight Terminal (Guindy / Ambattur)",
+    zoom: 13,
+  },
+  Kolkata: {
+    name: "Kolkata (WB)",
+    lat: 22.5726,
+    lng: 88.3639,
+    hubName: "Kolkata Central Depot (Salt Lake / Rajarhat)",
+    zoom: 13,
+  },
+  Ahmedabad: {
+    name: "Ahmedabad (GJ)",
+    lat: 23.0225,
+    lng: 72.5714,
+    hubName: "Ahmedabad Cargo Hub (Sanand / Changodar)",
+    zoom: 13,
+  },
+  Jaipur: {
+    name: "Jaipur (RJ)",
+    lat: 26.9124,
+    lng: 75.7873,
+    hubName: "Jaipur Logistics Terminal (Sitapura / Mansarovar)",
+    zoom: 13,
+  },
+  Surat: {
+    name: "Surat (GJ)",
+    lat: 21.1702,
+    lng: 72.8311,
+    hubName: "Surat Central Dispatch Hub (Udhna / Sachin)",
+    zoom: 13,
+  },
+  Lucknow: {
+    name: "Lucknow (UP)",
+    lat: 26.8467,
+    lng: 80.9462,
+    hubName: "Lucknow Transport Nagar Depot",
+    zoom: 13,
+  },
+  Indore: {
+    name: "Indore (MP)",
+    lat: 22.7196,
+    lng: 75.8577,
+    hubName: "Indore Logistics Park (Pithampur / Vijay Nagar)",
+    zoom: 13,
+  },
+  Chandigarh: {
+    name: "Chandigarh (PB/HR)",
+    lat: 30.7333,
+    lng: 76.7794,
+    hubName: "Chandigarh Industrial Area Phase 1",
+    zoom: 13,
+  },
+  Kochi: {
+    name: "Kochi (KL)",
+    lat: 9.9312,
+    lng: 76.2673,
+    hubName: "Kochi Marine & Cargo Hub (Willingdon / Edappally)",
+    zoom: 13,
+  },
 };
+
+export function getCityConfig(cityName) {
+  if (!cityName) return { key: "Bengaluru", ...CITIES.Bengaluru };
+  const clean = cityName.trim();
+  const lower = clean.toLowerCase();
+  for (const [key, c] of Object.entries(CITIES)) {
+    if (key.toLowerCase() === lower || c.name.toLowerCase().includes(lower)) {
+      return { key, ...c };
+    }
+  }
+  // Generic fallback for any other custom city registered by admin
+  return {
+    key: clean,
+    name: `${clean} Operations`,
+    lat: 20.5937,
+    lng: 78.9629,
+    hubName: `${clean} Central Logistics Hub`,
+    zoom: 12,
+  };
+}
 
 function toLatLng(x, y, city = CITIES.Bengaluru) {
   const lat = city.lat + (y - 50) * 0.003;
@@ -59,11 +149,21 @@ export default function OpenStreetMap({
   selectedVehicleId = null,
   onSelectVehicle = null,
   onSelectOrder = null,
+  activeCity = null,
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const [selectedCityKey, setSelectedCityKey] = useState("Bengaluru");
-  const selectedCity = CITIES[selectedCityKey] || CITIES.Bengaluru;
+
+  const initialResolved = activeCity ? getCityConfig(activeCity) : { key: "Bengaluru", ...CITIES.Bengaluru };
+  const [selectedCityKey, setSelectedCityKey] = useState(initialResolved.key);
+  const selectedCity = CITIES[selectedCityKey] || getCityConfig(selectedCityKey);
+
+  useEffect(() => {
+    if (activeCity) {
+      const resolved = getCityConfig(activeCity);
+      setSelectedCityKey(resolved.key);
+    }
+  }, [activeCity]);
 
   const layersRef = useRef({
     routes: [],
@@ -378,6 +478,11 @@ export default function OpenStreetMap({
               {c.name}
             </option>
           ))}
+          {!CITIES[selectedCityKey] && selectedCity && (
+            <option value={selectedCityKey}>
+              {selectedCity.name || selectedCityKey}
+            </option>
+          )}
         </select>
       </div>
 

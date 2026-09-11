@@ -4,9 +4,13 @@ import { useState } from "react";
 import Section from "../../components/Section";
 import Stat from "../../components/Stat";
 import { useDashboardState } from "../../lib/useDashboardState";
+import { useAuth } from "../../lib/AuthContext";
 
 export default function OrdersPage() {
   const { state, connectionStatus, allocateTask, completeTask } = useDashboardState();
+  const { profile, user } = useAuth();
+  const adminCity = profile?.city || user?.user_metadata?.city || (typeof window !== "undefined" ? localStorage.getItem("swarm_registered_city") : null) || state?.simulation?.city || "Operations";
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
 
@@ -75,7 +79,7 @@ export default function OrdersPage() {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Detailed stop windows, delivery deadlines, assigned partner trucks, and real-time transit status across Bengaluru.
+              Detailed stop windows, delivery deadlines, assigned partner trucks, and real-time transit status across {adminCity}.
             </p>
           </div>
 
@@ -149,7 +153,7 @@ export default function OrdersPage() {
               <option value="">-- Choose Order --</option>
               {orders.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.id} ({o.demand}kg) · {o.area || "Bengaluru Hub"} [{o.status}]
+                  {o.id} ({o.demand}kg) · {o.area || `${adminCity} Hub`} [{o.status}]
                 </option>
               ))}
             </select>

@@ -44,6 +44,11 @@ class ResetRequest(BaseModel):
     vehicles: int = 4
     seed: int = 42
     horizon: float = 1200.0
+    city: Optional[str] = None
+
+
+class CityRequest(BaseModel):
+    city: str
 
 
 class SpeedRequest(BaseModel):
@@ -146,7 +151,14 @@ def reset_simulation(req: Optional[ResetRequest] = None) -> Dict[str, Any]:
         vehicles=req.vehicles,
         seed=req.seed,
         horizon=req.horizon,
+        city=req.city,
     )
+
+
+@app.post("/api/simulation/city")
+def set_simulation_city(req: CityRequest) -> Dict[str, Any]:
+    runner.set_city(req.city)
+    return {"status": "SUCCESS", "city": runner.city}
 
 
 @app.post("/api/simulation/speed")

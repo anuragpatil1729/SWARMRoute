@@ -9,10 +9,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     phone TEXT,
     company_name TEXT,
     vehicle_id TEXT,
-    avatar TEXT DEFAULT '👤',
+    city TEXT DEFAULT 'Bengaluru',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS city TEXT DEFAULT 'Bengaluru';
 
 -- 2. Enhance delivery_partners table with user linkage
 ALTER TABLE public.delivery_partners
