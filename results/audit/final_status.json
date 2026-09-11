@@ -45,7 +45,7 @@
       "verified": true
     },
     "gymnasium_rl_environment": {
-      "observation_dim": 19,
+      "observation_dim": 25,
       "action_dim": 5,
       "strict_information_barrier": true,
       "verified": true

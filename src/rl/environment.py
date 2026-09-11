@@ -177,7 +177,7 @@ class SWARMRLEnv(gym.Env):
 
     def _get_observation(self) -> np.ndarray:
         """
-        Builds a 24-dimensional normalized local observation vector.
+        Builds a 25-dimensional normalized local observation vector.
         Contains dynamic local features with zero global oracle or unrevealed disruption leakage.
         """
         if self.env is None or not self.env.fleet_state.vehicles:

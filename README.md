@@ -2,35 +2,33 @@
 
 SWARMRoute is an AI-driven, decentralized logistics fleet platform engineered to predict dynamic conditions, optimize multi-vehicle delivery schedules, dynamically reposition idle vehicles, and achieve autonomous self-healing recovery during disruptions—including vehicle breakdowns, sudden traffic gridlock, and Internet / cloud outages—using truck-to-truck mesh communication and PPO reinforcement learning.
 
+> [!NOTE]
+> **Software Simulation Project Scope**: SWARMRoute is a pure software simulation research platform. Wireless peer-to-peer ad-hoc mesh communication, vehicle physical movement, fuel burn kinematics, sensor telemetry, and traffic congestion events are simulated via discrete-event numerical models. Physical radio transceivers (DSRC / 802.11p OBUs, LoRa/ESP32 chips, real GPS antennas) and commercial live traffic APIs (Google Maps / HERE) are outside the current software simulation scope.
+
 ---
 
 ## System Status & Scope Classification
 
 To ensure scientific honesty and rigor, the system boundaries are strictly defined:
 
-### 1. IMPLEMENTED (Core Algorithmic & Simulation Modules)
+### 1. IMPLEMENTED & VERIFIED (Core Algorithmic & Simulation Modules)
 * **CVRPTW Optimization Engine**: Google OR-Tools exact/heuristic solver supporting vehicle capacity, customer delivery time windows, pickup-and-delivery disjunctions, and route balancing.
 * **Physics-Based Energy & Fuel Kinematics**: Aerodynamic drag, rolling resistance, engine idling, payload scaling, and stoichiometric combustion ($2.68\text{ kg CO}_2/\text{L}$).
 * **Dynamic Discrete-Event Simulator**: Real closed-loop discrete simulation (`FleetSimulationEnvironment`) tracking continuous edge progression, traffic-induced speed changes, fuel burn, cargo loading/unloading, and order lifecycle states (`PENDING`, `IN_TRANSIT`, `DELIVERED`, `LATE`, `FAILED`, `REASSIGNED`).
-* **Multi-Hop RF Mesh Network**: Peer-to-peer radio propagation model (`MeshNetwork`) with Euclidean transmission range limits, Dijkstra shortest-path ad-hoc message forwarding, stochastic link drop rates, and per-hop latency.
+* **Multi-Hop RF Mesh Network (Software Simulated)**: Peer-to-peer radio propagation model (`MeshNetwork`) with Euclidean transmission range limits, Dijkstra shortest-path ad-hoc message forwarding, stochastic link drop rates, and per-hop latency.
 * **Decentralized Multi-Agent Recovery**: Contract-net bidding protocol (`TruckAgent`, `FleetAgent`) with explicit bid messages (`order_id`, `bidder_vehicle_id`, `detour_km`, `additional_fuel`, `additional_co2`, `capacity_remaining`) and deterministic winner selection.
 * **Machine Learning Prediction Models**: Scikit-Learn regression pipelines for travel time prediction (`TravelTimePredictor`), dynamic fuel consumption (`FuelConsumptionPredictor`), and spatial demand estimation (`DemandPredictor`).
-* **Gymnasium RL Environment**: Standard Gymnasium environment (`SWARMRLEnv`) featuring a 25-dimensional normalized observation vector, 5-dimensional action space with action masking, and an isolated multi-objective step reward module (`src/rl/reward.py`).
-* **PPO Reinforcement Learning Agent**: Stable-Baselines3 PPO integration (`PPOFleetAgent`) for active fleet-wide decision making under local information constraints.
+* **Gymnasium RL Environment**: Standard Gymnasium environment (`SWARMRLEnv`) featuring a strictly verified **25-dimensional normalized observation vector**, 5-dimensional action space with action masking, and an isolated multi-objective step reward module (`src/rl/reward.py`).
+* **PPO Reinforcement Learning Agent**: Stable-Baselines3 PPO integration (`PPOFleetAgent`) trained for 50,000 timesteps for active fleet-wide decision making under local information constraints.
+* **Standardized Scenario Generator**: Reproducible benchmark scenario generator (`scenario_generator.py`) with seed-dependent perturbation of breakdown vehicles, timings, traffic spikes, and dynamic orders.
+* **Full Unit & Integration Test Suite**: **60 automated unit and regression tests** passing with 100% compliance across physics, networking, RL environment contracts, ML prediction, and scenario generation layers.
 
-### 2. VALIDATED (Backed by Reproducible Experiments & Rigorous Tests)
-* **Fair 6-Way Multi-Seed Benchmarking**: Nearest Neighbor, Static OR-Tools, OR-Tools + ML Prediction, Rule-Based Decentralized SWARMRoute, PPO Policy Agent, and Random Policy evaluated under identical seed-controlled disruption scenarios with measured cross-seed variance.
-* **PPO Predictor Ablation Study**: Rigorous evaluation of PPO across 5 configurations (No ML, +Travel Time, +Fuel, +Demand, Full SWARMRoute) demonstrating contribution of ML modules.
-* **Scenario-Specific Disruption Benchmark (A through H)**: Evaluated 3 routing paradigms across 8 distinct stress profiles (single/dual breakdowns, severe arterial congestion, total cloud blackouts, urgent dynamic bursts, and compound cascading failures).
-* **Decentralized Self-Healing under Cloud Outage**: Zero-cloud recovery via peer-to-peer mesh verified to preserve un-interrupted deliveries when centralized cloud dispatch fails.
-* **Full Unit & Integration Test Suite**: 59 automated unit and regression tests passing with 100% compliance across physics, networking, RL environment, ML prediction, and scenario generation layers.
-
-### 3. EXPERIMENTAL (Active Research / Trade-off Exploration)
+### 2. EXPERIMENTAL (Active Research / Trade-off Exploration)
 * **PPO Autonomous Control**: PPO policy trained over 50,000 steps to choose order assignment, stranded order recovery, transfer acceptance, proactive repositioning, and hold actions. While PPO actively navigates trade-offs without centralized coordinators, rule-based contract-net heuristics currently achieve higher recovery efficiency in deterministic dispatching.
 * **ML-Informed Optimization**: Travel time and fuel predictors actively injected into OR-Tools routing cost matrices and time window propagation, trading minor distance increases for on-time delivery resilience.
 * **Predictive Fleet Positioning**: Proactive relocation of idle trucks toward forecasted customer demand zones (`PredictiveFleetPositioner`), demonstrating customer response time reductions under bursty order arrivals.
 
-### 4. NOT YET IMPLEMENTED (Future Work)
+### 3. NOT IMPLEMENTED / FUTURE WORK (Outside Current Simulation Scope)
 * **Physical Hardware Mesh**: Real physical 802.11p, DSRC, or LoRa radio transceivers deployed in vehicle OBUs.
 * **Live Commercial Traffic APIs**: Real-time Google Maps / HERE live traffic ingestion (currently simulated via multi-level dynamic Poisson traffic models).
 * **OpenStreetMap (OSM) Deployment**: Full-scale street-level road network graph ingestion and real-world multi-city routing.

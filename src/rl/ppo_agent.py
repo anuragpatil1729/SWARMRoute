@@ -141,16 +141,17 @@ class PPOFleetAgent:
         action, _ = self.model.predict(observation, deterministic=deterministic)
         return int(action)
 
-    def evaluate(self, env: Optional[SWARMRLEnv] = None, num_episodes: int = 3) -> Dict[str, float]:
+    def evaluate(self, env: Optional[SWARMRLEnv] = None, num_episodes: int = 3, n_episodes: Optional[int] = None) -> Dict[str, float]:
         """Runs deterministic evaluation across episodes."""
         eval_env = env or self.env
         if eval_env is None or self.model is None:
             return {"mean_reward": 0.0, "std_reward": 0.0}
 
+        ep_count = n_episodes if n_episodes is not None else num_episodes
         episode_rewards = []
         episode_deliveries = []
 
-        for _ in range(num_episodes):
+        for _ in range(ep_count):
             obs, info = eval_env.reset()
             done = False
             total_r = 0.0

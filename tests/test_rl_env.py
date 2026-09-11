@@ -41,3 +41,53 @@ def test_gym_environment_infeasible_penalty():
     next_obs, reward, terminated, truncated, step_info = env.step(1)
     # Reward must include the infeasible penalty (-12.5)
     assert reward <= -12.5
+
+
+def test_observation_dimension_contract():
+    """Strict regression test ensuring observation space is exactly 25-dimensional."""
+    env = SWARMRLEnv(dataset_name="C101", num_customers=15, num_vehicles=3, seed=42)
+    obs, info = env.reset(seed=42)
+    
+    # Fundamental dimension contract
+    assert SWARMRLEnv.OBS_DIM == 25
+    assert env.observation_space.shape == (25,)
+    assert obs.shape == (25,)
+    assert len(obs) == 25
+    
+    # Check that each feature element is finite and within physical bounds
+    # [0] t_norm (0..2)
+    assert 0.0 <= obs[0] <= 2.0
+    # [1, 2] x_norm, y_norm (0..1)
+    assert 0.0 <= obs[1] <= 1.0
+    assert 0.0 <= obs[2] <= 1.0
+    # [3] cap_rem_norm (0..1)
+    assert 0.0 <= obs[3] <= 1.0
+    # [4] load_norm (0..1)
+    assert 0.0 <= obs[4] <= 1.0
+    # [5] fuel_norm (0..1)
+    assert 0.0 <= obs[5] <= 1.0
+    # [6] traffic_norm (0..1)
+    assert 0.0 <= obs[6] <= 1.0
+    # [7] stranded_norm (0..1)
+    assert 0.0 <= obs[7] <= 1.0
+    # [8] avail_norm (0..1)
+    assert 0.0 <= obs[8] <= 1.0
+    # [9] broken_norm (0..1)
+    assert 0.0 <= obs[9] <= 1.0
+    # [10] mesh_neighbors_norm (0..1)
+    assert 0.0 <= obs[10] <= 1.0
+    # [11] conn_code (0, 0.5, 1.0)
+    assert obs[11] in (0.0, 0.5, 1.0)
+    # [12] pred_demand_norm (0..1)
+    assert 0.0 <= obs[12] <= 1.0
+    # [13] route_prog_norm (0..1)
+    assert 0.0 <= obs[13] <= 1.0
+    # [14] rem_stops_norm (0..2)
+    assert 0.0 <= obs[14] <= 2.0
+    # [15] urgency_norm (-1..2)
+    assert -1.0 <= obs[15] <= 2.0
+    # [16..24] 3 candidates * 3 features = 9 features
+    cand_features = obs[16:25]
+    assert len(cand_features) == 9
+    assert not np.isnan(cand_features).any()
+
