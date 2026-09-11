@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DASHBOARD_DATA_DIR = PROJECT_ROOT / "swarmroute-dashboard" / "lib" / "data"
+DASHBOARD_DATA_DIR = PROJECT_ROOT / "dashboard" / "lib" / "data"
 
 SYNC_MAPPINGS = [
     {

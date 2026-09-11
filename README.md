@@ -188,7 +188,7 @@ SWARMRoute/
 │   ├── sync_dashboard_data.py  # Syncs empirical results to web dashboard
 │   ├── evaluate_predictive_positioning.py # Proactive positioning evaluator
 │   └── run_simulation.py       # General discrete-event simulation
-├── swarmroute-dashboard/       # Interactive Next.js web application dashboard
+├── dashboard/                  # Interactive Next.js web application dashboard
 ├── tests/                      # 95 automated unit and integration tests (100% passing)
 ├── results/                    # Generated benchmarks, models, logs, and plots
 └── README.md
@@ -211,7 +211,7 @@ Executes complete 14-stage simulation with explicit labeled architectural tags: 
 
 ### 3. Launch Interactive Web Dashboard (Next.js)
 ```bash
-cd swarmroute-dashboard
+cd dashboard
 npm install
 npm run dev
 ```
