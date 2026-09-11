@@ -83,7 +83,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 py-12">
+    <div className="w-full flex flex-col justify-center items-center py-6">
       <div className="w-full max-w-md">
         {/* Header Branding */}
         <div className="text-center mb-6">
@@ -243,6 +243,6 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-    </main>
+    </div>
   );
 }

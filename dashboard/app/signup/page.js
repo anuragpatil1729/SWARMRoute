@@ -150,7 +150,7 @@ function SignupForm() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 py-12">
+    <div className="w-full flex flex-col justify-center items-center py-6">
       <div className="w-full max-w-xl">
         {/* Header Branding */}
         <div className="text-center mb-6">
@@ -429,7 +429,7 @@ function SignupForm() {
           </Link>
         </p>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -437,9 +437,9 @@ export default function SignupPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-400 font-mono text-xs">
+        <div className="w-full py-12 flex items-center justify-center text-slate-400 font-mono text-xs">
           Loading Registration Portal...
-        </main>
+        </div>
       }
     >
       <SignupForm />

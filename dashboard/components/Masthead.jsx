@@ -22,7 +22,7 @@ export default function Masthead() {
   const router = useRouter();
   const { user, profile, role, signOut, loading } = useAuth();
   const isPartner = role === "partner";
-  const navItems = isPartner ? partnerItems : managerItems;
+  const navItems = (!user || loading) ? [] : isPartner ? partnerItems : managerItems;
 
   const handleSignOut = async () => {
     try {
@@ -82,13 +82,21 @@ export default function Masthead() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200"
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border ${
+                  pathname === "/login"
+                    ? "bg-blue-50 text-blue-700 border-blue-200 shadow-xs"
+                    : "text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border-slate-200"
+                }`}
               >
                 Sign In
               </Link>
               <Link
                 href="/signup"
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-xs"
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors shadow-xs ${
+                  pathname === "/signup"
+                    ? "bg-blue-700 text-white ring-2 ring-blue-300"
+                    : "text-white bg-blue-600 hover:bg-blue-700"
+                }`}
               >
                 Register
               </Link>
@@ -97,30 +105,32 @@ export default function Masthead() {
         </div>
       </div>
 
-      <nav className="w-full px-4 sm:px-6 lg:px-10 border-t border-slate-100">
-        <ul className="flex flex-wrap gap-x-6 text-[13px] font-medium">
-          {navItems.map((item) => {
-            const active =
-              item.href === "/"
-                ? pathname === "/" || pathname === "/live"
-                : pathname.startsWith(item.href);
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`inline-block py-2.5 border-b-2 -mb-px transition-colors ${
-                    active
-                      ? "border-blue-600 text-blue-600 font-semibold"
-                      : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {navItems.length > 0 && (
+        <nav className="w-full px-4 sm:px-6 lg:px-10 border-t border-slate-100">
+          <ul className="flex flex-wrap gap-x-6 text-[13px] font-medium">
+            {navItems.map((item) => {
+              const active =
+                item.href === "/"
+                  ? pathname === "/" || pathname === "/live"
+                  : pathname.startsWith(item.href);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={`inline-block py-2.5 border-b-2 -mb-px transition-colors ${
+                      active
+                        ? "border-blue-600 text-blue-600 font-semibold"
+                        : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      )}
     </header>
   );
 }
