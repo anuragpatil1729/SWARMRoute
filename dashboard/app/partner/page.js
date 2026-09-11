@@ -109,19 +109,32 @@ export default function DeliveryPartnerCockpit() {
         avatar: "🛵",
       })));
 
-  const activeId = selectedPartnerId || partnerProfiles[0]?.id || vehicles[0]?.id;
-  const currentVehicle = vehicles.find((v) => v.id === activeId) || vehicles[0];
+  const isDeliveryPartner = role === "partner";
   const partnerCity = profile?.city || user?.user_metadata?.city || (typeof window !== "undefined" ? localStorage.getItem("swarm_registered_city") : null) || "Bengaluru";
-  const currentPartner = partnerProfiles.find((p) => p.id === activeId) || partnerProfiles[0] || {
-    id: activeId || "PARTNER_01",
-    name: profile?.full_name || "Delivery Partner",
-    vehicle_model: "Electric Fleet Vehicle",
-    registration: "KA-01-EQ-1024",
-    hub: `${partnerCity} Central Hub`,
-    city: partnerCity,
-    avatar: "🛵",
-    rating: 5.0,
-  };
+  const partnerName = profile?.full_name || user?.user_metadata?.full_name || "Delivery Partner";
+  const partnerVehicle = profile?.vehicle_model || user?.user_metadata?.vehicle_model || "Tata Ace EV (Mini Truck)";
+  const partnerPlate = profile?.registration || user?.user_metadata?.registration || "KA-01-EQ-1024";
+  const partnerHub = profile?.hub || user?.user_metadata?.hub || `${partnerCity} Logistics Hub`;
+  const partnerId = profile?.partner_id || profile?.vehicle_id || user?.user_metadata?.partner_id || "TRUCK_01";
+
+  const currentPartner = isDeliveryPartner
+    ? {
+        id: partnerId,
+        name: partnerName,
+        phone: profile?.phone || user?.user_metadata?.phone || "—",
+        vehicle_model: partnerVehicle,
+        registration: partnerPlate,
+        hub: partnerHub,
+        city: partnerCity,
+        avatar: "🛵",
+        rating: 5.0,
+      }
+    : (partnerProfiles.find((p) => p.id === (selectedPartnerId || partnerProfiles[0]?.id)) || partnerProfiles[0]);
+
+  const activeId = isDeliveryPartner
+    ? (partnerId || vehicles[0]?.id)
+    : (selectedPartnerId || partnerProfiles[0]?.id || vehicles[0]?.id);
+  const currentVehicle = vehicles.find((v) => v.id === activeId || v.id === "TRUCK_01") || vehicles[0];
 
   // Filter orders assigned to this rider
   const myOrders = orders.filter((o) => o.assigned_vehicle === activeId);
@@ -186,24 +199,26 @@ export default function DeliveryPartnerCockpit() {
             </div>
           </div>
 
-          {/* Switch Active Partner View */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-slate-600">Select Rider:</span>
-            {partnerProfiles.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setSelectedPartnerId(p.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                  activeId === p.id
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                <span>{p.avatar || "🛵"}</span>
-                <span>{p.name.split(" ")[0]}</span>
-              </button>
-            ))}
-          </div>
+          {/* Switch Active Partner View - only for preview/simulation mode */}
+          {!isDeliveryPartner && partnerProfiles.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-slate-600">Select Rider:</span>
+              {partnerProfiles.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPartnerId(p.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                    activeId === p.id
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  <span>{p.avatar || "🛵"}</span>
+                  <span>{p.name.split(" ")[0]}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Action Feedback Banner */}

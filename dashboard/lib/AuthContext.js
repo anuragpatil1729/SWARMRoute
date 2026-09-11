@@ -44,7 +44,15 @@ export function AuthProvider({ children }) {
         if (typeof window !== 'undefined') {
           localStorage.setItem('swarm_registered_city', userCity);
         }
-        setProfile({ ...data, city: userCity });
+        const meta = supabaseUser.user_metadata || {};
+        setProfile({
+          ...data,
+          city: userCity,
+          vehicle_model: meta.vehicle_model || data.vehicle_model || null,
+          registration: meta.registration || data.registration || null,
+          hub: meta.hub || data.hub || null,
+          partner_id: meta.partner_id || data.vehicle_id || null,
+        });
       } else {
         // Fallback or self-heal: create profile from user_metadata if absent
         const meta = supabaseUser.user_metadata || {};
@@ -60,6 +68,10 @@ export function AuthProvider({ children }) {
           phone: meta.phone || null,
           company_name: meta.company_name || 'SWARM Logistics',
           partner_id: meta.partner_id || null,
+          vehicle_id: meta.partner_id || null,
+          vehicle_model: meta.vehicle_model || null,
+          registration: meta.registration || null,
+          hub: meta.hub || null,
           city: userCity,
         };
 
@@ -145,7 +157,19 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  const signUp = async ({ email, password, fullName, role, phone, companyName, partnerId, city }) => {
+  const signUp = async ({
+    email,
+    password,
+    fullName,
+    role,
+    phone,
+    companyName,
+    partnerId,
+    city,
+    vehicleModel,
+    registration,
+    hub,
+  }) => {
     const userCity = city?.trim() || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || 'Bengaluru';
     if (typeof window !== 'undefined') {
       localStorage.setItem('swarm_registered_city', userCity);
@@ -161,6 +185,10 @@ export function AuthProvider({ children }) {
           phone: phone || null,
           company_name: companyName || null,
           partner_id: partnerId || null,
+          vehicle_id: partnerId || null,
+          vehicle_model: vehicleModel || null,
+          registration: registration || null,
+          hub: hub || null,
           city: userCity,
         },
       },

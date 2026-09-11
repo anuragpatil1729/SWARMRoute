@@ -127,6 +127,9 @@ function SignupForm() {
         companyName: role === 'manager' ? companyName : 'Independent Fleet Contractor',
         partnerId: createdPartnerId,
         city: registeredCity,
+        vehicleModel: role === 'partner' ? vehicleModel : null,
+        registration: role === 'partner' ? registrationPlate.trim().toUpperCase() : null,
+        hub: role === 'partner' ? selectedHub : null,
       });
 
       setSuccessMessage('Account registered successfully! Redirecting...');
@@ -234,7 +237,7 @@ function SignupForm() {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder={role === 'manager' ? 'Aarav Sharma' : 'Rajesh Kumar'}
+                  placeholder="Enter your full name"
                   className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 />
               </div>
