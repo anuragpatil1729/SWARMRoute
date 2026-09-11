@@ -1,6 +1,6 @@
 from __future__ import annotations
 import math
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 import numpy as np
 
 try:
@@ -10,18 +10,19 @@ except ImportError:
     import gym
     from gym import spaces
 
-from src.models.fleet_state import FleetState, ConnectivityState
-from src.models.vehicle import Vehicle, VehicleStatus
+from src.models.fleet_state import ConnectivityState
+from src.models.vehicle import VehicleStatus
 from src.models.order import Order, OrderStatus
-from src.models.road import RoadNetwork, TrafficLevel
+from src.models.road import TrafficLevel
 from src.simulation.environment import FleetSimulationEnvironment
+from src.simulation.events import FleetEvent, EventType
 from src.data.loaders.solomon import load_solomon_benchmark
 from src.prediction.fuel import DeterministicFuelModel
 from src.prediction.travel_time import TravelTimePredictor
+from src.prediction.fuel_ml import FuelConsumptionPredictor
 from src.prediction.demand import DemandPredictor
 from src.optimization.predictive_positioning import PredictiveFleetPositioner
 from src.networking.mesh import MeshNetwork
-from src.simulation.events import FleetEvent, EventType
 from src.rl.reward import MultiObjectiveRewardConfig, FleetRewardCalculator, RewardConfig
 # Action Constants
 ACTION_ASSIGN_BEST_ORDER = 0
