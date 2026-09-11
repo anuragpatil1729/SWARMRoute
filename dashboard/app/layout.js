@@ -1,23 +1,24 @@
 import "./globals.css";
-import Sidebar from "../components/Sidebar";
-import Topbar from "../components/Topbar";
+import Masthead from "../components/Masthead";
 
 export const metadata = {
-  title: "SwarmRoute — Fleet Resilience Console",
+  title: "SwarmRoute — Fleet Resilience Summary",
   description:
-    "Dashboard for the SWARMRoute decentralized fleet optimization simulation.",
+    "Technical summary of the SWARMRoute decentralized fleet optimization simulation.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <div className="min-h-screen flex flex-col md:flex-row">
-          <Sidebar />
-          <div className="flex-1 min-w-0">
-            <Topbar />
-            <main className="px-6 py-8 max-w-6xl">{children}</main>
-          </div>
+        <div className="min-h-screen">
+          <Masthead />
+          <main className="max-w-5xl mx-auto px-6 py-10">{children}</main>
+          <footer className="max-w-5xl mx-auto px-6 py-8 mt-8 border-t border-rule text-xs text-muted mono">
+            Compiled from results/ in the SWARMRoute repository. Static
+            benchmark output — see the live view page for what a connected
+            version would add.
+          </footer>
         </div>
       </body>
     </html>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Stat from "../components/Stat";
 import Section from "../components/Section";
-import MeshHero from "../components/MeshHero";
+import MeshFigure from "../components/MeshFigure";
 import { getMethodComparison, getDisruptionScenarios } from "../lib/data";
 
 export default function OverviewPage() {
@@ -9,143 +9,139 @@ export default function OverviewPage() {
   const scenarios = getDisruptionScenarios();
 
   const ruleBased = methods.find((m) => m.method === "Rule-Based Decentralized");
-  const orTools = methods.find((m) => m.method === "OR-Tools (Static)");
-  const ppo = methods.find((m) => m.method === "PPO Adaptive Agent");
-
   const scenarioF = scenarios.find((s) => s.key === "F");
   const swarmF = scenarioF?.methods.find((m) => m.method === "Rule-Based SWARMRoute");
   const staticF = scenarioF?.methods.find((m) => m.method === "Static OR-Tools");
 
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1fr] gap-8 items-center mb-12">
-        <div>
-          <h1 className="text-3xl md:text-[2.15rem] leading-tight font-semibold text-white max-w-lg">
-            The fleet keeps moving when the network doesn&apos;t.
-          </h1>
-          <p className="mt-4 text-sm text-muted max-w-md leading-relaxed">
-            SWARMRoute simulates a decentralized delivery fleet that recovers
-            from breakdowns, traffic, and cloud outages by bidding on stranded
-            orders over a truck-to-truck mesh network — no central server
-            required. This console reads the simulation&apos;s own benchmark
-            output: nothing here is live yet.
+      <Section index="1" title="Abstract">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-8">
+          <p className="text-[15px] serif leading-relaxed text-ink max-w-xl">
+            SwarmRoute simulates a delivery fleet that keeps moving when a
+            truck breaks down or the cloud connection drops, by letting
+            trucks bid on stranded orders over a peer-to-peer mesh network
+            instead of waiting on a central dispatcher. This page summarizes
+            the benchmark output already checked into the repository —{" "}
+            <code className="mono text-sm bg-panel2 px-1">results/</code> —
+            comparing that decentralized approach against static OR-Tools
+            routing and a PPO reinforcement-learning agent.
           </p>
-          <div className="mt-6 flex gap-3">
-            <Link
-              href="/benchmarks"
-              className="px-4 py-2 text-sm bg-accent text-bg font-medium hover:opacity-90 transition-opacity"
-            >
-              View method comparison
-            </Link>
-            <Link
-              href="/disruptions"
-              className="px-4 py-2 text-sm border border-border text-white hover:border-muted transition-colors"
-            >
-              Disruption scenarios
-            </Link>
-          </div>
+          <dl className="text-xs mono space-y-2 self-start border-l border-rule pl-4">
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">dataset</dt>
+              <dd className="text-ink">Solomon C101</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">fleet size</dt>
+              <dd className="text-ink">25 trucks</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">scenarios</dt>
+              <dd className="text-ink">A–H</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">tests passing</dt>
+              <dd className="text-ink">59 / 59</dd>
+            </div>
+          </dl>
         </div>
-        <div className="bg-panel border border-border h-[260px] flex items-center justify-center">
-          <div className="w-full h-full p-2">
-            <MeshHero />
-          </div>
-        </div>
-      </div>
+      </Section>
 
-      <Section>
+      <Section index="2" title="Figure 1 — Mesh network topology">
+        <div className="border border-ink bg-panel p-6">
+          <div className="h-[220px]">
+            <MeshFigure />
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-muted max-w-2xl">
+          Idle links (gray) connect every truck to its neighbors; the
+          highlighted path shows a stranded order being re-bid across T5 → T6
+          after a breakdown, without going through the depot.
+        </p>
+      </Section>
+
+      <Section index="3">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <Stat
-            label="Recovery success (F)"
+            label="delivery success, scenario F"
             value={swarmF?.success ?? "—"}
             unit="%"
-            tickColor="#4dd9c4"
             sub={`vs ${staticF?.success ?? "—"}% static OR-Tools`}
           />
           <Stat
-            label="Fleet at 25 trucks"
+            label="fleet utilization"
             value={ruleBased ? ruleBased.utilization : "—"}
-            unit="% util"
-            tickColor="#f5a623"
+            unit="%"
             sub="single-scenario run, seed 101"
           />
           <Stat
-            label="Mesh recovery time"
+            label="mesh recovery time"
             value="1–4"
             unit="ms"
-            tickColor="#818cf8"
             sub="contract-net bid to reassignment"
           />
-          <Stat
-            label="Tests passing"
-            value="59"
-            unit="/ 59"
-            tickColor="#4dd9c4"
-            sub="physics, mesh, RL, recovery"
-          />
+          <Stat label="tests passing" value="59" unit="/ 59" sub="physics, mesh, RL, recovery" />
         </div>
       </Section>
 
       <Section
+        index="4"
         title="Where the resilience comes from"
-        description="Static routing is efficient in calm conditions but brittle under disruption. SWARMRoute trades a little efficiency for the ability to keep delivering when a truck goes down or the cloud connection drops."
+        description="Static routing is efficient in calm conditions but brittle under disruption. SwarmRoute trades a little efficiency for the ability to keep delivering when a truck goes down or the cloud connection drops."
       >
-        <div className="border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-muted border-b border-border">
-                <th className="font-normal px-4 py-3">Method</th>
-                <th className="font-normal px-4 py-3">Success</th>
-                <th className="font-normal px-4 py-3">On-time</th>
-                <th className="font-normal px-4 py-3">Distance</th>
-                <th className="font-normal px-4 py-3">Fuel</th>
+        <table className="w-full text-sm border border-ink">
+          <thead>
+            <tr className="text-left border-b border-ink">
+              <th className="font-normal px-4 py-2.5 mono text-xs text-muted">method</th>
+              <th className="font-normal px-4 py-2.5 mono text-xs text-muted">success</th>
+              <th className="font-normal px-4 py-2.5 mono text-xs text-muted">on-time</th>
+              <th className="font-normal px-4 py-2.5 mono text-xs text-muted">distance</th>
+              <th className="font-normal px-4 py-2.5 mono text-xs text-muted">fuel</th>
+            </tr>
+          </thead>
+          <tbody className="mono">
+            {methods.map((m, i) => (
+              <tr key={m.method} className={i % 2 ? "bg-panel2" : ""}>
+                <td className="px-4 py-2.5 text-ink">{m.method}</td>
+                <td className="px-4 py-2.5">{m.success}%</td>
+                <td className="px-4 py-2.5">{m.onTime}%</td>
+                <td className="px-4 py-2.5">{m.distance} km</td>
+                <td className="px-4 py-2.5">{m.fuel} L</td>
               </tr>
-            </thead>
-            <tbody className="mono">
-              {methods.map((m) => (
-                <tr key={m.method} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 text-white">{m.method}</td>
-                  <td className="px-4 py-3">{m.success}%</td>
-                  <td className="px-4 py-3">{m.onTime}%</td>
-                  <td className="px-4 py-3">{m.distance} km</td>
-                  <td className="px-4 py-3">{m.fuel} L</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
         <div className="mt-3 text-xs text-muted">
-          Full breakdown, including CO₂ and utilization, on the{" "}
-          <Link href="/benchmarks" className="text-accent hover:underline">
+          Full breakdown, including CO₂ and utilization, in{" "}
+          <Link href="/benchmarks" className="text-ink underline underline-offset-2">
             method comparison
-          </Link>{" "}
-          page.
+          </Link>
+          .
         </div>
       </Section>
 
-      <Section
-        title="Read next"
-        className="mb-0"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-border border border-border">
-          <Link href="/disruptions" className="bg-panel hover:bg-panel2 p-5 transition-colors">
-            <div className="text-sm font-medium text-white">Disruption scenarios</div>
-            <div className="mt-1 text-xs text-muted">
-              Eight scripted failure scenarios, A through H, compared across methods.
-            </div>
-          </Link>
-          <Link href="/ppo-training" className="bg-panel hover:bg-panel2 p-5 transition-colors">
-            <div className="text-sm font-medium text-white">PPO training</div>
-            <div className="mt-1 text-xs text-muted">
-              Reward curve, ablation study, and why the heuristic still wins.
-            </div>
-          </Link>
-          <Link href="/routes" className="bg-panel hover:bg-panel2 p-5 transition-colors">
-            <div className="text-sm font-medium text-white">Route map</div>
-            <div className="mt-1 text-xs text-muted">
-              The actual OR-Tools solution plotted over the Solomon C101 customers.
-            </div>
-          </Link>
-        </div>
+      <Section index="5" title="Contents">
+        <ul className="text-sm space-y-2">
+          <li>
+            <Link href="/disruptions" className="text-ink underline underline-offset-2">
+              Disruption scenarios
+            </Link>
+            <span className="text-muted"> — eight scripted failure scenarios, A through H</span>
+          </li>
+          <li>
+            <Link href="/ppo-training" className="text-ink underline underline-offset-2">
+              PPO training
+            </Link>
+            <span className="text-muted"> — reward curve, ablation study, and why the heuristic still wins</span>
+          </li>
+          <li>
+            <Link href="/routes" className="text-ink underline underline-offset-2">
+              Route map
+            </Link>
+            <span className="text-muted"> — the OR-Tools solution plotted over the Solomon C101 customers</span>
+          </li>
+        </ul>
       </Section>
     </div>
   );

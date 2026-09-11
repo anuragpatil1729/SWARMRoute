@@ -1,14 +1,12 @@
-export default function Stat({ label, value, unit, tickColor = "#4dd9c4", sub }) {
+export default function Stat({ label, value, unit, sub }) {
   return (
-    <div className="tick" style={{ "--tick-color": tickColor }}>
-      <div className="text-[11px] uppercase tracking-wide text-muted mono">
-        {label}
-      </div>
-      <div className="mt-1 text-2xl font-semibold text-white mono">
+    <div className="border-t border-ink pt-2">
+      <div className="mono text-2xl text-ink leading-none">
         {value}
         {unit && <span className="text-sm text-muted ml-1">{unit}</span>}
       </div>
-      {sub && <div className="mt-0.5 text-xs text-muted">{sub}</div>}
+      <div className="mt-1.5 text-xs text-muted">{label}</div>
+      {sub && <div className="mt-0.5 text-[11px] text-muted mono">{sub}</div>}
     </div>
   );
 }
