@@ -1,0 +1,12 @@
+{
+  "name": "swarmroute-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SWARMRoute Autonomous Fleet Dispatch & Resilience Engine",
+  "scripts": {
+    "dev": "npm --prefix dashboard run dev",
+    "dev:3001": "NEXT_DIST_DIR=.next-3001 npm --prefix dashboard run dev -- -p 3001",
+    "build": "npm --prefix dashboard run build",
+    "start": "npm --prefix dashboard run start"
+  }
+}
