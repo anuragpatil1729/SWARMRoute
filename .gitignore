@@ -52,6 +52,9 @@ htmlcov/
 
 # Large or generated temporary results
 results/logs/*.log
+results/models/*.zip
+results/models/*.joblib
+results/plots/*.png
 
 # Node & Next.js
 node_modules/

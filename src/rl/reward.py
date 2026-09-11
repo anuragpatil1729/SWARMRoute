@@ -1,6 +1,35 @@
-from __future__ import annotations
-from typing import Dict, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Union
+import yaml
 from pydantic import BaseModel, Field
+
+
+def find_default_config_path() -> Optional[Path]:
+    """Locate configs/config.yaml from current working directory or relative to module."""
+    candidates = [
+        Path("configs/config.yaml"),
+        Path(__file__).resolve().parent.parent.parent / "configs" / "config.yaml",
+    ]
+    for p in candidates:
+        if p.is_file():
+            return p
+    return None
+
+
+def load_reward_weights_from_config(config_path: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
+    """Reads rl.reward_weights from config.yaml if available."""
+    path = Path(config_path) if config_path else find_default_config_path()
+    if path and path.is_file():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            if isinstance(data, dict):
+                rl_section = data.get("rl", {})
+                if isinstance(rl_section, dict) and "reward_weights" in rl_section:
+                    return rl_section["reward_weights"] or {}
+        except Exception:
+            pass
+    return {}
 
 
 class MultiObjectiveRewardConfig(BaseModel):
@@ -8,6 +37,7 @@ class MultiObjectiveRewardConfig(BaseModel):
     Transparent, configurable weights for the multi-objective fleet reward function.
     Encourages delivery fulfillment, on-time arrivals, and resilient stranded recovery.
     Penalizes failed orders, lateness, excessive fuel/CO2, empty miles, and infeasible decisions.
+    Loads from configs/config.yaml rl.reward_weights if present, with Pydantic field defaults as fallback.
     """
     # Positive incentives
     delivery_reward: float = Field(default=25.0, description="Reward per completed order")
@@ -27,6 +57,19 @@ class MultiObjectiveRewardConfig(BaseModel):
     infeasible_action_penalty: float = Field(default=5.0, description="Penalty for choosing an infeasible action")
     unnecessary_reposition_penalty: float = Field(default=4.0, description="Penalty for repositioning an active vehicle")
     excessive_reassignment_penalty: float = Field(default=3.0, description="Penalty for unnecessary repeated order transfers")
+
+    def __init__(self, **data: Any):
+        if not data:
+            weights = load_reward_weights_from_config()
+            super().__init__(**weights)
+        else:
+            super().__init__(**data)
+
+    @classmethod
+    def from_config(cls, config_path: Optional[Union[str, Path]] = None) -> "MultiObjectiveRewardConfig":
+        """Explicit loader from config.yaml."""
+        weights = load_reward_weights_from_config(config_path)
+        return cls(**weights)
 
 
 RewardConfig = MultiObjectiveRewardConfig

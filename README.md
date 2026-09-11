@@ -140,6 +140,14 @@ All methods evaluated on **Solomon C101** (25 customers, 5 trucks, 1200m operati
 | **Config D (PPO + Demand Predictor)** | 76.3 ± 7.6% | 59.3 ± 6.7% | 174.2 ± 23.9 | 58.7 ± 7.4 | 6.7 ± 0.9 | 0.000s |
 | **Config E (Full SWARMRoute)** | 76.3 ± 7.6% | 59.3 ± 6.7% | 174.2 ± 23.9 | 58.7 ± 7.4 | 6.7 ± 0.9 | 0.000s |
 
+> [!NOTE]
+> **Ablation Invariance Investigation & Architectural Analysis**:
+> In `results/experiments/ppo_ablation.json`, Configs A through E produce identical metrics across evaluated seeds. Systematic investigation confirms the exact architectural causes:
+> 1. **Observation Space Decoupling**: The Gymnasium observation vector in `SWARMRLEnv._get_observation()` is a 25-dimensional normalized state representing physical truck attributes, local traffic index, and candidate order geometry. Travel time and fuel consumption regression models are not encoded as observation features; rather, they serve strictly as auxiliary scoring heuristics inside `step()` for candidate order ranking (`Action 0: ASSIGN_BEST_ORDER`) and detour cost calculation (`Action 1: REASSIGN_STRANDED_ORDER`).
+> 2. **Policy Decision Trajectory**: Across the ablation evaluation scenarios, the trained PPO policy checkpoint in `results/models/ppo_agent.zip` selects `Action 4` (`HOLD`) on simulation steps. Because the policy does not invoke `Action 0` or `Action 1`, the code branches evaluating the travel-time and fuel predictors are never executed during evaluation steps.
+> 3. **Demand Predictor Fallback**: When `demand_predictor=None` is passed (Configs A–C), `PredictiveFleetPositioner` defaults to `DemandPredictor(random_state=seed)`, producing identical default zone forecast outputs.
+> Consequently, the policy actions and environmental deltas remain identical across all 5 configurations.
+
 ### 4. Scenario-Specific Benchmark (Scenarios A through H)
 
 | Scenario | Disruption Profile | Static OR-Tools | Rule-Based SWARMRoute | PPO-SWARMRoute |
@@ -178,14 +186,19 @@ SWARMRoute/
 │   ├── rl/                     # SWARMRLEnv (Gymnasium) and PPOFleetAgent (SB3), reward.py
 │   └── evaluation/             # Authoritative metrics & benchmark harnesses
 ├── scripts/
+│   ├── download_datasets.py    # Solomon benchmark instance downloader
+│   ├── train_models.py         # Trains Layer A ML predictors (travel time, fuel, demand)
 │   ├── train_ppo.py            # Configurable PPO training script with SB3
 │   ├── evaluate_baselines.py   # 6-way comparative benchmark suite (single & multi-seed)
 │   ├── run_ppo_ablation.py     # 5-config PPO predictor ablation study
 │   ├── run_disruption_scenarios.py # Scenarios A through H benchmark suite
-│   ├── plot_ppo_training.py    # Plot 6-panel PPO training dynamics
+│   ├── run_experiment.py       # Flagship disruption recovery experiment runner
 │   ├── run_flagship_recovery.py# 16-step closed loop disruption recovery runner
+│   ├── plot_ppo_training.py    # Plot 6-panel PPO training dynamics
 │   ├── run_demo.py             # Interactive labeled end-to-end AI demo
+│   ├── run_dashboard_backend.py# FastAPI live simulation & telematics server
 │   ├── sync_dashboard_data.py  # Syncs empirical results to web dashboard
+│   ├── sync_supabase.py        # Cloud synchronization & seeder for Supabase
 │   ├── evaluate_predictive_positioning.py # Proactive positioning evaluator
 │   └── run_simulation.py       # General discrete-event simulation
 ├── dashboard/                  # Interactive Next.js web application dashboard
@@ -198,56 +211,98 @@ SWARMRoute/
 
 ## CLI & Dashboard Usage Guide
 
-### 1. Installation
+### 1. Installation & Environment Setup
 ```bash
 pip install -r requirements.txt
+cp .env.example .env
 ```
 
-### 2. Run Interactive AI Demonstration
+### 2. Download Solomon Benchmark Datasets
+```bash
+python scripts/download_datasets.py --instances C101 R101 RC101
+```
+Downloads standard Solomon VRPTW benchmark instances directly into `data/raw/solomon/` and prepares dynamic dataset directories.
+
+### 3. Train ML Predictors & PPO Reinforcement Learning Agent
+```bash
+# Train Layer A predictive models (travel time, fuel consumption, customer demand)
+python scripts/train_models.py
+
+# Train PPO Reinforcement Learning Agent
+python scripts/train_ppo.py --timesteps 1000 --seed 42 --dataset C101 --customers 15 --vehicles 3
+
+# Plot PPO training dynamics
+python scripts/plot_ppo_training.py
+```
+Checkpoints are saved to `results/models/` and training curves to `results/plots/`.
+
+### 4. Run Interactive AI Demonstration
 ```bash
 python scripts/run_demo.py --dataset C101 --customers 20 --vehicles 4
 ```
 Executes complete 14-stage simulation with explicit labeled architectural tags: `[SIMULATION]`, `[ML]`, `[MESH]`, `[RECOVERY]`, `[PPO]`, and `[RESULT]`.
 
-### 3. Launch Interactive Web Dashboard (Next.js)
+### 5. Run Flagship Disruption Recovery Experiment
 ```bash
+python scripts/run_experiment.py --dataset C101 --seed 42
+```
+Executes the flagship disruption scenario (Internet Blackout + Truck Breakdown + Traffic Spike + Urgent Orders), comparing conventional centralized dispatch against SWARMRoute peer mesh recovery.
+
+### 6. Run Baseline & PPO Comparison Benchmark
+```bash
+python scripts/evaluate_baselines.py --datasets C101,R101,RC101 --seeds 101,102,103,104,105 --customers 20 --vehicles 4
+```
+Outputs single-scenario and multi-seed generalization tables, saving `results/benchmarks/final_comparison.json`, `.csv`, and `.md`.
+
+### 7. Run PPO Predictor Ablation Study
+```bash
+python scripts/run_ppo_ablation.py --seeds 42 101 102 103 104 --customers 25 --vehicles 5
+```
+Generates `results/experiments/ppo_ablation.json`, `.csv`, `.md`, and `results/plots/ppo_ablation.png`.
+
+### 8. Run Disruption Scenarios A through H
+```bash
+python scripts/run_disruption_scenarios.py --dataset C101 --seed 42
+```
+Evaluates static OR-Tools, Rule-Based Decentralized SWARMRoute, and PPO-SWARMRoute across 8 real-world disruption profiles.
+
+### 9. Launch Live Simulation Backend & Web Dashboard
+```bash
+# Terminal 1: Launch FastAPI Simulation & Telematics Backend (Port 8000)
+python scripts/run_dashboard_backend.py
+
+# Terminal 2: Launch Next.js Operational Dashboard (Port 3000)
 cd dashboard
 npm install
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) to view the Fleet Resilience Console:
-- **Method Comparison**: Interactive multi-seed benchmark performance charts across all 6 algorithms.
-- **Disruption Scenarios**: Failure analysis across Scenarios A through H.
-- **PPO Training**: Interactive reward curves, episode metrics, and predictor ablation charts.
-- **Route Map**: Visual SVG representation of customer locations, routes, and vehicle paths.
-- **Live View**: Simulation streaming architecture and event monitor.
+Open [http://localhost:3000](http://localhost:3000) to access:
+- **🏢 Company Manager Deck**: Dynamic order allocation, live telemetry map, OR-Tools re-dispatch.
+- **🛵 Delivery Partner Cockpit**: Dynamic vehicle binding, stop completion, emergency SOS trigger.
+- **Method Comparison**: Interactive multi-seed benchmark performance charts.
+- **Disruption Scenarios**: Scenario A–H disruption injector and recovery visualizer.
 
-To sync the latest simulation outputs directly into the dashboard:
+To sync active fleet state and orders directly to Supabase cloud database:
+```bash
+python scripts/sync_supabase.py
+```
+To sync the latest simulation outputs directly into the dashboard static pages:
 ```bash
 python scripts/sync_dashboard_data.py
 ```
 
-### 4. Run Baseline & PPO Comparison Benchmark
-```bash
-python scripts/evaluate_baselines.py --datasets C101,R101,RC101 --seeds 101,102,103,104,105 --customers 20 --vehicles 4
-```
-Outputs single-scenario and multi-seed generalization tables, saving `results/benchmarks/final_comparison.json`, `results/benchmarks/final_comparison.csv`, and `results/benchmarks/final_comparison.md`.
+### 10. Regenerating Generated Artifacts
+Model checkpoints (`results/models/*.zip`, `results/models/*.joblib`) and empirical plots (`results/plots/*.png`) are excluded from git version control as reproducible build artifacts. To regenerate them at any time:
+1. `python scripts/download_datasets.py`
+2. `python scripts/train_models.py`
+3. `python scripts/train_ppo.py`
+4. `python scripts/run_ppo_ablation.py`
+5. `python scripts/run_disruption_scenarios.py`
+6. `python scripts/plot_ppo_training.py`
 
-### 5. Run PPO Predictor Ablation Study
-```bash
-python scripts/run_ppo_ablation.py --seeds 101 102 103 104 105 --customers 20 --vehicles 4
-```
-Generates `results/experiments/ppo_ablation.json`, `.csv`, `.md`, and `results/plots/ppo_ablation.png`.
-
-### 6. Train PPO Reinforcement Learning Agent
-```bash
-python scripts/train_ppo.py --timesteps 1000 --seed 42 --dataset C101 --customers 15 --vehicles 3
-```
-Saves model checkpoint to `results/models/ppo_agent.zip` and logs to `results/logs/ppo_training_metrics.json`.
-
-### 7. Run Complete Automated Test Suite
+### 11. Run Complete Automated Test Suite
 ```bash
 pytest tests/ -v
 ```
-Executes all **95 automated tests** covering CVRPTW solvers, time windows, fuel kinematics, mesh communication, decentralized bidding, information barrier verification, scenario generation, ML integrations, and RL environment contracts.
+Executes all automated tests covering CVRPTW solvers, time windows, fuel kinematics, mesh communication, decentralized bidding, information barrier verification, scenario generation, ML integrations, and RL environment contracts.
 

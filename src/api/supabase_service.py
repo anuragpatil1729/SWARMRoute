@@ -22,17 +22,21 @@ except ImportError:
     Client = Any  # type: ignore
     create_client = None  # type: ignore
 
-DEFAULT_SUPABASE_URL = os.getenv("SUPABASE_URL", "https://coompycazyuaedzevyua.supabase.co")
-DEFAULT_SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-
-
 class SupabaseService:
     """Manages cloud sync with Supabase PostgreSQL database."""
 
     def __init__(self) -> None:
-        self.url = os.getenv("SUPABASE_URL", DEFAULT_SUPABASE_URL)
-        self.key = os.getenv("SUPABASE_KEY", DEFAULT_SUPABASE_KEY)
-        self.project_ref = os.getenv("SUPABASE_PROJECT_REF", "coompycazyuaedzevyua")
+        self.url = os.getenv("SUPABASE_URL")
+        self.key = os.getenv("SUPABASE_KEY", "")
+        self.project_ref = os.getenv("SUPABASE_PROJECT_REF")
+
+        if not self.url or not self.project_ref:
+            raise RuntimeError(
+                "Missing required Supabase environment variables: "
+                "SUPABASE_URL and SUPABASE_PROJECT_REF must be set. "
+                "Please configure them in your environment or .env file."
+            )
+
         self.client: Optional[Client] = None
         self._initialize_client()
 

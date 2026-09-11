@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -24,10 +25,13 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Enable CORS for Next.js frontend
+# Enable CORS for Next.js frontend (read from CORS_ALLOWED_ORIGINS, defaulting to local dev)
+cors_env = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+allowed_origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

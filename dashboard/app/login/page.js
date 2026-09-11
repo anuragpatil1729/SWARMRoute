@@ -44,57 +44,39 @@ export default function LoginPage() {
     }
   };
 
-  // Quick Demo Logins for instant evaluation
+  const isDemoEnabled = process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true';
+
+  // Quick Demo Logins for evaluation (gated behind NEXT_PUBLIC_ENABLE_DEMO_LOGIN)
   const handleQuickDemoLogin = async (roleType) => {
+    if (!isDemoEnabled) {
+      setErrorMessage('Quick demo login is disabled in this deployment.');
+      return;
+    }
     setLoading(true);
     setErrorMessage('');
-    const demoEmail = roleType === 'manager' 
-      ? 'manager@swarmroute.internal' 
-      : 'partner.rajesh@swarmroute.internal';
-    const demoPassword = 'SwarmPassword2026!';
+
+    const demoEmail = roleType === 'manager'
+      ? process.env.NEXT_PUBLIC_DEMO_MANAGER_EMAIL
+      : process.env.NEXT_PUBLIC_DEMO_PARTNER_EMAIL;
+    const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
+
+    if (!demoEmail || !demoPassword) {
+      setErrorMessage('Demo credentials not configured in environment variables (NEXT_PUBLIC_DEMO_...).');
+      setLoading(false);
+      return;
+    }
 
     try {
-      // First attempt to sign in
-      try {
-        await signIn({ email: demoEmail, password: demoPassword });
-      } catch (signInErr) {
-        // If demo user does not exist yet in Supabase Auth, automatically register them!
-        const fullName = roleType === 'manager' ? 'Aarav Sharma (Hub Manager)' : 'Rajesh Kumar (Tata Ace EV)';
-        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-          email: demoEmail,
-          password: demoPassword,
-          options: {
-            data: {
-              full_name: fullName,
-              role: roleType,
-              partner_id: roleType === 'partner' ? 'PARTNER_01' : null,
-              company_name: 'SWARM Bengaluru Hyperlocal',
-            }
-          }
-        });
-        if (signUpErr) throw signUpErr;
-
-        if (signUpData.user) {
-          await supabase.from('profiles').upsert({
-            id: signUpData.user.id,
-            email: demoEmail,
-            full_name: fullName,
-            role: roleType,
-            partner_id: roleType === 'partner' ? 'PARTNER_01' : null,
-            company_name: 'SWARM Bengaluru Hyperlocal',
-          });
-        }
-        await signIn({ email: demoEmail, password: demoPassword });
-      }
-
-      if (roleType === 'partner') {
+      const data = await signIn({ email: demoEmail, password: demoPassword });
+      const role = data.user?.user_metadata?.role || roleType;
+      if (role === 'partner') {
         router.push('/partner');
       } else {
         router.push('/');
       }
     } catch (err) {
       console.error('Demo login error:', err);
-      setErrorMessage(`Demo setup failed: ${err.message}`);
+      setErrorMessage(err.message || 'Demo authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -230,28 +212,31 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-800" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-slate-900/90 px-3 text-slate-500 font-mono">Or Instant Demo Access</span>
-            </div>
-          </div>
+          {/* Demo Login (Only rendered when NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true') */}
+          {isDemoEnabled && (
+            <>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-800" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-slate-900/90 px-3 text-slate-500 font-mono">Or Instant Demo Access</span>
+                </div>
+              </div>
 
-          {/* Quick Demo Buttons */}
-          <div className="space-y-2">
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => handleQuickDemoLogin(activeTab)}
-              className="w-full py-2.5 px-3 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 transition-colors"
-            >
-              <span>⚡</span>
-              <span>1-Click Demo {activeTab === 'manager' ? 'Manager (Aarav)' : 'Partner (Rajesh)'}</span>
-            </button>
-          </div>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleQuickDemoLogin(activeTab)}
+                  className="w-full py-2.5 px-3 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 transition-colors"
+                >
+                  <span>⚡</span>
+                  <span>1-Click Demo {activeTab === 'manager' ? 'Manager' : 'Partner'}</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Footer Navigation */}

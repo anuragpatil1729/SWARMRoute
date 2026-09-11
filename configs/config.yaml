@@ -58,3 +58,21 @@ rl:
   learning_rate: 0.0003
   gamma: 0.99
   batch_size: 64
+
+  # Multi-objective RL reward weights (unified with optimization objectives)
+  reward_weights:
+    delivery_reward: 25.0
+    on_time_bonus: 10.0
+    recovery_bonus: 20.0
+    load_utilization_weight: 5.0
+    useful_repositioning_bonus: 8.0
+    failure_penalty: 40.0
+    delay_penalty_weight: 2.5
+    late_delivery_penalty: 15.0
+    distance_penalty_weight: 0.2
+    fuel_penalty_weight: 1.0
+    co2_penalty_weight: 0.5
+    empty_km_penalty_weight: 0.8
+    infeasible_action_penalty: 5.0
+    unnecessary_reposition_penalty: 4.0
+    excessive_reassignment_penalty: 3.0
