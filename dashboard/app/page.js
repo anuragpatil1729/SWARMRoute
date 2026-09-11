@@ -42,7 +42,7 @@ export default function OverviewPage() {
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted">tests passing</dt>
-              <dd className="text-ink">59 / 59</dd>
+              <dd className="text-ink">95 / 95</dd>
             </div>
           </dl>
         </div>
@@ -81,7 +81,7 @@ export default function OverviewPage() {
             unit="ms"
             sub="contract-net bid to reassignment"
           />
-          <Stat label="tests passing" value="59" unit="/ 59" sub="physics, mesh, RL, recovery" />
+          <Stat label="tests passing" value="95" unit="/ 95" sub="physics, mesh, RL, recovery" />
         </div>
       </Section>
 
