@@ -68,10 +68,9 @@ class FleetAgent:
         sos_msg = broken_agent.trigger_breakdown(current_time_mins, node_id_map)
         self.total_mesh_messages += 1
 
-        # Broadcast across mesh network before marking node offline
+        # Broadcast across mesh network
         delivered_broadcast = self.mesh_network.transmit(sos_msg)
         self.total_mesh_hops += max(1, sos_msg.hop_count)
-        self.mesh_network.set_node_failed(failed_vehicle_id, failed=True)
 
         # Collect candidate bids from all operational peer trucks in the mesh
         bids: List[Dict[str, Any]] = []
@@ -83,65 +82,86 @@ class FleetAgent:
 
             # In MESH_MODE, verify peer is reachable in mesh topology
             if self.mesh_network.topology.has_node(v_id):
-                bid_msg = peer_agent.receive_message(sos_msg, node_coords)
-                if bid_msg:
-                    self.total_mesh_messages += 1
-                    bids.append(bid_msg.payload)
+                if hasattr(peer_agent, "generate_bids_for_breakdown"):
+                    peer_bids = peer_agent.generate_bids_for_breakdown(sos_msg, node_coords)
+                else:
+                    msg = peer_agent.receive_message(sos_msg, node_coords)
+                    peer_bids = [msg] if msg else []
 
-        # Reassign orders using minimum detour policy
+                for bid_msg in peer_bids:
+                    if bid_msg and bid_msg.payload:
+                        self.total_mesh_messages += 1
+                        bids.append(bid_msg.payload)
+
+        # Reassign orders using deterministic multi-objective policy:
+        # 1. Feasible vehicle only
+        # 2. Minimum detour
+        # 3. Minimum additional fuel
+        # 4. Minimum additional CO2
+        # 5. Deterministic vehicle ID tie-break
         assigned_transfers = []
         remaining_order_ids = list(broken_agent.state.assigned_orders)
 
         for oid in remaining_order_ids:
-            order_bids = [b for b in bids if b.get("order_id") == oid]
+            # Filter feasible, valid bids for this order
+            order_bids = [
+                b for b in bids
+                if isinstance(b, dict)
+                and b.get("order_id") == oid
+                and b.get("bidder_vehicle_id") in self.truck_agents
+                and self.truck_agents[b["bidder_vehicle_id"]].state.status != VehicleStatus.BROKEN_DOWN
+            ]
             if not order_bids:
                 continue
 
-            # Sort bids by detour cost
-            order_bids.sort(key=lambda b: b.get("detour_km", float("inf")))
-            winner = order_bids[0]
-            winning_v_id = winner.get("order_id") # payload from bidder
-            # The sender of the bid
-            bidder_id = None
-            for v_id, peer in self.truck_agents.items():
-                if any(m.payload.get("order_id") == oid for m in peer.outbox):
-                    bidder_id = v_id
-                    break
-
-            if bidder_id:
-                confirm_msg = MeshMessage(
-                    message_id=f"CONFIRM_{oid}_{bidder_id}",
-                    message_type=MessageType.ORDER_TRANSFER_ACCEPT,
-                    sender_id=failed_vehicle_id,
-                    receiver_id=bidder_id,
-                    timestamp_mins=current_time_mins + 0.2,
-                    payload={
-                        "target_vehicle_id": bidder_id,
-                        "order_id": oid,
-                        "order": winner.get("order"),
-                        "order_node": winner.get("order_node"),
-                        "insert_index": winner.get("insert_index"),
-                    },
+            # Deterministic multi-criteria sorting
+            order_bids.sort(
+                key=lambda b: (
+                    float(b.get("detour_km", float("inf"))),
+                    float(b.get("additional_fuel", float("inf"))),
+                    float(b.get("additional_co2", float("inf"))),
+                    str(b.get("bidder_vehicle_id", "")),
                 )
-                self.mesh_network.transmit(confirm_msg)
-                self.total_mesh_messages += 1
-                self.total_mesh_hops += max(1, confirm_msg.hop_count)
+            )
+            winner = order_bids[0]
+            bidder_id = winner["bidder_vehicle_id"]
 
-                # Winning agent applies transfer
-                self.truck_agents[bidder_id].receive_message(confirm_msg, node_coords)
-                self.recovered_orders_count += 1
-                assigned_transfers.append({
+            confirm_msg = MeshMessage(
+                message_id=f"CONFIRM_{oid}_{bidder_id}",
+                message_type=MessageType.ORDER_TRANSFER_ACCEPT,
+                sender_id=failed_vehicle_id,
+                receiver_id=bidder_id,
+                timestamp_mins=current_time_mins + 0.2,
+                payload={
+                    "target_vehicle_id": bidder_id,
                     "order_id": oid,
-                    "from_vehicle": failed_vehicle_id,
-                    "to_vehicle": bidder_id,
-                    "detour_km": winner.get("detour_km"),
-                })
+                    "order": winner.get("order"),
+                    "order_node": winner.get("order_node"),
+                    "insert_index": winner.get("insert_index"),
+                },
+            )
+            self.mesh_network.transmit(confirm_msg)
+            self.total_mesh_messages += 1
+            self.total_mesh_hops += max(1, confirm_msg.hop_count)
+
+            # Winning agent applies transfer
+            self.truck_agents[bidder_id].receive_message(confirm_msg, node_coords)
+            self.recovered_orders_count += 1
+            assigned_transfers.append({
+                "order_id": oid,
+                "from_vehicle": failed_vehicle_id,
+                "to_vehicle": bidder_id,
+                "detour_km": winner.get("detour_km"),
+                "additional_fuel": winner.get("additional_fuel"),
+                "additional_co2": winner.get("additional_co2"),
+            })
 
         # Clear transferred orders from failed agent
         broken_agent.state.assigned_orders = [
             oid for oid in broken_agent.state.assigned_orders
             if not any(t["order_id"] == oid for t in assigned_transfers)
         ]
+        self.mesh_network.set_node_failed(failed_vehicle_id, failed=True)
 
         return {
             "success": len(assigned_transfers) > 0,

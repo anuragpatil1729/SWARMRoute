@@ -136,6 +136,10 @@ def run_flagship_recovery_experiment(
         road_network.add_node(new_node_idx, x=dest[0], y=dest[1], demand=15.0, ready_time=disruption_time_mins, due_date=disruption_time_mins + 180.0)
         node_id_map[uo_id] = new_node_idx
 
+    # Register urgent orders in base fleet state so both systems evaluate the exact same orders
+    for uo in urgent_orders:
+        fleet_state.active_orders[uo.order_id] = uo
+
     # =========================================================================
     # SYSTEM A: CONVENTIONAL CENTRALIZED SYSTEM (Offline Failure)
     # =========================================================================
@@ -173,15 +177,14 @@ def run_flagship_recovery_experiment(
     )
 
     # Run Centralized simulation step-by-step
-    cent_rec_time = 0.0
     while env_cent.current_time_mins < simulation_duration_mins and not env_cent.is_done():
         env_cent.step()
 
     metrics_cent = env_cent.get_metrics()
     cent_completed = metrics_cent["completed_deliveries"]
-    cent_failed = metrics_cent["failed_orders"] + len(urgent_orders) # offline cloud never dispatched urgent orders
+    cent_failed = metrics_cent["failed_orders"]
     cent_late = metrics_cent["late_deliveries"]
-    cent_completion_rate = round((cent_completed / (len(initial_orders) + len(urgent_orders))) * 100.0, 1)
+    cent_completion_rate = metrics_cent["completion_rate_pct"]
     cent_fuel = metrics_cent["total_fuel_liters"]
     cent_co2 = metrics_cent["total_co2_kg"]
 
@@ -215,7 +218,6 @@ def run_flagship_recovery_experiment(
 
     # Apply disruption: Internet OFF + Truck Breakdown
     fleet_resilient.connectivity_state = ConnectivityState.MESH_MODE
-    mesh.set_node_failed(breakdown_id, failed=True)
 
     start_rec = time.perf_counter()
     recovery_info = fleet_agent.on_vehicle_breakdown_decentralized(
@@ -224,6 +226,7 @@ def run_flagship_recovery_experiment(
         node_id_map=node_id_map,
     )
     res_rec_time = time.perf_counter() - start_rec
+    env_res.recovery_time_sec = res_rec_time
 
     # Apply recovery transfers to environment
     if recovery_info.get("success"):
@@ -239,7 +242,6 @@ def run_flagship_recovery_experiment(
     ]
     if active_trucks:
         for idx, uo in enumerate(urgent_orders):
-            fleet_resilient.active_orders[uo.order_id] = uo
             dest_truck = active_trucks[idx % len(active_trucks)]
             dest_truck.assigned_orders.append(uo.order_id)
             dest_truck.current_load += uo.demand_weight
@@ -257,13 +259,14 @@ def run_flagship_recovery_experiment(
     res_completed = metrics_res["completed_deliveries"]
     res_failed = metrics_res["failed_orders"]
     res_late = metrics_res["late_deliveries"]
-    res_completion_rate = round((res_completed / (len(initial_orders) + len(urgent_orders))) * 100.0, 1)
+    res_completion_rate = metrics_res["completion_rate_pct"]
     res_fuel = metrics_res["total_fuel_liters"]
     res_co2 = metrics_res["total_co2_kg"]
 
-    # Mesh hops
-    hops = recovery_info.get("mesh_hops", 1)
-    latency = hops * 20.0
+    mesh_hops = int(round(metrics_res["average_mesh_hops"]))
+    mesh_latency = metrics_res["average_mesh_latency_ms"]
+    mesh_success = metrics_res["mesh_delivery_success"]
+    mesh_messages = metrics_res["mesh_messages_sent"]
 
     return DisruptionExperimentReport(
         dataset_name=f"Solomon {dataset_name}",
@@ -285,8 +288,8 @@ def run_flagship_recovery_experiment(
         resilient_total_fuel_l=round(res_fuel, 1),
         resilient_total_co2_kg=round(res_co2, 1),
         resilient_recovery_time_sec=round(res_rec_time, 4),
-        mesh_hops_traversed=hops,
-        mesh_latency_ms=latency,
-        mesh_delivery_success=True,
-        mesh_messages_sent=recovery_info.get("mesh_messages", 2),
+        mesh_hops_traversed=max(1, mesh_hops),
+        mesh_latency_ms=round(mesh_latency, 2),
+        mesh_delivery_success=mesh_success,
+        mesh_messages_sent=mesh_messages,
     )

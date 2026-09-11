@@ -19,6 +19,7 @@ from src.evaluation.metrics import (
     calculate_total_cost,
     calculate_total_emissions,
     calculate_completion_rate,
+    calculate_vehicle_utilization,
 )
 
 
@@ -76,6 +77,10 @@ class FleetSimulationEnvironment:
         self.late_orders: Set[str] = set()
         self.failed_orders: Set[str] = set()
         self.total_distance_traveled_km = 0.0
+        self.total_empty_distance_km = 0.0
+        self.total_reassigned_orders_count = 0
+        self.total_breakdowns_count = 0
+        self.recovery_time_sec = 0.0
         self.total_fuel_liters = 0.0
         self.total_co2_kg = 0.0
         self.step_count = 0
@@ -131,6 +136,10 @@ class FleetSimulationEnvironment:
         self.late_orders.clear()
         self.failed_orders.clear()
         self.total_distance_traveled_km = 0.0
+        self.total_empty_distance_km = 0.0
+        self.total_reassigned_orders_count = 0
+        self.total_breakdowns_count = 0
+        self.recovery_time_sec = 0.0
         self.total_fuel_liters = 0.0
         self.total_co2_kg = 0.0
 
@@ -167,10 +176,17 @@ class FleetSimulationEnvironment:
 
         if action_type == "REASSIGN_ORDERS":
             transfers = action.get("transfers", [])
+            self.total_reassigned_orders_count += len(transfers)
             for t in transfers:
                 oid = t.get("order_id")
                 from_v = t.get("from_vehicle")
                 to_v = t.get("to_vehicle")
+
+                # Remove from previous vehicle so it is no longer stranded
+                if from_v in self.fleet_state.vehicles:
+                    if oid in self.fleet_state.vehicles[from_v].assigned_orders:
+                        self.fleet_state.vehicles[from_v].assigned_orders.remove(oid)
+                    self.failed_orders.discard(oid)
 
                 if to_v in self.fleet_state.vehicles and oid in self.fleet_state.active_orders:
                     v = self.fleet_state.vehicles[to_v]
@@ -225,6 +241,7 @@ class FleetSimulationEnvironment:
             elif ev.event_type == EventType.CONNECTIVITY_RESTORED:
                 self.conn_manager.on_cloud_restored()
             elif ev.event_type == EventType.VEHICLE_BREAKDOWN:
+                self.total_breakdowns_count += 1
                 v_id = ev.payload.get("vehicle_id")
                 if v_id in self.fleet_state.vehicles:
                     self.fleet_state.vehicles[v_id].status = VehicleStatus.BROKEN_DOWN
@@ -278,6 +295,8 @@ class FleetSimulationEnvironment:
                 actual_move = min(dist_moved, remaining_on_edge)
                 v.edge_progress_km += actual_move
                 self.total_distance_traveled_km += actual_move
+                if v.current_load <= 1e-6:
+                    self.total_empty_distance_km += actual_move
 
                 # Compute step fuel consumption
                 # Physics model: base rate + payload factor + traffic multiplier
@@ -341,7 +360,7 @@ class FleetSimulationEnvironment:
                             v.status = VehicleStatus.IDLE
                             v.next_node = None
 
-        # 4. Check for unserved orders on broken vehicles
+        # 4. Check for unserved orders on broken vehicles or unassigned orders during cloud outage
         for v_id, v in self.fleet_state.vehicles.items():
             if v.status == VehicleStatus.BROKEN_DOWN:
                 for oid in v.assigned_orders:
@@ -349,6 +368,13 @@ class FleetSimulationEnvironment:
                         self.failed_orders.add(oid)
                         if oid in self.fleet_state.active_orders:
                             self.fleet_state.active_orders[oid].status = OrderStatus.FAILED
+
+        if self.fleet_state.connectivity_state != ConnectivityState.CLOUD_MODE:
+            all_assigned = {oid for veh in self.fleet_state.vehicles.values() for oid in veh.assigned_orders}
+            for oid, ord_obj in self.fleet_state.active_orders.items():
+                if oid not in all_assigned and oid not in self.delivered_orders:
+                    self.failed_orders.add(oid)
+                    ord_obj.status = OrderStatus.FAILED
 
         # 5. Calculate reward (negative cost step)
         step_reward = -1.0 * (
@@ -388,13 +414,20 @@ class FleetSimulationEnvironment:
         failed_count = len(self.failed_orders)
         completion_rate = calculate_completion_rate(total_orders, delivered_count)
 
-        # Max lateness
+        # Max lateness and average delivery delay
         max_lateness = 0.0
+        total_delay = 0.0
         for oid in self.late_orders:
             if oid in self.fleet_state.active_orders:
                 o = self.fleet_state.active_orders[oid]
                 arr = o.actual_arrival_time or self.current_time_mins
-                max_lateness = max(max_lateness, arr - o.latest_delivery)
+                delay = max(0.0, arr - o.latest_delivery)
+                max_lateness = max(max_lateness, delay)
+                total_delay += delay
+
+        avg_delay = round(total_delay / max(1, delivered_count), 2)
+        mesh_stats = self.mesh_network.get_mesh_metrics()
+        utilization = calculate_vehicle_utilization(list(self.fleet_state.vehicles.values()))
 
         cost = calculate_total_cost(
             distance_km=self.total_distance_traveled_km,
@@ -405,15 +438,25 @@ class FleetSimulationEnvironment:
         )
 
         return {
-            "total_orders": total_orders,
-            "completed_deliveries": delivered_count,
-            "completion_rate_pct": completion_rate,
-            "late_deliveries": late_count,
-            "failed_orders": failed_count,
-            "max_lateness_mins": round(max_lateness, 2),
             "total_distance_km": round(self.total_distance_traveled_km, 2),
             "total_fuel_liters": round(self.total_fuel_liters, 2),
             "total_co2_kg": round(self.total_co2_kg, 2),
+            "total_orders": total_orders,
+            "completed_deliveries": delivered_count,
+            "failed_orders": failed_count,
+            "late_deliveries": late_count,
+            "completion_rate_pct": completion_rate,
+            "average_delivery_delay_mins": avg_delay,
+            "max_lateness_mins": round(max_lateness, 2),
+            "vehicle_utilization_pct": utilization,
+            "empty_distance_km": round(self.total_empty_distance_km, 2),
+            "recovery_time_sec": round(self.recovery_time_sec, 4),
+            "reassigned_deliveries_count": self.total_reassigned_orders_count,
+            "breakdown_count": self.total_breakdowns_count,
+            "mesh_messages_sent": mesh_stats["total_messages"],
+            "mesh_delivery_success": mesh_stats["delivery_success"],
+            "average_mesh_latency_ms": mesh_stats["average_latency_ms"],
+            "average_mesh_hops": mesh_stats["average_hops"],
             "total_cost": cost,
             "simulation_duration_mins": self.current_time_mins,
         }

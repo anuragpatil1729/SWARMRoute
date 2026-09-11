@@ -1,0 +1,143 @@
+{
+  "audit_timestamp": "2026-09-11T08:42:00Z",
+  "phase": "Phase 1: Full Current-System Audit",
+  "test_suite": {
+    "framework": "pytest",
+    "tests_passed": 34,
+    "tests_failed": 0,
+    "total_tests": 34,
+    "target_tests": "34+ tests passing with zero fabricated tests"
+  },
+  "implemented_components": [
+    {
+      "module": "src/models/",
+      "status": "Fully implemented",
+      "details": "Pydantic models for Order (lifecycle states), Vehicle (heterogeneous trucks, edge progress), RoadNetwork (NetworkX graph, traffic multipliers), and FleetState."
+    },
+    {
+      "module": "src/data/loaders/solomon.py",
+      "status": "Fully implemented",
+      "details": "Loads Solomon C101, R101, RC101 instances with coordinates, demands, time windows, and service times."
+    },
+    {
+      "module": "src/optimization/vrptw.py",
+      "status": "Fully implemented",
+      "details": "Google OR-Tools CVRPTW solver with time window constraints, vehicle capacity, drop penalties, and multi-objective evaluations."
+    },
+    {
+      "module": "src/optimization/load_optimizer.py",
+      "status": "Fully implemented",
+      "details": "Bin-packing algorithms (Best Fit Decreasing) and K-Means spatial order clustering."
+    },
+    {
+      "module": "src/prediction/base.py & fuel.py",
+      "status": "Fully implemented",
+      "details": "Physics-based deterministic fuel consumption model tracking vehicle speed, load factor, and gradient."
+    },
+    {
+      "module": "src/prediction/travel_time.py, fuel_ml.py, demand.py",
+      "status": "Implemented as standalone predictors",
+      "details": "HistGradientBoosting regressors for travel time, fuel consumption, and customer demand with synthetic data generators."
+    },
+    {
+      "module": "src/simulation/traffic.py & events.py",
+      "status": "Fully implemented",
+      "details": "Traffic dynamics simulator with rush-hour peaks and event engine for discrete disruptions (breakdown, traffic surges, connectivity loss)."
+    },
+    {
+      "module": "src/simulation/environment.py",
+      "status": "Fully implemented",
+      "details": "Discrete-time simulation environment advancing trucks along road edges, tracking fuel, distance, and order status transitions."
+    },
+    {
+      "module": "src/networking/mesh.py & connectivity.py",
+      "status": "Fully implemented",
+      "details": "NetworkX-based wireless mesh network modeling transmission range, multi-hop shortest paths, latency, and packet loss."
+    }
+  ],
+  "partially_implemented_components": [
+    {
+      "module": "src/agents/fleet_agent.py",
+      "status": "Partially implemented / Fragile",
+      "details": "Bidding logic in on_vehicle_breakdown_decentralized locates the winning truck by scanning peer.outbox instead of reading an explicit bidder_vehicle_id from the bid payload."
+    },
+    {
+      "module": "src/agents/truck_agent.py",
+      "status": "Partially implemented",
+      "details": "evaluate_order_absorption and bid response calculate detour_km but omit bidder_vehicle_id, additional_fuel, and additional_co2."
+    },
+    {
+      "module": "src/evaluation/metrics.py",
+      "status": "Partially implemented",
+      "details": "Provides basic distance, fuel, emissions, and lateness calculators, but lacks centralized authoritative calculations for empty km, dynamic vehicle utilization, recovery time, and mesh statistics."
+    },
+    {
+      "module": "src/evaluation/experiments.py",
+      "status": "Partially implemented / Flawed",
+      "details": "Runs simulation for Centralized vs Resilient agents, but contains heuristic tampering (cent_failed = metrics + len(urgent_orders)), hardcoded mesh_delivery_success=True, and heuristic latency."
+    }
+  ],
+  "broken_components": [
+    {
+      "component": "FleetAgent Bidder Identification",
+      "file": "src/agents/fleet_agent.py:103-109",
+      "issue": "Lines 103-109 set winning_v_id = winner.get('order_id') (incorrect key) and loop through self.truck_agents searching peer.outbox, which breaks tie-breaking and can assign orders to incorrect vehicles."
+    },
+    {
+      "component": "Flagship Experiment Metric Manipulation",
+      "file": "src/evaluation/experiments.py:182, 290",
+      "issue": "cent_failed artificially increments by len(urgent_orders) rather than letting the simulation determine order failures; mesh delivery is hard-coded True."
+    }
+  ],
+  "missing_components": [
+    {
+      "component": "Gymnasium Environment for PPO",
+      "expected_path": "src/rl/environment.py",
+      "description": "Gymnasium Env wrapping SWARMRoute simulation with normalized observation vector, discrete/compact action space, and transparent reward function."
+    },
+    {
+      "component": "PPO Agent & Training Script",
+      "expected_path": "src/rl/ppo_agent.py and scripts/train_ppo.py",
+      "description": "Stable-Baselines3 PPO policy training on real SWARMRoute environment with reproducible seeds and model checkpointing."
+    },
+    {
+      "component": "Predictive Fleet Positioning",
+      "expected_path": "src/optimization/predictive_positioning.py or in agents/fleet_agent.py",
+      "description": "Proactive truck repositioning towards zones with high predicted future demand, with empirical comparison against purely reactive dispatch."
+    },
+    {
+      "component": "Prediction Pipeline Integration",
+      "expected_path": "src/prediction/ & src/agents/",
+      "description": "Integration of travel time and fuel ML models into candidate route evaluation and bidding."
+    },
+    {
+      "component": "PPO Benchmark Comparison Suite",
+      "expected_path": "results/benchmarks/ppo_comparison.json and scripts/evaluate_baselines.py",
+      "description": "Comparative evaluation of Nearest Neighbor, OR-Tools, OR-Tools+Prediction, Rule-based recovery, and PPO under identical test scenarios."
+    },
+    {
+      "component": "Automated Flagship Recovery Visualizer and Output",
+      "expected_path": "results/experiments/flagship_recovery.json & results/plots/",
+      "description": "Visual diagram/plot of the breakdown recovery flow and JSON record."
+    }
+  ],
+  "integration_problems": [
+    "Prediction models in src/prediction/ are isolated and never called during routing, route re-optimization, or agent bidding.",
+    "Mesh transmission metrics (hops, latency, packet success) are tracked inside MeshNetwork but not gathered authoritatively into the simulation environment get_metrics() output."
+  ],
+  "scientific_correctness_problems": [
+    "Manual addition to failed orders in experiments.py (cent_failed = ... + len(urgent_orders)) violates empirical simulation integrity.",
+    "Bidding winner selection depends on dictionary order rather than strict multi-criteria deterministic evaluation (feasible -> min detour -> min fuel -> min co2 -> vehicle_id tie-break).",
+    "Comparison between Centralized and Decentralized controllers needs exact synchronization of initial conditions, orders, dynamic events, and simulation clock."
+  ],
+  "test_status": {
+    "current_passing": 34,
+    "target": "34+ passing with comprehensive new unit and integration tests",
+    "planned_new_test_suites": [
+      "tests/test_bidding.py (valid bid, multiple bids, invalid bid, tie, no feasible bidder, winner receiving reassigned order)",
+      "tests/test_prediction_integration.py (travel time, fuel, and demand forecasting in routing/repositioning)",
+      "tests/test_rl_env.py (Gymnasium interface, reset, step, observation space, action masking, reward checks)",
+      "tests/test_fair_comparison.py (Centralized vs Decentralized on identical seed, vehicles, and breakdown)"
+    ]
+  }
+}

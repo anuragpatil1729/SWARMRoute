@@ -1,0 +1,67 @@
+{
+  "Nearest Neighbor": {
+    "delivery_success_pct": 56.0,
+    "on_time_delivery_pct": 32.0,
+    "total_distance_km": 166.07,
+    "total_fuel_liters": 56.05,
+    "total_co2_kg": 150.23,
+    "empty_kilometers": 40.31,
+    "vehicle_utilization_pct": 28.3,
+    "recovery_time_sec": 0.0,
+    "failed_deliveries": 11,
+    "average_delay_mins": 156.71,
+    "computation_time_sec": 0.006
+  },
+  "OR-Tools (Static)": {
+    "delivery_success_pct": 84.0,
+    "on_time_delivery_pct": 60.0,
+    "total_distance_km": 151.69,
+    "total_fuel_liters": 52.1,
+    "total_co2_kg": 139.62,
+    "empty_kilometers": 38.08,
+    "vehicle_utilization_pct": 9.0,
+    "recovery_time_sec": 0.0,
+    "failed_deliveries": 4,
+    "average_delay_mins": 1.76,
+    "computation_time_sec": 10.02
+  },
+  "OR-Tools + Prediction": {
+    "delivery_success_pct": 84.0,
+    "on_time_delivery_pct": 60.0,
+    "total_distance_km": 151.69,
+    "total_fuel_liters": 52.1,
+    "total_co2_kg": 139.62,
+    "empty_kilometers": 38.08,
+    "vehicle_utilization_pct": 9.0,
+    "recovery_time_sec": 0.0,
+    "failed_deliveries": 4,
+    "average_delay_mins": 1.76,
+    "computation_time_sec": 10.058
+  },
+  "Rule-Based Decentralized": {
+    "delivery_success_pct": 96.0,
+    "on_time_delivery_pct": 52.0,
+    "total_distance_km": 201.41,
+    "total_fuel_liters": 69.79,
+    "total_co2_kg": 187.03,
+    "empty_kilometers": 13.0,
+    "vehicle_utilization_pct": 11.0,
+    "recovery_time_sec": 0.0014,
+    "failed_deliveries": 0,
+    "average_delay_mins": 130.67,
+    "computation_time_sec": 0.006
+  },
+  "PPO Adaptive Agent": {
+    "delivery_success_pct": 96.0,
+    "on_time_delivery_pct": 52.0,
+    "total_distance_km": 201.41,
+    "total_fuel_liters": 69.79,
+    "total_co2_kg": 187.03,
+    "empty_kilometers": 13.0,
+    "vehicle_utilization_pct": 11.0,
+    "recovery_time_sec": 0.0006,
+    "failed_deliveries": 0,
+    "average_delay_mins": 130.67,
+    "computation_time_sec": 0.839
+  }
+}

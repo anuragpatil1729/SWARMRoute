@@ -33,6 +33,7 @@ class MeshNetwork:
         self.failed_nodes: Set[str] = set()
         self.failed_links: Set[Tuple[str, str]] = set()
         self.topology: nx.Graph = nx.Graph()
+        self.transmitted_messages: List[MeshMessage] = []
 
     def update_node_position(self, node_id: str, position: Tuple[float, float]) -> None:
         self.nodes[node_id] = position
@@ -100,17 +101,21 @@ class MeshNetwork:
                 message.delivered = len(reachable) > 0
                 message.total_latency_ms = self.base_latency_per_hop_ms
                 message.route_taken = [sender] + list(reachable)
+                self.transmitted_messages.append(message)
                 return message.delivered
             message.delivered = False
+            self.transmitted_messages.append(message)
             return False
 
         receiver = message.receiver_id
         if not self.topology.has_node(sender) or not self.topology.has_node(receiver):
             message.delivered = False
+            self.transmitted_messages.append(message)
             return False
 
         if not nx.has_path(self.topology, sender, receiver):
             message.delivered = False
+            self.transmitted_messages.append(message)
             return False
 
         # Shortest hop path
@@ -127,8 +132,34 @@ class MeshNetwork:
                 # Packet dropped mid-flight
                 message.delivered = False
                 message.total_latency_ms = latency
+                self.transmitted_messages.append(message)
                 return False
 
         message.total_latency_ms = latency
         message.delivered = True
+        self.transmitted_messages.append(message)
         return True
+
+    def get_mesh_metrics(self) -> Dict[str, Any]:
+        """Calculates authoritative empirical mesh transmission statistics."""
+        if not self.transmitted_messages:
+            return {
+                "total_messages": 0,
+                "delivered_messages": 0,
+                "delivery_success_rate": 0.0,
+                "delivery_success": False,
+                "average_hops": 0.0,
+                "average_latency_ms": 0.0,
+            }
+        total = len(self.transmitted_messages)
+        delivered = sum(1 for m in self.transmitted_messages if m.delivered)
+        avg_hops = sum(m.hop_count for m in self.transmitted_messages) / max(total, 1)
+        avg_lat = sum(m.total_latency_ms for m in self.transmitted_messages) / max(total, 1)
+        return {
+            "total_messages": total,
+            "delivered_messages": delivered,
+            "delivery_success_rate": round(delivered / total, 3),
+            "delivery_success": (delivered == total and total > 0),
+            "average_hops": round(avg_hops, 2),
+            "average_latency_ms": round(avg_lat, 2),
+        }

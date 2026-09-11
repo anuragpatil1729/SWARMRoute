@@ -1,0 +1,28 @@
+{
+  "scenario": "Dynamic Rush-Hour Zone Demand Surge",
+  "reactive_fleet": {
+    "response_time_mins": 93.0,
+    "empty_kilometers": 0.0,
+    "total_distance_km": 68.21,
+    "total_fuel_liters": 22.06,
+    "total_co2_kg": 59.12,
+    "late_deliveries": 2,
+    "completed_deliveries": 2,
+    "utilization_pct": 0.0
+  },
+  "predictive_fleet": {
+    "response_time_mins": 9.0,
+    "empty_kilometers": 23.33,
+    "total_distance_km": 35.44,
+    "total_fuel_liters": 10.84,
+    "total_co2_kg": 29.06,
+    "late_deliveries": 0,
+    "completed_deliveries": 2,
+    "utilization_pct": 0.0
+  },
+  "improvements": {
+    "response_time_reduction_mins": 84.0,
+    "response_time_improvement_pct": 90.3,
+    "late_delivery_reduction": 2
+  }
+}

@@ -168,7 +168,7 @@ def calculate_vehicle_utilization(vehicles: Sequence[Vehicle]) -> float:
     """
     Calculates average capacity utilization percentage across deployed vehicles.
     """
-    active = [v for v in vehicles if len(v.current_route) > 1 or v.current_cargo_weight > 0.0]
+    active = [v for v in vehicles if len(v.current_route) > 1 or v.current_load > 0.0]
     if not active:
         return 0.0
     utilizations = [v.utilization_rate for v in active]
@@ -210,3 +210,47 @@ class FleetMetrics(BaseModel):
             f"Cost: {currency_symbol}{self.total_cost:,.2f}\n"
             f"Runtime: {self.runtime_seconds:.3f} sec"
         )
+
+
+def calculate_average_delivery_delay(orders: Sequence[Order]) -> float:
+    """
+    Calculates the average delay (in minutes) across delivered orders.
+    Returns 0.0 if no orders are delayed.
+    """
+    delays = []
+    for o in orders:
+        if o.status in (OrderStatus.DELIVERED, OrderStatus.LATE):
+            arr = o.actual_arrival_time or o.actual_delivery_time
+            if arr is not None and arr > o.latest_delivery:
+                delays.append(arr - o.latest_delivery)
+    if not delays:
+        return 0.0
+    return round(sum(delays) / len(orders), 2)
+
+
+def calculate_empty_km(total_distance_km: float, loaded_distance_km: float) -> float:
+    """Calculates empty kilometers traveled."""
+    return round(max(0.0, total_distance_km - loaded_distance_km), 2)
+
+
+class AuthoritativeFleetMetrics(BaseModel):
+    """
+    Centralized authoritative container for all 16 standardized empirical metrics.
+    Guarantees that every reported metric originates strictly from the simulation.
+    """
+    total_distance_km: float = Field(default=0.0, description="Total distance traveled by active fleet (km)")
+    total_fuel_liters: float = Field(default=0.0, description="Total fuel consumed (L)")
+    total_co2_kg: float = Field(default=0.0, description="Total CO2 emissions generated (kg)")
+    completed_orders: int = Field(default=0, description="Number of orders successfully delivered")
+    failed_orders: int = Field(default=0, description="Number of orders undelivered or abandoned")
+    late_orders: int = Field(default=0, description="Number of orders arriving past time window")
+    average_delivery_delay_mins: float = Field(default=0.0, description="Average delay past deadline per order")
+    vehicle_utilization_pct: float = Field(default=0.0, description="Average capacity utilization percentage")
+    empty_kilometers: float = Field(default=0.0, description="Distance driven with zero payload (km)")
+    recovery_time_sec: float = Field(default=0.0, description="Wall-clock or simulation recovery time")
+    reassigned_deliveries_count: int = Field(default=0, description="Number of orders transferred between trucks")
+    breakdowns_count: int = Field(default=0, description="Number of mechanical breakdown events")
+    mesh_messages_count: int = Field(default=0, description="Total messages routed over wireless mesh")
+    mesh_delivery_success: bool = Field(default=False, description="True if all mesh packets arrived at destinations")
+    average_mesh_latency_ms: float = Field(default=0.0, description="Average latency across mesh transmissions")
+    optimization_computation_time_sec: float = Field(default=0.0, description="Computation time spent optimizing")

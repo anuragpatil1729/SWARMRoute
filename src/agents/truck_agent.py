@@ -7,6 +7,7 @@ from src.models.order import Order, OrderStatus
 from src.models.vehicle import Vehicle, VehicleStatus
 from src.models.fleet_state import ConnectivityState
 from src.networking.messages import MeshMessage, MessageType
+from src.prediction.fuel import FuelModel, DeterministicFuelModel
 
 
 class LocalAgentState(BaseModel):
@@ -44,9 +45,11 @@ class TruckAgent:
         initial_vehicle: Vehicle,
         initial_orders: Optional[Dict[str, Order]] = None,
         max_detour_km: float = 25.0,
+        fuel_model: Optional[FuelModel] = None,
     ) -> None:
         self.vehicle_id = vehicle_id
         self.max_detour_km = max_detour_km
+        self.fuel_model = fuel_model or DeterministicFuelModel()
         self.state = LocalAgentState(
             vehicle_id=vehicle_id,
             current_location=initial_vehicle.current_location,
@@ -113,6 +116,59 @@ class TruckAgent:
             return True, round(best_detour, 2), best_idx
         return False, best_detour, -1
 
+    def generate_bids_for_breakdown(
+        self,
+        message: MeshMessage,
+        node_coords: Dict[int, Tuple[float, float]],
+    ) -> List[MeshMessage]:
+        """
+        Evaluates unserved stranded orders and generates explicit bids for all feasible orders.
+        """
+        broken_v_id = message.sender_id
+        if broken_v_id == self.vehicle_id or self.state.status == VehicleStatus.BROKEN_DOWN:
+            return []
+
+        bids = []
+        stranded_orders_data = message.payload.get("orders", [])
+        for o_data in stranded_orders_data:
+            order = Order(**o_data) if isinstance(o_data, dict) else o_data
+            order_node = message.payload.get("order_nodes", {}).get(order.order_id, 0)
+            feasible, detour, insert_idx = self.evaluate_order_absorption(order, order_node, node_coords)
+
+            if feasible:
+                # Physics/ML calculation of additional fuel and CO2
+                new_load = self.state.current_load + order.demand_weight
+                add_fuel = self.fuel_model.calculate_fuel(
+                    vehicle_type="heavy_duty",
+                    vehicle_load=new_load,
+                    max_weight=self.state.max_weight,
+                    distance=detour,
+                    average_speed=40.0,
+                )
+                add_co2 = self.fuel_model.calculate_co2(add_fuel)
+
+                accept_msg = MeshMessage(
+                    message_id=f"ACCEPT_{self.vehicle_id}_{order.order_id}",
+                    message_type=MessageType.ORDER_TRANSFER_ACCEPT,
+                    sender_id=self.vehicle_id,
+                    receiver_id=broken_v_id,
+                    timestamp_mins=message.timestamp_mins + 0.1,
+                    payload={
+                        "order_id": order.order_id,
+                        "bidder_vehicle_id": self.vehicle_id,
+                        "detour_km": round(detour, 2),
+                        "additional_fuel": round(add_fuel, 3),
+                        "additional_co2": round(add_co2, 3),
+                        "order": order.model_dump(),
+                        "order_node": order_node,
+                        "insert_index": insert_idx,
+                        "capacity_remaining": round(self.remaining_capacity() - order.demand_weight, 2),
+                    },
+                )
+                self.outbox.append(accept_msg)
+                bids.append(accept_msg)
+        return bids
+
     def receive_message(
         self,
         message: MeshMessage,
@@ -126,35 +182,8 @@ class TruckAgent:
 
         # 1. Peer breakdown broadcast
         if m_type in (MessageType.BREAKDOWN_ALERT, MessageType.SOS_BREAKDOWN):
-            broken_v_id = message.sender_id
-            if broken_v_id == self.vehicle_id:
-                return None  # Own message
-
-            stranded_orders_data = message.payload.get("orders", [])
-            for o_data in stranded_orders_data:
-                order = Order(**o_data) if isinstance(o_data, dict) else o_data
-                order_node = message.payload.get("order_nodes", {}).get(order.order_id, 0)
-                feasible, detour, insert_idx = self.evaluate_order_absorption(order, order_node, node_coords)
-
-                if feasible:
-                    # Respond with acceptance bid
-                    accept_msg = MeshMessage(
-                        message_id=f"ACCEPT_{self.vehicle_id}_{order.order_id}",
-                        message_type=MessageType.ORDER_TRANSFER_ACCEPT,
-                        sender_id=self.vehicle_id,
-                        receiver_id=broken_v_id,
-                        timestamp_mins=message.timestamp_mins + 0.1,
-                        payload={
-                            "order_id": order.order_id,
-                            "order": order.model_dump(),
-                            "order_node": order_node,
-                            "detour_km": detour,
-                            "insert_index": insert_idx,
-                            "capacity_remaining": self.remaining_capacity() - order.demand_weight,
-                        },
-                    )
-                    self.outbox.append(accept_msg)
-                    return accept_msg
+            bids = self.generate_bids_for_breakdown(message, node_coords)
+            return bids[0] if bids else None
 
         # 2. Transfer proposal or confirmation
         elif m_type == MessageType.ORDER_TRANSFER_ACCEPT:
