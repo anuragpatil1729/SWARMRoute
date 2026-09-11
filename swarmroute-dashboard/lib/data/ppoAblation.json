@@ -1,0 +1,537 @@
+{
+  "Config A (Baseline PPO, No ML)": {
+    "description": "PPO agent without predictive model inputs",
+    "raw_runs": [
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 63.6,
+        "total_distance_km": 152.02,
+        "total_fuel_liters": 51.63,
+        "total_co2_kg": 138.38,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 2.1
+      },
+      {
+        "delivery_success_pct": 95.5,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 157.66,
+        "total_fuel_liters": 53.42,
+        "total_co2_kg": 143.17,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 1,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 1.5
+      },
+      {
+        "delivery_success_pct": 86.4,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 162.56,
+        "total_fuel_liters": 55.52,
+        "total_co2_kg": 148.8,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 3,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 4.4
+      },
+      {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 205.39,
+        "total_fuel_liters": 67.89,
+        "total_co2_kg": 181.95,
+        "empty_kilometers": 47.84,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0
+      },
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 163.56,
+        "total_fuel_liters": 55.8,
+        "total_co2_kg": 149.54,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 2.4
+      }
+    ],
+    "metrics": {
+      "delivery_success_pct": {
+        "mean": 92.74,
+        "std": 4.63
+      },
+      "on_time_delivery_pct": {
+        "mean": 69.08,
+        "std": 3.4
+      },
+      "total_distance_km": {
+        "mean": 168.24,
+        "std": 19.02
+      },
+      "total_fuel_liters": {
+        "mean": 56.85,
+        "std": 5.72
+      },
+      "total_co2_kg": {
+        "mean": 152.37,
+        "std": 15.34
+      },
+      "empty_kilometers": {
+        "mean": 40.03,
+        "std": 3.9
+      },
+      "recovery_time_sec": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "failed_deliveries": {
+        "mean": 1.6,
+        "std": 1.02
+      },
+      "average_delay_mins": {
+        "mean": 6.1,
+        "std": 0.08
+      },
+      "vehicle_utilization_pct": {
+        "mean": 2.08,
+        "std": 1.42
+      }
+    }
+  },
+  "Config B (PPO + Travel Time)": {
+    "description": "PPO with travel time regression",
+    "raw_runs": [
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 63.6,
+        "total_distance_km": 152.02,
+        "total_fuel_liters": 51.63,
+        "total_co2_kg": 138.38,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 2.1
+      },
+      {
+        "delivery_success_pct": 95.5,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 157.66,
+        "total_fuel_liters": 53.42,
+        "total_co2_kg": 143.17,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 1,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 1.5
+      },
+      {
+        "delivery_success_pct": 86.4,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 162.56,
+        "total_fuel_liters": 55.52,
+        "total_co2_kg": 148.8,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 3,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 4.4
+      },
+      {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 205.39,
+        "total_fuel_liters": 67.89,
+        "total_co2_kg": 181.95,
+        "empty_kilometers": 47.84,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0
+      },
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 163.56,
+        "total_fuel_liters": 55.8,
+        "total_co2_kg": 149.54,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 2.4
+      }
+    ],
+    "metrics": {
+      "delivery_success_pct": {
+        "mean": 92.74,
+        "std": 4.63
+      },
+      "on_time_delivery_pct": {
+        "mean": 69.08,
+        "std": 3.4
+      },
+      "total_distance_km": {
+        "mean": 168.24,
+        "std": 19.02
+      },
+      "total_fuel_liters": {
+        "mean": 56.85,
+        "std": 5.72
+      },
+      "total_co2_kg": {
+        "mean": 152.37,
+        "std": 15.34
+      },
+      "empty_kilometers": {
+        "mean": 40.03,
+        "std": 3.9
+      },
+      "recovery_time_sec": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "failed_deliveries": {
+        "mean": 1.6,
+        "std": 1.02
+      },
+      "average_delay_mins": {
+        "mean": 6.1,
+        "std": 0.08
+      },
+      "vehicle_utilization_pct": {
+        "mean": 2.08,
+        "std": 1.42
+      }
+    }
+  },
+  "Config C (PPO + Fuel Predictor)": {
+    "description": "PPO with ML fuel consumption model",
+    "raw_runs": [
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 63.6,
+        "total_distance_km": 152.02,
+        "total_fuel_liters": 51.63,
+        "total_co2_kg": 138.38,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 2.1
+      },
+      {
+        "delivery_success_pct": 95.5,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 157.66,
+        "total_fuel_liters": 53.42,
+        "total_co2_kg": 143.17,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 1,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 1.5
+      },
+      {
+        "delivery_success_pct": 86.4,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 162.56,
+        "total_fuel_liters": 55.52,
+        "total_co2_kg": 148.8,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 3,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 4.4
+      },
+      {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 205.39,
+        "total_fuel_liters": 67.89,
+        "total_co2_kg": 181.95,
+        "empty_kilometers": 47.84,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0
+      },
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 163.56,
+        "total_fuel_liters": 55.8,
+        "total_co2_kg": 149.54,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 2.4
+      }
+    ],
+    "metrics": {
+      "delivery_success_pct": {
+        "mean": 92.74,
+        "std": 4.63
+      },
+      "on_time_delivery_pct": {
+        "mean": 69.08,
+        "std": 3.4
+      },
+      "total_distance_km": {
+        "mean": 168.24,
+        "std": 19.02
+      },
+      "total_fuel_liters": {
+        "mean": 56.85,
+        "std": 5.72
+      },
+      "total_co2_kg": {
+        "mean": 152.37,
+        "std": 15.34
+      },
+      "empty_kilometers": {
+        "mean": 40.03,
+        "std": 3.9
+      },
+      "recovery_time_sec": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "failed_deliveries": {
+        "mean": 1.6,
+        "std": 1.02
+      },
+      "average_delay_mins": {
+        "mean": 6.1,
+        "std": 0.08
+      },
+      "vehicle_utilization_pct": {
+        "mean": 2.08,
+        "std": 1.42
+      }
+    }
+  },
+  "Config D (PPO + Demand Predictor)": {
+    "description": "PPO with spatial demand forecasting",
+    "raw_runs": [
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 63.6,
+        "total_distance_km": 152.02,
+        "total_fuel_liters": 51.63,
+        "total_co2_kg": 138.38,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 2.1
+      },
+      {
+        "delivery_success_pct": 95.5,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 157.66,
+        "total_fuel_liters": 53.42,
+        "total_co2_kg": 143.17,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 1,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 1.5
+      },
+      {
+        "delivery_success_pct": 86.4,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 162.56,
+        "total_fuel_liters": 55.52,
+        "total_co2_kg": 148.8,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 3,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 4.4
+      },
+      {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 205.39,
+        "total_fuel_liters": 67.89,
+        "total_co2_kg": 181.95,
+        "empty_kilometers": 47.84,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0
+      },
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 163.56,
+        "total_fuel_liters": 55.8,
+        "total_co2_kg": 149.54,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 2.4
+      }
+    ],
+    "metrics": {
+      "delivery_success_pct": {
+        "mean": 92.74,
+        "std": 4.63
+      },
+      "on_time_delivery_pct": {
+        "mean": 69.08,
+        "std": 3.4
+      },
+      "total_distance_km": {
+        "mean": 168.24,
+        "std": 19.02
+      },
+      "total_fuel_liters": {
+        "mean": 56.85,
+        "std": 5.72
+      },
+      "total_co2_kg": {
+        "mean": 152.37,
+        "std": 15.34
+      },
+      "empty_kilometers": {
+        "mean": 40.03,
+        "std": 3.9
+      },
+      "recovery_time_sec": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "failed_deliveries": {
+        "mean": 1.6,
+        "std": 1.02
+      },
+      "average_delay_mins": {
+        "mean": 6.1,
+        "std": 0.08
+      },
+      "vehicle_utilization_pct": {
+        "mean": 2.08,
+        "std": 1.42
+      }
+    }
+  },
+  "Config E (Full SWARMRoute)": {
+    "description": "PPO with all ML predictors integrated",
+    "raw_runs": [
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 63.6,
+        "total_distance_km": 152.02,
+        "total_fuel_liters": 51.63,
+        "total_co2_kg": 138.38,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 2.1
+      },
+      {
+        "delivery_success_pct": 95.5,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 157.66,
+        "total_fuel_liters": 53.42,
+        "total_co2_kg": 143.17,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 1,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 1.5
+      },
+      {
+        "delivery_success_pct": 86.4,
+        "on_time_delivery_pct": 68.2,
+        "total_distance_km": 162.56,
+        "total_fuel_liters": 55.52,
+        "total_co2_kg": 148.8,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 3,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 4.4
+      },
+      {
+        "delivery_success_pct": 100.0,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 205.39,
+        "total_fuel_liters": 67.89,
+        "total_co2_kg": 181.95,
+        "empty_kilometers": 47.84,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 0,
+        "average_delay_mins": 6.17,
+        "vehicle_utilization_pct": 0.0
+      },
+      {
+        "delivery_success_pct": 90.9,
+        "on_time_delivery_pct": 72.7,
+        "total_distance_km": 163.56,
+        "total_fuel_liters": 55.8,
+        "total_co2_kg": 149.54,
+        "empty_kilometers": 38.08,
+        "recovery_time_sec": 0.0,
+        "failed_deliveries": 2,
+        "average_delay_mins": 6.0,
+        "vehicle_utilization_pct": 2.4
+      }
+    ],
+    "metrics": {
+      "delivery_success_pct": {
+        "mean": 92.74,
+        "std": 4.63
+      },
+      "on_time_delivery_pct": {
+        "mean": 69.08,
+        "std": 3.4
+      },
+      "total_distance_km": {
+        "mean": 168.24,
+        "std": 19.02
+      },
+      "total_fuel_liters": {
+        "mean": 56.85,
+        "std": 5.72
+      },
+      "total_co2_kg": {
+        "mean": 152.37,
+        "std": 15.34
+      },
+      "empty_kilometers": {
+        "mean": 40.03,
+        "std": 3.9
+      },
+      "recovery_time_sec": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "failed_deliveries": {
+        "mean": 1.6,
+        "std": 1.02
+      },
+      "average_delay_mins": {
+        "mean": 6.1,
+        "std": 0.08
+      },
+      "vehicle_utilization_pct": {
+        "mean": 2.08,
+        "std": 1.42
+      }
+    }
+  }
+}

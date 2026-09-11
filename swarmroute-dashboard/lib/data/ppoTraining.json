@@ -1,0 +1,103 @@
+{
+  "dataset": "C101",
+  "seed": 42,
+  "timesteps": 1000,
+  "train_metrics": {
+    "total_timesteps": 1000,
+    "episodes_completed": 6,
+    "mean_episode_reward": -197.858,
+    "episode_rewards": [
+      -208.67,
+      -244.42,
+      -209.3,
+      -154.42,
+      -195.8,
+      -174.54
+    ]
+  },
+  "eval_metrics": {
+    "mean_reward": -27.5,
+    "std_reward": 0.0,
+    "mean_deliveries": 6.0
+  },
+  "episode_rewards": [
+    -208.67,
+    -244.42,
+    -209.3,
+    -154.42,
+    -195.8,
+    -174.54
+  ],
+  "delivery_success_rates": [
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0,
+    100.0
+  ],
+  "on_time_rates": [
+    83.3,
+    83.3,
+    83.3,
+    83.3,
+    83.3,
+    83.3
+  ],
+  "fuel_consumed": [
+    24.43,
+    24.43,
+    24.43,
+    24.43,
+    24.43,
+    24.43
+  ],
+  "co2_emissions": [
+    65.48,
+    65.48,
+    65.48,
+    65.48,
+    65.48,
+    65.48
+  ],
+  "distances": [
+    72.08,
+    72.08,
+    72.08,
+    72.08,
+    72.08,
+    72.08
+  ],
+  "recoveries": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5
+  ],
+  "late_deliveries": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "failed_orders": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "recovery_times": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

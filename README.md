@@ -178,62 +178,76 @@ SWARMRoute/
 │   ├── rl/                     # SWARMRLEnv (Gymnasium) and PPOFleetAgent (SB3), reward.py
 │   └── evaluation/             # Authoritative metrics & benchmark harnesses
 ├── scripts/
-│   ├── train_ppo.py            # Configurable PPO training script with SB3 (50k steps)
+│   ├── train_ppo.py            # Configurable PPO training script with SB3
 │   ├── evaluate_baselines.py   # 6-way comparative benchmark suite (single & multi-seed)
 │   ├── run_ppo_ablation.py     # 5-config PPO predictor ablation study
 │   ├── run_disruption_scenarios.py # Scenarios A through H benchmark suite
 │   ├── plot_ppo_training.py    # Plot 6-panel PPO training dynamics
 │   ├── run_flagship_recovery.py# 16-step closed loop disruption recovery runner
+│   ├── run_demo.py             # Interactive labeled end-to-end AI demo
+│   ├── sync_dashboard_data.py  # Syncs empirical results to web dashboard
 │   ├── evaluate_predictive_positioning.py # Proactive positioning evaluator
-│   ├── run_simulation.py       # General discrete-event simulation
-│   └── run_experiment.py       # Internet blackout experiment
-├── tests/                      # 59 automated unit and integration tests (100% passing)
+│   └── run_simulation.py       # General discrete-event simulation
+├── swarmroute-dashboard/       # Interactive Next.js web application dashboard
+├── tests/                      # 95 automated unit and integration tests (100% passing)
 ├── results/                    # Generated benchmarks, models, logs, and plots
 └── README.md
 ```
 
 ---
 
-## CLI Usage Guide
+## CLI & Dashboard Usage Guide
 
 ### 1. Installation
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Train PPO Reinforcement Learning Agent
+### 2. Run Interactive AI Demonstration
 ```bash
-python scripts/train_ppo.py --timesteps 50000 --seed 42 --dataset C101 --customers 20 --vehicles 5
+python scripts/run_demo.py --dataset C101 --customers 20 --vehicles 4
 ```
-Saves model checkpoint to `results/models/ppo_agent.zip` and logs to `results/logs/ppo_training_metrics.json`.
+Executes complete 14-stage simulation with explicit labeled architectural tags: `[SIMULATION]`, `[ML]`, `[MESH]`, `[RECOVERY]`, `[PPO]`, and `[RESULT]`.
 
-### 3. Visualize PPO Training Dynamics
+### 3. Launch Interactive Web Dashboard (Next.js)
 ```bash
-python scripts/plot_ppo_training.py
+cd swarmroute-dashboard
+npm install
+npm run dev
 ```
-Generates the 6-panel training dynamics visualization at `results/plots/ppo_training_curves.png`.
+Open [http://localhost:3000](http://localhost:3000) to view the Fleet Resilience Console:
+- **Method Comparison**: Interactive multi-seed benchmark performance charts across all 6 algorithms.
+- **Disruption Scenarios**: Failure analysis across Scenarios A through H.
+- **PPO Training**: Interactive reward curves, episode metrics, and predictor ablation charts.
+- **Route Map**: Visual SVG representation of customer locations, routes, and vehicle paths.
+- **Live View**: Simulation streaming architecture and event monitor.
+
+To sync the latest simulation outputs directly into the dashboard:
+```bash
+python scripts/sync_dashboard_data.py
+```
 
 ### 4. Run Baseline & PPO Comparison Benchmark
 ```bash
-python scripts/evaluate_baselines.py --seed 42 --customers 25 --vehicles 5 --seeds 101,102,103,104,105
+python scripts/evaluate_baselines.py --datasets C101,R101,RC101 --seeds 101,102,103,104,105 --customers 20 --vehicles 4
 ```
 Outputs single-scenario and multi-seed generalization tables, saving `results/benchmarks/final_comparison.json`, `results/benchmarks/final_comparison.csv`, and `results/benchmarks/final_comparison.md`.
 
 ### 5. Run PPO Predictor Ablation Study
 ```bash
-python scripts/run_ppo_ablation.py --seeds 42 101 102 103 104
+python scripts/run_ppo_ablation.py --seeds 101 102 103 104 105 --customers 20 --vehicles 4
 ```
 Generates `results/experiments/ppo_ablation.json`, `.csv`, `.md`, and `results/plots/ppo_ablation.png`.
 
-### 6. Run Disruption Benchmark Suite (Scenarios A through H)
+### 6. Train PPO Reinforcement Learning Agent
 ```bash
-python scripts/run_disruption_scenarios.py --seed 42
+python scripts/train_ppo.py --timesteps 1000 --seed 42 --dataset C101 --customers 15 --vehicles 3
 ```
-Generates `results/experiments/disruption_scenarios.json`, `.csv`, `.md`, and `results/plots/disruption_performance.png`.
+Saves model checkpoint to `results/models/ppo_agent.zip` and logs to `results/logs/ppo_training_metrics.json`.
 
 ### 7. Run Complete Automated Test Suite
 ```bash
-pytest tests/ -q
+pytest tests/ -v
 ```
-Executes all **59 automated tests** covering CVRPTW solvers, time windows, fuel kinematics, mesh communication, decentralized bidding, information barrier verification, scenario generation, and RL environment contracts.
+Executes all **95 automated tests** covering CVRPTW solvers, time windows, fuel kinematics, mesh communication, decentralized bidding, information barrier verification, scenario generation, ML integrations, and RL environment contracts.
 
