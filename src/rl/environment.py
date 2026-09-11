@@ -3,12 +3,8 @@ import math
 from typing import Any, Dict, Optional, Tuple
 import numpy as np
 
-try:
-    import gymnasium as gym
-    from gymnasium import spaces
-except ImportError:
-    import gym
-    from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 
 from src.models.fleet_state import ConnectivityState
 from src.models.vehicle import VehicleStatus
@@ -24,6 +20,18 @@ from src.prediction.demand import DemandPredictor
 from src.optimization.predictive_positioning import PredictiveFleetPositioner
 from src.networking.mesh import MeshNetwork
 from src.rl.reward import MultiObjectiveRewardConfig, FleetRewardCalculator, RewardConfig
+
+__all__ = [
+    "SWARMRLEnv",
+    "RewardConfig",
+    "MultiObjectiveRewardConfig",
+    "FleetRewardCalculator",
+    "ACTION_ASSIGN_BEST_ORDER",
+    "ACTION_REASSIGN_STRANDED_ORDER",
+    "ACTION_ACCEPT_OR_REJECT_TRANSFER",
+    "ACTION_REPOSITION_TO_DEMAND_ZONE",
+    "ACTION_HOLD_OR_CONTINUE",
+]
 # Action Constants
 ACTION_ASSIGN_BEST_ORDER = 0
 ACTION_REASSIGN_STRANDED_ORDER = 1

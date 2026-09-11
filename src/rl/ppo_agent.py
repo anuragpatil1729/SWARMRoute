@@ -1,8 +1,6 @@
-from __future__ import annotations
-import os
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 import numpy as np
 
 # Prevent PyTorch / Keras C-extension collisions on macOS Python 3.13
@@ -13,7 +11,6 @@ for _m in ("tensorflow", "keras", "tensorboard"):
 try:
     from stable_baselines3 import PPO
     from stable_baselines3.common.callbacks import BaseCallback
-    from stable_baselines3.common.evaluation import evaluate_policy
 except ImportError:
     PPO = None
     BaseCallback = object
