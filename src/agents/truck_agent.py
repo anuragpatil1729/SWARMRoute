@@ -71,6 +71,8 @@ class TruckAgent:
     def can_absorb(self, order: Order) -> bool:
         if self.state.status == VehicleStatus.BROKEN_DOWN:
             return False
+        if self.state.connectivity == ConnectivityState.DISCONNECTED_MODE:
+            return False
         return (self.state.current_load + order.demand_weight) <= (self.state.max_weight + 1e-6)
 
     def evaluate_order_absorption(
@@ -125,7 +127,11 @@ class TruckAgent:
         Evaluates unserved stranded orders and generates explicit bids for all feasible orders.
         """
         broken_v_id = message.sender_id
-        if broken_v_id == self.vehicle_id or self.state.status == VehicleStatus.BROKEN_DOWN:
+        if (
+            broken_v_id == self.vehicle_id
+            or self.state.status == VehicleStatus.BROKEN_DOWN
+            or self.state.connectivity == ConnectivityState.DISCONNECTED_MODE
+        ):
             return []
 
         bids = []
@@ -177,6 +183,12 @@ class TruckAgent:
         """
         Processes an incoming mesh message locally using only local information.
         """
+        if (
+            self.state.status == VehicleStatus.BROKEN_DOWN
+            or self.state.connectivity == ConnectivityState.DISCONNECTED_MODE
+        ):
+            return None
+
         self.state.received_messages_count += 1
         m_type = message.message_type
 

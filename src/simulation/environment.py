@@ -181,12 +181,15 @@ class FleetSimulationEnvironment:
                 oid = t.get("order_id")
                 from_v = t.get("from_vehicle")
                 to_v = t.get("to_vehicle")
+                ord_node = t.get("order_node", self.node_id_map.get(oid))
 
                 # Remove from previous vehicle so it is no longer stranded
                 if from_v in self.fleet_state.vehicles:
                     src_veh = self.fleet_state.vehicles[from_v]
                     if oid in src_veh.assigned_orders:
                         src_veh.assigned_orders.remove(oid)
+                    if ord_node is not None:
+                        src_veh.current_route = [n for n in src_veh.current_route if n != ord_node]
                     ord_obj_pre = self.fleet_state.active_orders.get(oid)
                     if ord_obj_pre:
                         src_veh.current_load = max(0.0, src_veh.current_load - ord_obj_pre.demand_weight)
@@ -195,20 +198,22 @@ class FleetSimulationEnvironment:
                 if to_v in self.fleet_state.vehicles and oid in self.fleet_state.active_orders:
                     v = self.fleet_state.vehicles[to_v]
                     ord_obj = self.fleet_state.active_orders[oid]
-                    ord_node = self.node_id_map.get(oid)
+                    target_node = ord_node or self.node_id_map.get(oid)
 
-                    if ord_node is not None:
-                        # Insert before final depot stop
-                        if len(v.current_route) > 1:
-                            v.current_route.insert(-1, ord_node)
-                        else:
-                            v.current_route.append(ord_node)
+                    if target_node is not None:
+                        # Insert before final depot stop without duplicating
+                        if target_node not in v.current_route:
+                            if len(v.current_route) > 1:
+                                v.current_route.insert(-1, target_node)
+                            else:
+                                v.current_route.append(target_node)
 
                         if oid not in v.assigned_orders:
                             v.assigned_orders.append(oid)
-                        v.current_load += ord_obj.demand_weight
+                            v.current_load += ord_obj.demand_weight
                         ord_obj.assigned_vehicle_id = to_v
                         ord_obj.status = OrderStatus.REASSIGNED
+                        self.failed_orders.discard(oid)
 
         elif action_type == "UPDATE_ROUTE":
             v_id = action.get("vehicle_id")
@@ -249,7 +254,7 @@ class FleetSimulationEnvironment:
                 v_id = ev.payload.get("vehicle_id")
                 if v_id in self.fleet_state.vehicles:
                     self.fleet_state.vehicles[v_id].status = VehicleStatus.BROKEN_DOWN
-                    self.mesh_network.set_node_failed(v_id, failed=True)
+                    # Note: engine breakdown halts vehicle movement; radio transmitter remains active to broadcast SOS until recovery
 
         # 3. Physically move active vehicles along edges
         for v_id, v in self.fleet_state.vehicles.items():
