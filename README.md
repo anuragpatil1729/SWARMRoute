@@ -21,7 +21,10 @@ To ensure scientific honesty and rigor, the system boundaries are strictly defin
 * **Gymnasium RL Environment**: Standard Gymnasium environment (`SWARMRLEnv`) featuring a strictly verified **25-dimensional normalized observation vector**, 5-dimensional action space with action masking, and an isolated multi-objective step reward module (`src/rl/reward.py`).
 * **PPO Reinforcement Learning Agent**: Stable-Baselines3 PPO integration (`PPOFleetAgent`) trained for 50,000 timesteps for active fleet-wide decision making under local information constraints.
 * **Standardized Scenario Generator**: Reproducible benchmark scenario generator (`scenario_generator.py`) with seed-dependent perturbation of breakdown vehicles, timings, traffic spikes, and dynamic orders.
-* **Full Unit & Integration Test Suite**: **60 automated unit and regression tests** passing with 100% compliance across physics, networking, RL environment contracts, ML prediction, and scenario generation layers.
+* **Full Unit & Integration Test Suite**: **95 automated unit and regression tests** passing with 100% compliance across physics, networking, RL environment contracts, ML prediction integration, multi-seed fair scenarios, and decentralized recovery.
+* **Phase 3 ML Integration**: TravelTimePredictor integrated into VRPTW route cost estimation, FuelConsumptionPredictor integrated into decentralized contract-net bidding, and DemandPredictor integrated into PredictiveFleetPositioner.
+* **Empirical Multi-Dataset Benchmarks**: Rigorous 5-seed (101–105) comparative evaluation across Solomon C101, R101, and RC101 instances comparing 6 methods under identical disruption scenarios.
+* **PPO Predictor Ablation**: Controlled ablation study measuring progressive impact of ML predictors (Configs A–E) on RL decision performance.
 
 ### 2. EXPERIMENTAL (Active Research / Trade-off Exploration)
 * **PPO Autonomous Control**: PPO policy trained over 50,000 steps to choose order assignment, stranded order recovery, transfer acceptance, proactive repositioning, and hold actions. While PPO actively navigates trade-offs without centralized coordinators, rule-based contract-net heuristics currently achieve higher recovery efficiency in deterministic dispatching.

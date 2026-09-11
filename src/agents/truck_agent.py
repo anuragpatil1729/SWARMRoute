@@ -46,10 +46,14 @@ class TruckAgent:
         initial_orders: Optional[Dict[str, Order]] = None,
         max_detour_km: float = 25.0,
         fuel_model: Optional[FuelModel] = None,
+        fuel_predictor: Optional[Any] = None,
+        use_ml_fuel: bool = False,
     ) -> None:
         self.vehicle_id = vehicle_id
         self.max_detour_km = max_detour_km
         self.fuel_model = fuel_model or DeterministicFuelModel()
+        self.fuel_predictor = fuel_predictor
+        self.use_ml_fuel = use_ml_fuel
         self.state = LocalAgentState(
             vehicle_id=vehicle_id,
             current_location=initial_vehicle.current_location,
@@ -144,13 +148,24 @@ class TruckAgent:
             if feasible:
                 # Physics/ML calculation of additional fuel and CO2
                 new_load = self.state.current_load + order.demand_weight
-                add_fuel = self.fuel_model.calculate_fuel(
-                    vehicle_type="heavy_duty",
-                    vehicle_load=new_load,
-                    max_weight=self.state.max_weight,
-                    distance=detour,
-                    average_speed=40.0,
-                )
+                if self.use_ml_fuel and self.fuel_predictor is not None and getattr(self.fuel_predictor, "is_trained", False):
+                    add_fuel = self.fuel_predictor.predict_single(
+                        distance=detour,
+                        vehicle_type_code=0,
+                        vehicle_load=new_load,
+                        average_speed=40.0,
+                        traffic_level_code=1,
+                        road_gradient=0.0,
+                        stop_count=1,
+                    )
+                else:
+                    add_fuel = self.fuel_model.calculate_fuel(
+                        vehicle_type="heavy_duty",
+                        vehicle_load=new_load,
+                        max_weight=self.state.max_weight,
+                        distance=detour,
+                        average_speed=40.0,
+                    )
                 add_co2 = self.fuel_model.calculate_co2(add_fuel)
 
                 accept_msg = MeshMessage(

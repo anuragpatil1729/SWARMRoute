@@ -115,6 +115,8 @@ class FleetAgent:
         mesh_network: Optional[MeshNetwork] = None,
         max_detour_km: float = 25.0,
         seed: int = 42,
+        fuel_predictor: Optional[Any] = None,
+        use_ml_fuel: bool = False,
     ) -> None:
         self.fleet_state = fleet_state
         self.road_network = road_network
@@ -124,6 +126,8 @@ class FleetAgent:
         self.total_mesh_messages: int = 0
         self.total_mesh_hops: int = 0
         self.recovered_orders_count: int = 0
+        self.fuel_predictor = fuel_predictor
+        self.use_ml_fuel = use_ml_fuel
 
         # Initialize local edge agent on each vehicle and register on mesh
         for v_id, vehicle in fleet_state.vehicles.items():
@@ -132,6 +136,8 @@ class FleetAgent:
                 initial_vehicle=vehicle,
                 initial_orders=fleet_state.active_orders,
                 max_detour_km=max_detour_km,
+                fuel_predictor=fuel_predictor,
+                use_ml_fuel=use_ml_fuel,
             )
             self.mesh_network.update_node_position(v_id, vehicle.current_location)
 

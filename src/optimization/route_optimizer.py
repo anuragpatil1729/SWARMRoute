@@ -20,9 +20,15 @@ class RouteOptimizer:
         self,
         fuel_model: Optional[FuelModel] = None,
         objective_weights: Optional[Dict[str, float]] = None,
+        travel_time_predictor: Optional[Any] = None,
+        fuel_predictor: Optional[Any] = None,
+        use_ml_prediction: bool = True,
     ) -> None:
         self.fuel_model = fuel_model or DeterministicFuelModel()
         self.objective_weights = objective_weights
+        self.travel_time_predictor = travel_time_predictor
+        self.fuel_predictor = fuel_predictor
+        self.use_ml_prediction = use_ml_prediction
         self.vrptw_solver = VRPTWSolver(
             fuel_model=self.fuel_model,
             objective_weights=self.objective_weights,
@@ -39,6 +45,7 @@ class RouteOptimizer:
         allow_drop: bool = False,
         travel_time_predictor: Optional[Any] = None,
         fuel_predictor: Optional[Any] = None,
+        use_ml_prediction: Optional[bool] = None,
     ) -> OptimizationResult:
         """
         Main optimization entry point required by specification:
@@ -62,11 +69,10 @@ class RouteOptimizer:
         if weights is not None:
             solver = VRPTWSolver(fuel_model=self.fuel_model, objective_weights=weights)
 
-        # 4. Apply traffic state to road network if provided
-        if traffic_state:
-            for road_id, level in traffic_state.items():
-                if road_network.graph.has_edge(road_id, None):
-                    pass  # Edge updates if keyed by edge
+        # 4. Determine predictors and ML mode
+        tt_pred = travel_time_predictor if travel_time_predictor is not None else self.travel_time_predictor
+        f_pred = fuel_predictor if fuel_predictor is not None else self.fuel_predictor
+        ml_flag = use_ml_prediction if use_ml_prediction is not None else self.use_ml_prediction
 
         # 5. Execute VRPTW Solver
         result = solver.solve(
@@ -75,8 +81,9 @@ class RouteOptimizer:
             road_network=road_network,
             time_limit_sec=time_limit_sec,
             allow_drop=allow_drop,
-            travel_time_predictor=travel_time_predictor,
-            fuel_predictor=fuel_predictor,
+            travel_time_predictor=tt_pred,
+            fuel_predictor=f_pred,
+            use_ml_prediction=ml_flag,
         )
 
         # If infeasible without drops, retry with heavy drop penalty disjunctions
@@ -88,8 +95,9 @@ class RouteOptimizer:
                 time_limit_sec=time_limit_sec,
                 allow_drop=True,
                 drop_penalty=100000,
-                travel_time_predictor=travel_time_predictor,
-                fuel_predictor=fuel_predictor,
+                travel_time_predictor=tt_pred,
+                fuel_predictor=f_pred,
+                use_ml_prediction=ml_flag,
             )
 
         # 6. Update fleet vehicle states with resulting routes and assignments

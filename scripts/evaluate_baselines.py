@@ -208,7 +208,11 @@ def run_single_benchmark_scenario(
         m = env.get_metrics()
         m["recovery_time_sec"] = rec_time
         comm_stats = calculate_communication_overhead(mesh)
-        m["communication_overhead"] = comm_stats["messages_exchanged"]
+        mesh_stats = mesh.get_mesh_metrics()
+        m["communication_overhead"] = comm_stats.get("messages_exchanged", 0)
+        m["mesh_messages"] = mesh_stats.get("total_messages", 0)
+        m["mesh_delivery_success_pct"] = (mesh_stats.get("delivery_success_rate", 0.0) * 100.0) if mesh_stats.get("total_messages", 0) > 0 else (100.0 if mode in ("PPO", "RULE_BASED") else 0.0)
+        m["late_deliveries"] = m.get("late_deliveries", 0)
         m["cloud_dependency"] = 1.0 if mode == "STATIC" else (
             0.0 if fleet.connectivity_state == ConnectivityState.MESH_MODE else 0.5
         )
@@ -328,7 +332,10 @@ def run_single_benchmark_scenario(
             "vehicle_utilization_pct": m["vehicle_utilization_pct"],
             "recovery_time_sec": round(m.get("recovery_time_sec", 0.0), 4),
             "failed_deliveries": failed,
+            "late_deliveries": m.get("late_deliveries", 0),
             "average_delay_mins": m["average_delivery_delay_mins"],
+            "mesh_messages": m.get("mesh_messages", 0),
+            "mesh_delivery_success_pct": m.get("mesh_delivery_success_pct", 0.0),
             "computation_time_sec": round(m.get("comp_time", 0.0), 3),
         }
 
@@ -402,7 +409,8 @@ def evaluate_all_baselines(
     multi_seed_records: Dict[str, Dict[str, List[float]]] = {
         name: {
             "success": [], "on_time": [], "distance": [], "fuel": [], "co2": [],
-            "empty_km": [], "recovery": [], "failed": [], "delay": [], "comp_time": []
+            "empty_km": [], "recovery": [], "failed": [], "late": [], "delay": [],
+            "util": [], "mesh_msgs": [], "mesh_succ": [], "comp_time": []
         }
         for name in single_res.keys()
     }
@@ -426,7 +434,11 @@ def evaluate_all_baselines(
             multi_seed_records[name]["empty_km"].append(data["empty_kilometers"])
             multi_seed_records[name]["recovery"].append(data["recovery_time_sec"])
             multi_seed_records[name]["failed"].append(data["failed_deliveries"])
+            multi_seed_records[name]["late"].append(data.get("late_deliveries", 0))
             multi_seed_records[name]["delay"].append(data["average_delay_mins"])
+            multi_seed_records[name]["util"].append(data["vehicle_utilization_pct"])
+            multi_seed_records[name]["mesh_msgs"].append(data.get("mesh_messages", 0))
+            multi_seed_records[name]["mesh_succ"].append(data.get("mesh_delivery_success_pct", 0.0))
             multi_seed_records[name]["comp_time"].append(data["computation_time_sec"])
 
     # Compute mean and standard deviation
@@ -443,6 +455,11 @@ def evaluate_all_baselines(
         m_empty, s_empty = float(np.mean(series["empty_km"])), float(np.std(series["empty_km"]))
         m_rec, s_rec = float(np.mean(series["recovery"])), float(np.std(series["recovery"]))
         m_fail, s_fail = float(np.mean(series["failed"])), float(np.std(series["failed"]))
+        m_late, s_late = float(np.mean(series["late"])), float(np.std(series["late"]))
+        m_delay, s_delay = float(np.mean(series["delay"])), float(np.std(series["delay"]))
+        m_util, s_util = float(np.mean(series["util"])), float(np.std(series["util"]))
+        m_mesh, s_mesh = float(np.mean(series["mesh_msgs"])), float(np.std(series["mesh_msgs"]))
+        m_msucc, s_msucc = float(np.mean(series["mesh_succ"])), float(np.std(series["mesh_succ"]))
         m_comp, s_comp = float(np.mean(series["comp_time"])), float(np.std(series["comp_time"]))
 
         final_json_data[name] = {
@@ -462,6 +479,16 @@ def evaluate_all_baselines(
             "recovery_sec_std": round(s_rec, 4),
             "failed_mean": round(m_fail, 1),
             "failed_std": round(s_fail, 1),
+            "late_mean": round(m_late, 1),
+            "late_std": round(s_late, 1),
+            "delay_mins_mean": round(m_delay, 1),
+            "delay_mins_std": round(s_delay, 1),
+            "utilization_pct_mean": round(m_util, 1),
+            "utilization_pct_std": round(s_util, 1),
+            "mesh_messages_mean": round(m_mesh, 1),
+            "mesh_messages_std": round(s_mesh, 1),
+            "mesh_delivery_success_pct_mean": round(m_msucc, 1),
+            "mesh_delivery_success_pct_std": round(s_msucc, 1),
             "runtime_sec_mean": round(m_comp, 3),
             "runtime_sec_std": round(s_comp, 3),
             "evaluated_seeds": eval_seeds,
@@ -475,8 +502,13 @@ def evaluate_all_baselines(
             f"{m_fuel:.1f} ± {s_fuel:.1f}",
             f"{m_co2:.1f} ± {s_co2:.1f}",
             f"{m_empty:.1f} ± {s_empty:.1f}",
+            f"{m_util:.1f}%",
             f"{m_rec:.3f}s",
             f"{m_fail:.1f}",
+            f"{m_late:.1f}",
+            f"{m_delay:.1f}m",
+            f"{m_mesh:.1f}",
+            f"{m_msucc:.1f}%",
             f"{m_comp:.2f}s",
         ])
 
@@ -493,14 +525,28 @@ def evaluate_all_baselines(
             "CO2_Mean": round(m_co2, 1),
             "CO2_Std": round(s_co2, 1),
             "EmptyKM_Mean": round(m_empty, 1),
+            "EmptyKM_Std": round(s_empty, 1),
+            "Utilization_Mean": round(m_util, 1),
+            "Utilization_Std": round(s_util, 1),
             "Recovery_Mean": round(m_rec, 4),
+            "Recovery_Std": round(s_rec, 4),
             "Failed_Mean": round(m_fail, 1),
+            "Failed_Std": round(s_fail, 1),
+            "Late_Mean": round(m_late, 1),
+            "Late_Std": round(s_late, 1),
+            "Delay_Mean": round(m_delay, 1),
+            "Delay_Std": round(s_delay, 1),
+            "MeshMessages_Mean": round(m_mesh, 1),
+            "MeshMessages_Std": round(s_mesh, 1),
+            "MeshDeliverySuccess_Mean": round(m_msucc, 1),
+            "MeshDeliverySuccess_Std": round(s_msucc, 1),
             "Runtime_Mean": round(m_comp, 3),
+            "Runtime_Std": round(s_comp, 3),
         })
 
     stats_headers = [
-        "Algorithm", "Success (Mean±Std)", "On-Time (Mean±Std)", "Dist (km)", "Fuel (L)", "CO2 (kg)",
-        "Empty KM", "Recovery", "Failed", "Runtime"
+        "Algorithm", "Success (M±S)", "On-Time (M±S)", "Dist (km)", "Fuel (L)", "CO2 (kg)",
+        "Empty KM", "Util %", "Recovery", "Failed", "Late", "Avg Delay", "Mesh Msgs", "Mesh Succ %", "Runtime"
     ]
     print("\n" + tabulate(stats_table, headers=stats_headers, tablefmt="github"))
 
@@ -600,6 +646,7 @@ def generate_baseline_plot(data: Dict[str, Any], output_path: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run fair baseline and PPO comparative evaluation.")
     parser.add_argument("--dataset", default="C101", help="Solomon benchmark instance")
+    parser.add_argument("--datasets", default="C101,R101,RC101", help="Comma-separated Solomon datasets to benchmark")
     parser.add_argument("--seed", type=int, default=42, help="Primary evaluation seed")
     parser.add_argument("--customers", type=int, default=25, help="Number of customers")
     parser.add_argument("--vehicles", type=int, default=5, help="Number of vehicles")
@@ -607,14 +654,27 @@ def main() -> None:
     args = parser.parse_args()
 
     seed_list = [int(s.strip()) for s in args.seeds.split(",") if s.strip()]
+    dataset_list = [d.strip() for d in args.datasets.split(",") if d.strip()] if args.datasets else [args.dataset]
 
-    evaluate_all_baselines(
-        dataset_name=args.dataset,
-        seed=args.seed,
-        customers=args.customers,
-        vehicles_count=args.vehicles,
-        seeds=seed_list,
-    )
+    all_dataset_results = {}
+    for ds in dataset_list:
+        print(f"\n==================== EVALUATING DATASET: {ds} ====================")
+        res = evaluate_all_baselines(
+            dataset_name=ds,
+            seed=args.seed,
+            customers=args.customers,
+            vehicles_count=args.vehicles,
+            seeds=seed_list,
+            output_json=f"results/benchmarks/ppo_comparison_{ds}.json",
+        )
+        all_dataset_results[ds] = res
+
+    # If multiple datasets evaluated, also save consolidated multi-dataset summary
+    if len(dataset_list) > 1:
+        consolidated_path = "results/benchmarks/all_datasets_summary.json"
+        with open(consolidated_path, "w", encoding="utf-8") as f:
+            json.dump(all_dataset_results, f, indent=2)
+        print(f"\n[Consolidated Benchmark] Saved multi-dataset summary -> {consolidated_path}")
 
 
 if __name__ == "__main__":

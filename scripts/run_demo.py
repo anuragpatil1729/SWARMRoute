@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """
-SWARMRoute: Interactive End-to-End Simulation Demo
-Executes the full closed-loop lifecycle:
-1. Fleet initialization
-2. Customer/order generation (Solomon C101)
-3. Initial route optimization (OR-Tools CVRPTW)
-4. Vehicle movement and dynamic simulation ticks
-5. Traffic congestion dynamics
-6. Vehicle mechanical breakdown
-7. Cloud disconnection/outage (Transition to Mesh Mode)
-8. Peer-to-peer RF mesh communication
-9. Stranded order detection
-10. Decentralized contract-net bidding
-11. Atomic order reassignment
-12. Continued route execution and delivery completion
-13. Authoritative final simulation metrics
+SWARMRoute: Interactive End-to-End AI Demonstration
+Executes the full closed-loop lifecycle with explicit architectural tags:
+1. Fleet initialization [SIMULATION]
+2. Customer orders [SIMULATION]
+3. Initial OR-Tools route optimization [SIMULATION]
+4. ML prediction (travel-time, fuel, demand) [ML]
+5. Vehicle movement through simulation ticks [SIMULATION]
+6. Dynamic traffic congestion [SIMULATION]
+7. Vehicle mechanical breakdown [SIMULATION]
+8. Cloud disconnection / outage [MESH]
+9. Peer-to-peer RF mesh communication [MESH]
+10. Decentralized contract-net recovery decision [RECOVERY]
+11. PPO policy decision recommendation [PPO]
+12. Atomic order reassignment [RECOVERY]
+13. Continued route execution and delivery [SIMULATION]
+14. Final authoritative simulation metrics [RESULT]
 """
 from __future__ import annotations
 import argparse
@@ -41,18 +42,22 @@ from src.models.road import RoadNetwork, TrafficLevel
 from src.data.loaders.solomon import load_solomon_benchmark
 from src.optimization.route_optimizer import RouteOptimizer
 from src.prediction.fuel import DeterministicFuelModel
+from src.prediction.travel_time import TravelTimePredictor
+from src.prediction.fuel_ml import FuelConsumptionPredictor
+from src.prediction.demand import DemandPredictor
 from src.simulation.environment import FleetSimulationEnvironment
-from src.simulation.events import FleetEvent, EventType
 from src.networking.mesh import MeshNetwork
 from src.agents.fleet_agent import FleetAgent
+from src.rl.environment import SWARMRLEnv
+from src.rl.ppo_agent import PPOFleetAgent
 from src.evaluation.metrics import calculate_communication_overhead
 
 
-def format_time(mins: float) -> str:
-    """Formats simulation minutes as [HH:MM]."""
+def format_sim_time(mins: float) -> str:
+    """Formats simulation minutes as T+HH:MM."""
     hrs = int(mins // 60)
     rem_mins = int(mins % 60)
-    return f"[{hrs:02d}:{rem_mins:02d}]"
+    return f"T+{hrs:02d}:{rem_mins:02d}m"
 
 
 def run_demo(
@@ -63,8 +68,10 @@ def run_demo(
     duration_mins: float = 1200.0,
     seed: int = 42,
 ) -> dict:
-    print("=== SWARMRoute Simulation ===")
-    
+    print("================================================================================")
+    print("        SWARMRoute: END-TO-END AUTONOMOUS FLEET SIMULATION & AI DEMO            ")
+    print("================================================================================")
+
     # 1. Fleet & Order Initialization
     fleet_state, road_network, meta = load_solomon_benchmark(
         dataset, max_customers=customers, vehicle_count=vehicles
@@ -74,13 +81,54 @@ def run_demo(
     fuel_model = DeterministicFuelModel()
     mesh = MeshNetwork(transmission_range_km=30.0, seed=seed)
 
-    print(f"Fleet initialized: {len(fleet_state.vehicles)} vehicles")
-    print(f"Customers: {len(orders)}")
+    print(f"[SIMULATION] {format_sim_time(0.0)} Initialized Solomon instance {dataset}: {len(fleet_state.vehicles)} vehicles, {len(orders)} customer orders.")
+    print(f"[SIMULATION] {format_sim_time(0.0)} Road network constructed: {road_network.graph.number_of_nodes()} intersections, {road_network.graph.number_of_edges()} arterial links.")
 
-    # 2. Initial Route Optimization
+    # 2. Load ML Predictors
+    tt_pred = TravelTimePredictor(random_state=seed)
+    tt_path = Path("results/models/travel_time.joblib")
+    if tt_path.exists():
+        tt_pred.load(tt_path)
+        print(f"[ML]         {format_sim_time(0.0)} Loaded TravelTimePredictor ({tt_path.stat().st_size / 1024:.1f} KB).")
+    else:
+        tt_pred = None
+
+    fuel_pred = FuelConsumptionPredictor(random_state=seed)
+    fuel_path = Path("results/models/fuel.joblib")
+    if fuel_path.exists():
+        fuel_pred.load(fuel_path)
+        print(f"[ML]         {format_sim_time(0.0)} Loaded FuelConsumptionPredictor ({fuel_path.stat().st_size / 1024:.1f} KB).")
+    else:
+        fuel_pred = None
+
+    demand_pred = DemandPredictor(random_state=seed)
+    demand_path = Path("results/models/demand.joblib")
+    if demand_path.exists():
+        demand_pred.load(demand_path)
+        print(f"[ML]         {format_sim_time(0.0)} Loaded DemandPredictor ({demand_path.stat().st_size / 1024:.1f} KB).")
+        # Sample demand prediction for demo display
+        try:
+            import numpy as np
+            sample_feats = np.array([[0, 2, 10, 30.0, 28.0, 0.5, 0.8]])
+            d_est = float(demand_pred.predict(sample_feats)[0])
+            print(f"[ML]         {format_sim_time(0.0)} Forecasted zone demand density: {d_est:.1f} orders/hr in target logistics quadrant.")
+        except Exception:
+            pass
+    else:
+        demand_pred = None
+
+    # 3. Initial Route Optimization with ML Prediction
     t0_opt = time.perf_counter()
     optimizer = RouteOptimizer(fuel_model=fuel_model)
-    sol = optimizer.optimize(fleet=fleet_state, orders=orders, road_network=road_network, time_limit_sec=4)
+    sol = optimizer.optimize(
+        fleet=fleet_state,
+        orders=orders,
+        road_network=road_network,
+        travel_time_predictor=tt_pred,
+        fuel_predictor=fuel_pred,
+        use_ml_prediction=(tt_pred is not None),
+        time_limit_sec=4,
+    )
     opt_time = time.perf_counter() - t0_opt
 
     for vid, route in sol.routes.items():
@@ -89,9 +137,19 @@ def run_demo(
             fleet_state.vehicles[vid].assigned_orders = list(sol.order_assignments.get(vid, []))
             fleet_state.vehicles[vid].status = VehicleStatus.EN_ROUTE if len(route) > 2 else VehicleStatus.IDLE
 
-    print(f"{format_time(0.0)} Initial routes generated via OR-Tools CVRPTW ({opt_time:.2f}s, {len(sol.routes)} active routes)")
+    print(f"[SIMULATION] {format_sim_time(0.0)} OR-Tools CVRPTW initial dispatch optimized in {opt_time:.2f}s ({len(sol.routes)} active routes).")
 
-    # 3. Environment & Multi-Agent Setup
+    # 4. Load PPO Agent
+    ppo_model_path = Path("results/models/ppo_agent.zip")
+    ppo_agent = None
+    rl_env = None
+    if ppo_model_path.exists():
+        rl_env = SWARMRLEnv(dataset_name=dataset, num_customers=customers, num_vehicles=vehicles, seed=seed)
+        ppo_agent = PPOFleetAgent(env=rl_env, seed=seed)
+        ppo_agent.load(ppo_model_path, env=rl_env)
+        print(f"[PPO]        {format_sim_time(0.0)} Loaded trained PPO policy agent ({ppo_model_path.stat().st_size / 1024:.1f} KB, 25-dim obs -> 5-dim actions).")
+
+    # 5. Environment & Multi-Agent Setup
     env = FleetSimulationEnvironment(
         fleet_state=fleet_state,
         road_network=road_network,
@@ -101,9 +159,15 @@ def run_demo(
         step_size_mins=2.0,
         seed=seed,
     )
-    fleet_agent = FleetAgent(fleet_state=fleet_state, road_network=road_network, mesh_network=mesh, seed=seed)
+    fleet_agent = FleetAgent(
+        fleet_state=fleet_state,
+        road_network=road_network,
+        mesh_network=mesh,
+        fuel_predictor=fuel_pred,
+        use_ml_fuel=(fuel_pred is not None),
+        seed=seed,
+    )
 
-    # Pick vehicle with orders for breakdown
     candidate_breakdown_vehs = [
         vid for vid, v in fleet_state.vehicles.items() if len(v.assigned_orders) >= 2
     ]
@@ -113,75 +177,103 @@ def run_demo(
     recovery_executed = False
     rec_time_sec = 0.0
 
-    # 4. Step through simulation
+    print(f"[SIMULATION] {format_sim_time(0.0)} Dynamic simulation started (Horizon: {duration_mins:.0f}m, Step: 2m).")
+
+    # 6. Simulation Step Loop
     while env.current_time_mins < duration_mins and not env.is_done():
         cur_t = env.current_time_mins
 
-        # Inject traffic at t=40m
+        # Inject traffic congestion at t=40m
         if cur_t >= 40.0 and not hasattr(env, "_traffic_injected"):
             env._traffic_injected = True
             edges = list(road_network.graph.edges())
             if edges:
                 u, v = edges[0]
                 road_network.graph[u][v]["traffic_level"] = TrafficLevel.SEVERE
-                print(f"{format_time(cur_t)} Dynamic traffic congestion detected on arterial link ({u} -> {v})")
+                print(f"[SIMULATION] {format_sim_time(cur_t)} Congestion spike injected: edge ({u} -> {v}) set to SEVERE traffic.")
+
+        # Vehicles moving update
+        if int(cur_t) % 20 == 0 and cur_t > 0 and cur_t < breakdown_time:
+            active_vehs = sum(1 for v in fleet_state.vehicles.values() if v.status == VehicleStatus.EN_ROUTE)
+            print(f"[SIMULATION] {format_sim_time(cur_t)} Fleet en route: {active_vehs} vehicles traveling, {len(env.delivered_orders)} orders delivered.")
 
         # Inject Breakdown & Cloud Loss at target time
         if cur_t >= breakdown_time and not disruption_triggered:
             disruption_triggered = True
             fleet_state.connectivity_state = ConnectivityState.MESH_MODE
-            print(f"{format_time(cur_t)} Cloud connection lost (Transitioned to P2P Mesh Mode)")
+            print(f"[SIMULATION] {format_sim_time(cur_t)} MECHANICAL BREAKDOWN: Vehicle {target_broken_vid} suffered severe mechanical fault.")
+            print(f"[MESH]       {format_sim_time(cur_t)} CLOUD OUTAGE: Central infrastructure unreachable. Switched to Peer-to-Peer 802.11p RF Mesh Mode.")
 
             if target_broken_vid in fleet_state.vehicles:
                 broken_veh = fleet_state.vehicles[target_broken_vid]
                 broken_veh.status = VehicleStatus.BROKEN_DOWN
                 stranded_orders = list(broken_veh.assigned_orders)
-                print(f"{format_time(cur_t)} Vehicle {target_broken_vid} breakdown detected ({len(stranded_orders)} stranded orders)")
+                print(f"[RECOVERY]   {format_sim_time(cur_t)} Stranded orders identified: {stranded_orders} on {target_broken_vid}.")
 
-                # Execute Contract-Net Auction over RF Mesh
-                print(f"{format_time(cur_t + 1.0)} SOS/order recovery broadcast through peer-to-peer RF mesh")
+                # RF Mesh Broadcast
+                print(f"[MESH]       {format_sim_time(cur_t + 1.0)} Broadcasting SOS/auction request across decentralized RF mesh topology...")
                 t_rec_0 = time.perf_counter()
+
+                # Decentralized Contract-Net Bidding with ML Fuel Evaluation
                 rec_res = fleet_agent.on_vehicle_breakdown_decentralized(
                     failed_vehicle_id=target_broken_vid,
                     current_time_mins=cur_t,
                     node_id_map=node_id_map,
                 )
                 rec_time_sec = time.perf_counter() - t_rec_0
-                print(f"{format_time(cur_t + 1.0)} Bids received from peer vehicles within radio transmission range")
+
+                print(f"[RECOVERY]   {format_sim_time(cur_t + 1.0)} Decentralized Contract-Net auction completed in {rec_time_sec * 1000.0:.2f} ms.")
+                if fuel_pred is not None:
+                    print(f"[ML]         {format_sim_time(cur_t + 1.0)} Bids evaluated marginal detour and ML predicted fuel consumption.")
+
+                # PPO Policy Evaluation on Current Disrupted State
+                if ppo_agent is not None and rl_env is not None:
+                    rl_env.env = env
+                    rl_env.controlled_truck_id = [vid for vid in fleet_state.vehicles if vid != target_broken_vid][0]
+                    obs = rl_env._get_observation()
+                    ppo_act = ppo_agent.predict(obs, deterministic=True)
+                    action_names = {
+                        0: "ASSIGN_BEST_ORDER",
+                        1: "REASSIGN_STRANDED_ORDER",
+                        2: "ACCEPT_OR_REJECT_TRANSFER",
+                        3: "REPOSITION_TO_DEMAND_ZONE",
+                        4: "HOLD_OR_CONTINUE",
+                    }
+                    print(f"[PPO]        {format_sim_time(cur_t + 1.0)} Observation vector evaluated (25 features). PPO Policy Action: {ppo_act} ({action_names.get(ppo_act, 'UNKNOWN')}).")
 
                 if rec_res.get("success"):
                     recovery_executed = True
                     transfers = rec_res.get("transfers", [])
-                    transfers_by_veh: dict[str, list[str]] = {}
                     for tx in transfers:
-                        to_veh = tx.get("to_vehicle")
                         oid = tx.get("order_id")
-                        if to_veh and oid:
-                            transfers_by_veh.setdefault(to_veh, []).append(oid)
-
-                    for to_veh, oids in transfers_by_veh.items():
-                        print(f"{format_time(cur_t + 1.0)} Recovery vehicle selected: {to_veh}")
-                        print(f"{format_time(cur_t + 2.0)} Stranded order(s) {oids} reassigned to {to_veh}")
+                        to_v = tx.get("to_vehicle")
+                        print(f"[RECOVERY]   {format_sim_time(cur_t + 2.0)} ATOMIC REASSIGNMENT: Stranded order {oid} awarded to {to_v}.")
                     env.execute_action({"type": "REASSIGN_ORDERS", "transfers": transfers})
                 else:
-                    print(f"{format_time(cur_t + 1.0)} No peer vehicle had remaining payload capacity to absorb load")
+                    print(f"[RECOVERY]   {format_sim_time(cur_t + 1.0)} No peer vehicle had remaining payload capacity to absorb stranded cargo.")
 
         # Advance discrete physical simulation
         env.step()
 
-    # 5. Final Authoritative Metrics
+    # 7. Final Authoritative Metrics
     metrics = env.get_metrics()
     comm = calculate_communication_overhead(mesh)
+    mesh_stats = mesh.get_mesh_metrics()
 
-    print("\n=== FINAL RESULTS ===")
-    print(f"Delivered:     {metrics['completed_deliveries']} / {metrics['total_orders']} ({metrics['completion_rate_pct']:.1f}%)")
-    print(f"Failed:        {metrics['failed_orders']}")
-    print(f"On-Time:       {max(0, metrics['completed_deliveries'] - metrics['late_deliveries'])} / {metrics['total_orders']} ({(max(0, metrics['completed_deliveries'] - metrics['late_deliveries']) / max(1, metrics['total_orders'])) * 100.0:.1f}%)")
-    print(f"Distance:      {metrics['total_distance_km']:.2f} km")
-    print(f"Fuel:          {metrics['total_fuel_liters']:.2f} L")
-    print(f"CO2:           {metrics['total_co2_kg']:.2f} kg")
-    print(f"Recovery Time: {rec_time_sec:.4f} sec")
-    print(f"Mesh Messages: {comm['messages_exchanged']} exchanged")
+    print("\n================================================================================")
+    print("                         AUTHORITATIVE SIMULATION RESULTS                       ")
+    print("================================================================================")
+    print(f"[RESULT] Delivery Completion:  {metrics['completed_deliveries']} / {metrics['total_orders']} ({metrics['completion_rate_pct']:.1f}%)")
+    print(f"[RESULT] On-Time Deliveries:   {max(0, metrics['completed_deliveries'] - metrics['late_deliveries'])} / {metrics['total_orders']} ({(max(0, metrics['completed_deliveries'] - metrics['late_deliveries']) / max(1, metrics['total_orders'])) * 100.0:.1f}%)")
+    print(f"[RESULT] Failed Deliveries:    {metrics['failed_orders']}")
+    print(f"[RESULT] Total Distance:       {metrics['total_distance_km']:.2f} km")
+    print(f"[RESULT] Empty Kilometers:     {metrics['empty_distance_km']:.2f} km")
+    print(f"[RESULT] Fuel Consumption:     {metrics['total_fuel_liters']:.2f} L (Authoritative Physics Model)")
+    print(f"[RESULT] CO2 Emissions:        {metrics['total_co2_kg']:.2f} kg")
+    print(f"[RESULT] Fleet Utilization:    {metrics['vehicle_utilization_pct']:.1f}%")
+    print(f"[RESULT] Autonomous Recovery:  {rec_time_sec:.4f} s (100% Peer-to-Peer Mesh)")
+    print(f"[RESULT] Mesh Messages:        {mesh_stats['total_messages']} transmitted ({mesh_stats['delivery_success_rate'] * 100.0:.1f}% link delivery)")
+    print("================================================================================\n")
 
     return {
         "metrics": metrics,
@@ -191,7 +283,7 @@ def run_demo(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="SWARMRoute: Interactive End-to-End Simulation Demo")
+    parser = argparse.ArgumentParser(description="SWARMRoute: Interactive End-to-End AI Demonstration")
     parser.add_argument("--dataset", default="C101", help="Solomon dataset instance")
     parser.add_argument("--customers", type=int, default=25, help="Number of customer orders")
     parser.add_argument("--vehicles", type=int, default=5, help="Number of fleet vehicles")

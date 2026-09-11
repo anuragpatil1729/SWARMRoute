@@ -72,6 +72,7 @@ class VRPTWSolver:
         drop_penalty: int = 100000,
         travel_time_predictor: Optional[Any] = None,
         fuel_predictor: Optional[Any] = None,
+        use_ml_prediction: bool = True,
     ) -> OptimizationResult:
         """
         Solves the CVRPTW problem instance using OR-Tools.
@@ -103,7 +104,7 @@ class VRPTWSolver:
 
         dist_matrix_raw, time_matrix_raw = road_network.build_complete_euclidean_matrix(node_ids)
 
-        if travel_time_predictor is not None and getattr(travel_time_predictor, "is_trained", False):
+        if use_ml_prediction and travel_time_predictor is not None and getattr(travel_time_predictor, "is_trained", False):
             pairs = []
             pair_indices = []
             for i in range(num_nodes):
@@ -116,7 +117,7 @@ class VRPTWSolver:
                 for (i, j), pred_hrs in zip(pair_indices, pred_hrs_batch):
                     time_matrix_raw[i][j] = float(pred_hrs) * 60.0
 
-        if fuel_predictor is not None and getattr(fuel_predictor, "is_trained", False):
+        if use_ml_prediction and fuel_predictor is not None and getattr(fuel_predictor, "is_trained", False):
             fuel_wt = self.objective_weights.get("fuel", 1.5)
             pairs = []
             pair_indices = []
