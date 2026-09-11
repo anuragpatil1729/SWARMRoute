@@ -59,6 +59,9 @@ results/plots/*.png
 # Node & Next.js
 node_modules/
 .next/
+.next-*/
+dashboard/.next/
+dashboard/.next-*/
 out/
 .vercel/
 npm-debug.log*
