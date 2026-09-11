@@ -113,7 +113,7 @@ export default function LivePage() {
               </span>
             </div>
             <p className="text-xs text-muted mt-1">
-              Real-time telemetry, RF mesh networking, discrete physics movement, and PPO decision streams.
+              Live fleet telemetry, active routing, peer-to-peer mesh connectivity, and automated recovery.
             </p>
           </div>
 
@@ -315,9 +315,9 @@ export default function LivePage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="serif text-base text-ink">Figure 1 — Operational Live Map</h3>
+            <h3 className="serif text-base text-ink">Operational Live Map</h3>
             <span className="mono text-xs text-muted">
-              Solomon {simulation.dataset} · Depot (40, 50)
+              {simulation.dataset} · Depot (40, 50)
             </span>
           </div>
           <LiveRouteMap
@@ -332,7 +332,7 @@ export default function LivePage() {
             onSelectOrder={(id) => setSelectedOrderId(id)}
           />
           <p className="text-xs text-muted">
-            Continuous discrete edge tracking. Red markers indicate vehicle faults; dashed amber lines represent active peer recovery detours.
+            Active vehicle tracking. Red markers indicate vehicle faults; dashed amber lines represent peer recovery detours.
           </p>
         </div>
 

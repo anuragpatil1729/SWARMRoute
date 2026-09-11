@@ -4,12 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  { href: "/", label: "Overview" },
+  { href: "/", label: "Live console" },
+  { href: "/routes", label: "Route map" },
   { href: "/benchmarks", label: "Method comparison" },
   { href: "/disruptions", label: "Disruptions" },
   { href: "/ppo-training", label: "PPO training" },
-  { href: "/routes", label: "Route map" },
-  { href: "/live", label: "Live view" },
 ];
 
 export default function Masthead() {
@@ -23,27 +22,27 @@ export default function Masthead() {
             SwarmRoute
           </h1>
           <p className="mt-1.5 text-sm text-muted max-w-md">
-            A decentralized delivery-fleet simulation — resilience benchmark summary
+            Autonomous Fleet Operations & Dynamic Resilience Console
           </p>
         </div>
         <div className="mono text-xs text-muted text-left sm:text-right">
-          Solomon C101 / R101 / RC101 · seed 42
-          <br />
-          software simulation, no live fleet
+          Autonomous Dispatch · Mesh Recovery
         </div>
       </div>
       <nav className="max-w-5xl mx-auto px-6 border-t border-rule">
         <ul className="flex flex-wrap gap-x-6 mono text-[13px]">
           {items.map((item) => {
             const active =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              item.href === "/"
+                ? pathname === "/" || pathname === "/live"
+                : pathname.startsWith(item.href);
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={`inline-block py-2.5 border-b-2 -mb-px transition-colors ${
                     active
-                      ? "border-ink text-ink"
+                      ? "border-ink text-ink font-semibold"
                       : "border-transparent text-muted hover:text-ink hover:border-rule"
                   }`}
                 >
