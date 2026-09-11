@@ -1,6 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.models.fleet_state import ConnectivityState
 from src.networking.messages import MeshMessage
