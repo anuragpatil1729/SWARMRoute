@@ -2,26 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@import "leaflet/dist/leaflet.css";
+
 :root {
   color-scheme: light;
 }
 
 html, body {
-  background: #f1f1ea;
-  color: #181a16;
+  background: #ffffff;
+  color: #0f172a;
 }
 
 body {
-  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-  background-image:
-    linear-gradient(to right, rgba(24,26,22,0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(24,26,22,0.05) 1px, transparent 1px);
-  background-size: 32px 32px;
-  background-attachment: fixed;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #ffffff;
 }
 
 .serif {
-  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 .mono {
@@ -29,20 +27,20 @@ body {
 }
 
 ::selection {
-  background: #181a16;
-  color: #f1f1ea;
+  background: #0f172a;
+  color: #ffffff;
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1ea;
+  background: #f8fafc;
 }
 ::-webkit-scrollbar-thumb {
-  background: #c9c9bc;
-  border-radius: 0px;
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {

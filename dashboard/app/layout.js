@@ -2,22 +2,21 @@ import "./globals.css";
 import Masthead from "../components/Masthead";
 
 export const metadata = {
-  title: "SwarmRoute — Fleet Resilience Summary",
-  description:
-    "Technical summary of the SWARMRoute decentralized fleet optimization simulation.",
+  title: "SwarmRoute — Autonomous Fleet Operations",
+  description: "Autonomous AI fleet operations, real-time routing, and decentralized mesh recovery platform.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        <div className="min-h-screen">
+      <body className="bg-white text-slate-900 antialiased min-h-screen">
+        <div className="min-h-screen flex flex-col">
           <Masthead />
-          <main className="max-w-5xl mx-auto px-6 py-10">{children}</main>
-          <footer className="max-w-5xl mx-auto px-6 py-8 mt-8 border-t border-rule text-xs text-muted mono">
-            Compiled from results/ in the SWARMRoute repository. Static
-            benchmark output — see the live view page for what a connected
-            version would add.
+          <main className="w-full flex-1 px-4 sm:px-6 lg:px-10 py-6">
+            {children}
+          </main>
+          <footer className="w-full border-t border-slate-200 py-5 mt-10 text-xs text-slate-400 font-mono text-center">
+            SWARMRoute Autonomous Fleet Operations & Dynamic Mesh Resilience
           </footer>
         </div>
       </body>

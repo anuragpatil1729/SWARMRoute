@@ -6,62 +6,74 @@ export default function BenchmarksPage() {
   const methods = getMethodComparison();
 
   return (
-    <div>
-      <Section index="1" title="Method comparison">
-        <p className="text-sm text-muted max-w-2xl">
-          Six routing strategies evaluated on the same single scenario (seed
-          101, Solomon C101). Nearest Neighbor and Random Policy are naive
-          baselines; the interesting comparison is OR-Tools&apos; static plan
-          against the decentralized and learned approaches.
+    <div className="space-y-6">
+      <div className="border border-slate-200 bg-white p-5 rounded-xl shadow-sm">
+        <h2 className="text-xl font-bold text-slate-900">
+          Routing Method Comparison
+        </h2>
+        <p className="text-xs text-slate-500 mt-1">
+          Autonomous dispatch and peer-to-peer resilience evaluated against static baseline heuristics.
         </p>
-      </Section>
-
-      <Section index="2" title="Delivery success" description="Percentage of orders delivered by the end of the horizon.">
-        <MethodBarChart data={methods} dataKey="success" unit="%" />
-      </Section>
-
-      <Section index="3" title="On-time delivery" description="Percentage delivered within the customer time window.">
-        <MethodBarChart data={methods} dataKey="onTime" unit="%" />
-      </Section>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Section index="4" title="Distance traveled" description="Total fleet distance, km.">
-          <MethodBarChart data={methods} dataKey="distance" height={220} />
-        </Section>
-        <Section index="5" title="Fuel consumption" description="Total fleet fuel, liters.">
-          <MethodBarChart data={methods} dataKey="fuel" height={220} />
-        </Section>
       </div>
 
-      <Section index="6" title="Full metrics table">
-        <div className="overflow-x-auto border border-ink">
-          <table className="w-full text-sm min-w-[760px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-2">
+          <h3 className="text-sm font-bold text-slate-800">Delivery Success Rate</h3>
+          <p className="text-xs text-slate-500">Percentage of orders successfully delivered to destination.</p>
+          <MethodBarChart data={methods} dataKey="success" unit="%" />
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-2">
+          <h3 className="text-sm font-bold text-slate-800">On-Time Delivery Rate</h3>
+          <p className="text-xs text-slate-500">Percentage of deliveries completed strictly within customer time windows.</p>
+          <MethodBarChart data={methods} dataKey="onTime" unit="%" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-2">
+          <h3 className="text-sm font-bold text-slate-800">Distance Traveled (km)</h3>
+          <p className="text-xs text-slate-500">Total fleet distance across operational horizon.</p>
+          <MethodBarChart data={methods} dataKey="distance" height={220} />
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-2">
+          <h3 className="text-sm font-bold text-slate-800">Fuel Consumption (Liters)</h3>
+          <p className="text-xs text-slate-500">Total fuel consumed by active fleet.</p>
+          <MethodBarChart data={methods} dataKey="fuel" height={220} />
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+        <h3 className="text-sm font-bold text-slate-800">Complete Evaluation Metrics</h3>
+        <div className="overflow-x-auto border border-slate-200 rounded-lg">
+          <table className="w-full text-xs font-mono min-w-[760px]">
             <thead>
-              <tr className="text-left border-b border-ink">
-                {["method", "success", "on-time", "distance", "fuel", "co2", "empty km", "utilization", "failed", "runtime"].map((h) => (
-                  <th key={h} className="font-normal px-4 py-2.5 mono text-xs text-muted">{h}</th>
+              <tr className="text-left border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold">
+                {["Method", "Success", "On-Time", "Distance", "Fuel", "CO2", "Empty KM", "Utilization", "Failed", "Runtime"].map((h) => (
+                  <th key={h} className="px-4 py-2.5">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="mono">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {methods.map((m, i) => (
-                <tr key={m.method} className={i % 2 ? "bg-panel2" : ""}>
-                  <td className="px-4 py-2.5 text-ink whitespace-nowrap">{m.method}</td>
-                  <td className="px-4 py-2.5">{m.success}%</td>
-                  <td className="px-4 py-2.5">{m.onTime}%</td>
-                  <td className="px-4 py-2.5">{m.distance} km</td>
-                  <td className="px-4 py-2.5">{m.fuel} L</td>
-                  <td className="px-4 py-2.5">{m.co2} kg</td>
-                  <td className="px-4 py-2.5">{m.emptyKm} km</td>
-                  <td className="px-4 py-2.5">{m.utilization}%</td>
-                  <td className="px-4 py-2.5">{m.failed}</td>
-                  <td className="px-4 py-2.5">{m.runtime}s</td>
+                <tr key={m.method} className={`hover:bg-slate-50/70 transition ${i % 2 ? "bg-slate-50/30" : ""}`}>
+                  <td className="px-4 py-2.5 font-bold text-slate-900 whitespace-nowrap">{m.method}</td>
+                  <td className="px-4 py-2.5 text-slate-800">{m.success}%</td>
+                  <td className="px-4 py-2.5 text-slate-800">{m.onTime}%</td>
+                  <td className="px-4 py-2.5 text-slate-800">{m.distance} km</td>
+                  <td className="px-4 py-2.5 text-slate-800">{m.fuel} L</td>
+                  <td className="px-4 py-2.5 text-slate-800">{m.co2} kg</td>
+                  <td className="px-4 py-2.5 text-slate-800">{m.emptyKm} km</td>
+                  <td className="px-4 py-2.5 text-slate-800">{m.utilization}%</td>
+                  <td className="px-4 py-2.5 text-slate-800">{m.failed}</td>
+                  <td className="px-4 py-2.5 text-slate-500">{m.runtime}s</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </Section>
+      </div>
     </div>
   );
 }

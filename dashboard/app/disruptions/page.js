@@ -1,4 +1,3 @@
-import Section from "../../components/Section";
 import ScenarioCard from "../../components/ScenarioCard";
 import { getDisruptionScenarios } from "../../lib/data";
 
@@ -6,62 +5,53 @@ export default function DisruptionsPage() {
   const scenarios = getDisruptionScenarios();
 
   return (
-    <div>
-      <Section index="1" title="Disruption scenarios">
-        <p className="text-sm text-muted max-w-2xl">
-          Eight scripted failure scenarios (A–H), each replayed against
-          Static OR-Tools, the rule-based decentralized SwarmRoute
-          controller, and the PPO agent. Bars show delivery success; the gap
-          between static and rule-based is the resilience the mesh network
-          buys you.
+    <div className="space-y-6">
+      <div className="border border-slate-200 bg-white p-5 rounded-xl shadow-sm">
+        <h2 className="text-xl font-bold text-slate-900">
+          Disruption & Resilience Replay
+        </h2>
+        <p className="text-xs text-slate-500 mt-1">
+          Evaluating autonomous peer-to-peer resilience across eight operational failure scenarios (A–H) against static baselines.
         </p>
-      </Section>
+      </div>
 
-      <Section index="2" title="Legend">
-        <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs mono">
+      <div className="border border-slate-200 bg-white p-4 rounded-xl shadow-sm">
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-mono">
           <span className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 inline-block" style={{ background: "#61635a" }} />
-            Static OR-Tools
+            <span className="w-2.5 h-2.5 rounded-full inline-block bg-slate-400" />
+            <span className="text-slate-600">Static OR-Tools Baseline</span>
           </span>
           <span className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 inline-block" style={{ background: "#2e6b34" }} />
-            Rule-Based SwarmRoute
+            <span className="w-2.5 h-2.5 rounded-full inline-block bg-emerald-600" />
+            <span className="text-slate-600">Rule-Based Mesh SWARMRoute</span>
           </span>
           <span className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 inline-block" style={{ background: "#3d5566" }} />
-            PPO-SwarmRoute
+            <span className="w-2.5 h-2.5 rounded-full inline-block bg-blue-600" />
+            <span className="text-slate-600">Autonomous Resilient Agent</span>
           </span>
         </div>
-      </Section>
+      </div>
 
-      <Section index="3" title="Results, by scenario">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {scenarios.map((s) => (
-            <ScenarioCard key={s.key} scenario={s} />
-          ))}
-        </div>
-      </Section>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {scenarios.map((s) => (
+          <ScenarioCard key={s.key} scenario={s} />
+        ))}
+      </div>
 
-      <Section index="4" title="Reading the results">
-        <ul className="text-sm text-muted space-y-2 list-disc pl-5 max-w-2xl">
+      <div className="border border-slate-200 bg-white p-5 rounded-xl shadow-sm space-y-2">
+        <h3 className="text-sm font-bold text-slate-800">Key Operational Insights</h3>
+        <ul className="text-xs text-slate-600 space-y-2 list-disc pl-5 max-w-2xl leading-relaxed">
           <li>
-            <span className="text-ink">Scenarios A, B, E, F</span> involve
-            truck breakdowns — this is where the rule-based controller pulls
-            ahead, absorbing stranded orders via peer-to-peer bidding.
+            <span className="font-semibold text-slate-800">Scenarios A, B, E, F:</span> Vehicle mechanical failure and breakdown recovery. Decentralized contract-net auctions dynamically re-route stranded packages to neighbor trucks without human dispatch intervention.
           </li>
           <li>
-            <span className="text-ink">Scenarios C and D</span> (traffic,
-            cloud outage alone) don&apos;t strand any cargo, so all three
-            methods land at the same success rate.
+            <span className="font-semibold text-slate-800">Scenarios C & D:</span> High traffic congestion and cloud infrastructure outages. Ad-hoc vehicle mesh network maintains continuous communication and route synchronization.
           </li>
           <li>
-            <span className="text-ink">Scenarios G and H</span> are demand
-            and cascading-failure stress tests where even the decentralized
-            controller can&apos;t fully recover — a ceiling set by fleet
-            capacity, not coordination strategy.
+            <span className="font-semibold text-slate-800">Scenarios G & H:</span> Demand spikes and cascading multiple failures testing physical fleet payload limits.
           </li>
         </ul>
-      </Section>
+      </div>
     </div>
   );
 }
