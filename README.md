@@ -19,7 +19,7 @@ To ensure scientific honesty and rigor, the system boundaries are strictly defin
 * **Decentralized Multi-Agent Recovery**: Contract-net bidding protocol (`TruckAgent`, `FleetAgent`) with explicit bid messages (`order_id`, `bidder_vehicle_id`, `detour_km`, `additional_fuel`, `additional_co2`, `capacity_remaining`) and deterministic winner selection.
 * **Machine Learning Prediction Models**: Scikit-Learn regression pipelines for travel time prediction (`TravelTimePredictor`), dynamic fuel consumption (`FuelConsumptionPredictor`), and spatial demand estimation (`DemandPredictor`).
 * **Gymnasium RL Environment**: Standard Gymnasium environment (`SWARMRLEnv`) featuring a strictly verified **25-dimensional normalized observation vector**, 5-dimensional action space with action masking, and an isolated multi-objective step reward module (`src/rl/reward.py`).
-* **PPO Reinforcement Learning Agent**: Stable-Baselines3 PPO integration (`PPOFleetAgent`) trained for 50,000 timesteps for active fleet-wide decision making under local information constraints.
+* **PPO Reinforcement Learning Agent**: Stable-Baselines3 PPO integration (`PPOFleetAgent`) verified with an operational 1,000-timestep baseline smoke test checkpoint (`results/models/ppo_agent.zip`), with configurable training budget via `--timesteps` for extended runs.
 * **Standardized Scenario Generator**: Reproducible benchmark scenario generator (`scenario_generator.py`) with seed-dependent perturbation of breakdown vehicles, timings, traffic spikes, and dynamic orders.
 * **Full Unit & Integration Test Suite**: **95 automated unit and regression tests** passing with 100% compliance across physics, networking, RL environment contracts, ML prediction integration, multi-seed fair scenarios, and decentralized recovery.
 * **Phase 3 ML Integration**: TravelTimePredictor integrated into VRPTW route cost estimation, FuelConsumptionPredictor integrated into decentralized contract-net bidding, and DemandPredictor integrated into PredictiveFleetPositioner.
@@ -27,7 +27,7 @@ To ensure scientific honesty and rigor, the system boundaries are strictly defin
 * **PPO Predictor Ablation**: Controlled ablation study measuring progressive impact of ML predictors (Configs A–E) on RL decision performance.
 
 ### 2. EXPERIMENTAL (Active Research / Trade-off Exploration)
-* **PPO Autonomous Control**: PPO policy trained over 50,000 steps to choose order assignment, stranded order recovery, transfer acceptance, proactive repositioning, and hold actions. While PPO actively navigates trade-offs without centralized coordinators, rule-based contract-net heuristics currently achieve higher recovery efficiency in deterministic dispatching.
+* **PPO Autonomous Control**: PPO policy evaluated on discrete action choices (order assignment, stranded order recovery, transfer acceptance, proactive repositioning, and hold actions). Under current smoke-test scale, the policy behaves conservatively (primarily holding/continuing), while rule-based contract-net heuristics achieve higher recovery efficiency in deterministic dispatching.
 * **ML-Informed Optimization**: Travel time and fuel predictors actively injected into OR-Tools routing cost matrices and time window propagation, trading minor distance increases for on-time delivery resilience.
 * **Predictive Fleet Positioning**: Proactive relocation of idle trucks toward forecasted customer demand zones (`PredictiveFleetPositioner`), demonstrating customer response time reductions under bursty order arrivals.
 

@@ -646,7 +646,7 @@ def generate_baseline_plot(data: Dict[str, Any], output_path: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run fair baseline and PPO comparative evaluation.")
     parser.add_argument("--dataset", default="C101", help="Solomon benchmark instance")
-    parser.add_argument("--datasets", default="C101,R101,RC101", help="Comma-separated Solomon datasets to benchmark")
+    parser.add_argument("--datasets", default=None, help="Comma-separated Solomon datasets to benchmark (e.g. C101,R101,RC101)")
     parser.add_argument("--seed", type=int, default=42, help="Primary evaluation seed")
     parser.add_argument("--customers", type=int, default=25, help="Number of customers")
     parser.add_argument("--vehicles", type=int, default=5, help="Number of vehicles")
@@ -654,7 +654,10 @@ def main() -> None:
     args = parser.parse_args()
 
     seed_list = [int(s.strip()) for s in args.seeds.split(",") if s.strip()]
-    dataset_list = [d.strip() for d in args.datasets.split(",") if d.strip()] if args.datasets else [args.dataset]
+    if args.datasets:
+        dataset_list = [d.strip() for d in args.datasets.split(",") if d.strip()]
+    else:
+        dataset_list = [args.dataset]
 
     all_dataset_results = {}
     for ds in dataset_list:
