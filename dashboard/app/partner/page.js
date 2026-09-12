@@ -99,23 +99,23 @@ export default function DeliveryPartnerCockpit() {
     ? state.delivery_partners
     : (vehicles.map((v) => ({
         id: v.id,
-        name: v.id,
-        phone: "+91 98450 00000",
-        vehicle_model: "Electric Fleet Vehicle",
-        registration: v.id,
-        hub: "Bengaluru Hub",
-        city: "Bengaluru",
-        rating: 4.9,
-        avatar: "🛵",
+        name: v.partner_name || v.id,
+        phone: v.partner_phone || "—",
+        vehicle_model: v.vehicle_model || "Electric Fleet Vehicle",
+        registration: v.registration || v.id,
+        hub: v.hub || `${state?.simulation?.city || "Operations"} Hub`,
+        city: v.city || state?.simulation?.city || "Operations",
+        rating: v.rating ?? null,
+        avatar: v.avatar || "🛵",
       })));
 
   const isDeliveryPartner = role === "partner";
-  const partnerCity = profile?.city || user?.user_metadata?.city || (typeof window !== "undefined" ? localStorage.getItem("swarm_registered_city") : null) || "Bengaluru";
+  const partnerCity = profile?.city || user?.user_metadata?.city || (typeof window !== "undefined" ? localStorage.getItem("swarm_registered_city") : null) || state?.simulation?.city || "Operations";
   const partnerName = profile?.full_name || user?.user_metadata?.full_name || "Delivery Partner";
-  const partnerVehicle = profile?.vehicle_model || user?.user_metadata?.vehicle_model || "Tata Ace EV (Mini Truck)";
-  const partnerPlate = profile?.registration || user?.user_metadata?.registration || "KA-01-EQ-1024";
-  const partnerHub = profile?.hub || user?.user_metadata?.hub || `${partnerCity} Logistics Hub`;
-  const partnerId = profile?.partner_id || profile?.vehicle_id || user?.user_metadata?.partner_id || "TRUCK_01";
+  const partnerVehicle = profile?.vehicle_model || user?.user_metadata?.vehicle_model || "Electric Fleet Vehicle";
+  const partnerPlate = profile?.registration || user?.user_metadata?.registration || "—";
+  const partnerHub = profile?.hub || user?.user_metadata?.hub || `${partnerCity} Hub`;
+  const partnerId = profile?.partner_id || profile?.vehicle_id || user?.user_metadata?.partner_id || vehicles[0]?.id || "PARTNER_01";
 
   const currentPartner = isDeliveryPartner
     ? {
@@ -127,14 +127,14 @@ export default function DeliveryPartnerCockpit() {
         hub: partnerHub,
         city: partnerCity,
         avatar: "🛵",
-        rating: 5.0,
+        rating: profile?.rating ?? null,
       }
     : (partnerProfiles.find((p) => p.id === (selectedPartnerId || partnerProfiles[0]?.id)) || partnerProfiles[0]);
 
   const activeId = isDeliveryPartner
     ? (partnerId || vehicles[0]?.id)
     : (selectedPartnerId || partnerProfiles[0]?.id || vehicles[0]?.id);
-  const currentVehicle = vehicles.find((v) => v.id === activeId || v.id === "TRUCK_01") || vehicles[0];
+  const currentVehicle = vehicles.find((v) => v.id === activeId) || vehicles[0];
 
   // Filter orders assigned to this rider
   const myOrders = orders.filter((o) => o.assigned_vehicle === activeId);

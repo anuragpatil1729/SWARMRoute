@@ -40,8 +40,8 @@ export function AuthProvider({ children }) {
       }
 
       if (data) {
-        const userCity = data.city || supabaseUser.user_metadata?.city || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || 'Bengaluru';
-        if (typeof window !== 'undefined') {
+        const userCity = data.city || supabaseUser.user_metadata?.city || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || null;
+        if (userCity && typeof window !== 'undefined') {
           localStorage.setItem('swarm_registered_city', userCity);
         }
         const meta = supabaseUser.user_metadata || {};
@@ -56,8 +56,8 @@ export function AuthProvider({ children }) {
       } else {
         // Fallback or self-heal: create profile from user_metadata if absent
         const meta = supabaseUser.user_metadata || {};
-        const userCity = meta.city || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || 'Bengaluru';
-        if (typeof window !== 'undefined') {
+        const userCity = meta.city || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || null;
+        if (userCity && typeof window !== 'undefined') {
           localStorage.setItem('swarm_registered_city', userCity);
         }
         const newProfile = {
@@ -66,7 +66,7 @@ export function AuthProvider({ children }) {
           full_name: meta.full_name || supabaseUser.email?.split('@')[0] || 'User',
           role: meta.role || 'manager',
           phone: meta.phone || null,
-          company_name: meta.company_name || 'SWARM Logistics',
+          company_name: meta.company_name || 'Fleet Operations',
           partner_id: meta.partner_id || null,
           vehicle_id: meta.partner_id || null,
           vehicle_model: meta.vehicle_model || null,
@@ -100,7 +100,7 @@ export function AuthProvider({ children }) {
       console.error('Failed to load profile:', err);
       // Construct minimal fallback from user session metadata
       const meta = supabaseUser.user_metadata || {};
-      const userCity = meta.city || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || 'Bengaluru';
+      const userCity = meta.city || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || null;
       setProfile({
         id: supabaseUser.id,
         email: supabaseUser.email,
@@ -170,8 +170,8 @@ export function AuthProvider({ children }) {
     registration,
     hub,
   }) => {
-    const userCity = city?.trim() || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || 'Bengaluru';
-    if (typeof window !== 'undefined') {
+    const userCity = city?.trim() || (typeof window !== 'undefined' ? localStorage.getItem('swarm_registered_city') : null) || null;
+    if (userCity && typeof window !== 'undefined') {
       localStorage.setItem('swarm_registered_city', userCity);
     }
 

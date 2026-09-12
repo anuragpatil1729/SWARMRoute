@@ -91,6 +91,8 @@ class SupabaseService:
             records = []
             for p in partners:
                 loc = p.get("location", {})
+                loc_x = float(loc.get("x")) if (isinstance(loc, dict) and loc.get("x") is not None) else (float(p["location_x"]) if p.get("location_x") is not None else None)
+                loc_y = float(loc.get("y")) if (isinstance(loc, dict) and loc.get("y") is not None) else (float(p["location_y"]) if p.get("location_y") is not None else None)
                 records.append({
                     "id": p["id"],
                     "name": p.get("name", p["id"]),
@@ -98,17 +100,17 @@ class SupabaseService:
                     "vehicle_model": p.get("vehicle_model", ""),
                     "registration": p.get("registration", ""),
                     "hub": p.get("hub", ""),
-                    "city": p.get("city", "Bengaluru"),
-                    "rating": float(p.get("rating", 4.9)),
-                    "completed_deliveries": int(p.get("completed_deliveries", 0)),
-                    "avatar": p.get("avatar", "🛵"),
+                    "city": p.get("city"),
+                    "rating": float(p["rating"]) if p.get("rating") is not None else None,
+                    "completed_deliveries": int(p.get("completed_deliveries", 0) or 0),
+                    "avatar": p.get("avatar", "🚚"),
                     "status": p.get("status", "IDLE"),
                     "current_load": float(p.get("current_load", 0.0)),
-                    "max_weight": float(p.get("max_weight", 100.0)),
+                    "max_weight": float(p["max_weight"]) if p.get("max_weight") is not None else None,
                     "fuel_level": float(p.get("fuel_level", 100.0)),
                     "speed_kmh": float(p.get("speed_kmh", 0.0)),
-                    "location_x": float(loc.get("x", 40.0)) if isinstance(loc, dict) else 40.0,
-                    "location_y": float(loc.get("y", 50.0)) if isinstance(loc, dict) else 50.0,
+                    "location_x": loc_x,
+                    "location_y": loc_y,
                 })
             self.client.table("delivery_partners").upsert(records).execute()
             return True
@@ -128,14 +130,14 @@ class SupabaseService:
                     "customer_id": int(o.get("customer_id", 0)),
                     "address": o.get("address", ""),
                     "area": o.get("area", ""),
-                    "city": "Bengaluru",
-                    "demand_weight": float(o.get("demand", 10.0)),
+                    "city": o.get("city"),
+                    "demand_weight": float(o.get("demand", 0.0)),
                     "priority": o.get("priority", "NORMAL"),
-                    "deadline": float(o.get("deadline", 120.0)),
+                    "deadline": float(o["deadline"]) if o.get("deadline") is not None else None,
                     "ready_time": float(o.get("ready_time", 0.0)),
                     "status": o.get("status", "PENDING"),
                     "assigned_vehicle_id": o.get("assigned_vehicle"),
-                    "payout_inr": int(o.get("payout_inr", 120)),
+                    "payout_inr": int(o["payout_inr"]) if o.get("payout_inr") is not None else None,
                 })
             self.client.table("orders").upsert(records).execute()
             return True
@@ -143,7 +145,7 @@ class SupabaseService:
             print(f"[SupabaseService] Error syncing orders: {e}")
             return False
 
-    def record_task_allocation(self, order_id: str, vehicle_id: str, allocated_by: str = "Company Manager (Admin)") -> bool:
+    def record_task_allocation(self, order_id: str, vehicle_id: str, allocated_by: Optional[str] = None) -> bool:
         """Records a task allocation in Supabase and updates order status."""
         if not self.client:
             return False
@@ -152,7 +154,7 @@ class SupabaseService:
             self.client.table("task_allocations").insert({
                 "order_id": order_id,
                 "vehicle_id": vehicle_id,
-                "allocated_by": allocated_by,
+                "allocated_by": allocated_by or "Dispatch Deck",
                 "status": "ASSIGNED",
                 "metadata": {"source": "SWARMRoute Dashboard"},
             }).execute()

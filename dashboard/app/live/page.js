@@ -27,7 +27,12 @@ export default function LivePage() {
 
   // Dynamic operations city registered by admin
   const registeredCity = profile?.city || user?.user_metadata?.city;
-  const [adminCity, setAdminCity] = useState("Bengaluru");
+  const [adminCity, setAdminCity] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("swarm_registered_city") || "";
+    }
+    return "";
+  });
 
   useEffect(() => {
     if (registeredCity) {
@@ -35,11 +40,10 @@ export default function LivePage() {
       if (typeof window !== "undefined") {
         localStorage.setItem("swarm_registered_city", registeredCity);
       }
-    } else if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("swarm_registered_city");
-      if (stored) setAdminCity(stored);
+    } else if (state?.simulation?.city) {
+      setAdminCity(state.simulation.city);
     }
-  }, [registeredCity]);
+  }, [registeredCity, state?.simulation?.city]);
 
   // If a Delivery Partner visits Manager deck, guide them to their cockpit
   if (role === "partner") {

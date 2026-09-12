@@ -35,80 +35,168 @@ from src.rl.ppo_agent import PPOFleetAgent
 from src.rl.reward import MultiObjectiveRewardConfig, FleetRewardCalculator
 
 
-DELIVERY_PARTNERS: Dict[str, Dict[str, Any]] = {
-    "TRUCK_01": {
-        "id": "TRUCK_01",
-        "name": "Fleet Partner 01",
-        "phone": "+91 98000 00001",
-        "vehicle_model": "Tata Ace EV (Mini Truck)",
-        "registration": "KA-01-EQ-1024",
-        "hub": "South Hub",
-        "city": "Bengaluru",
-        "rating": 4.92,
-        "completed_deliveries": 348,
-        "avatar": "🚚",
-    },
-    "TRUCK_02": {
-        "id": "TRUCK_02",
-        "name": "Fleet Partner 02",
-        "phone": "+91 98000 00002",
-        "vehicle_model": "Mahindra Bolero Maxi Cargo",
-        "registration": "KA-03-TR-5542",
-        "hub": "Central Hub",
-        "city": "Bengaluru",
-        "rating": 4.85,
-        "completed_deliveries": 412,
-        "avatar": "🚚",
-    },
-    "TRUCK_03": {
-        "id": "TRUCK_03",
-        "name": "Fleet Partner 03",
-        "phone": "+91 98000 00003",
-        "vehicle_model": "Euler HiLoad EV (3W Cargo)",
-        "registration": "KA-05-EV-9821",
-        "hub": "East Hub",
-        "city": "Bengaluru",
-        "rating": 4.96,
-        "completed_deliveries": 279,
-        "avatar": "🛵",
-    },
-    "TRUCK_04": {
-        "id": "TRUCK_04",
-        "name": "Fleet Partner 04",
-        "phone": "+91 98000 00004",
-        "vehicle_model": "Ashok Leyland Bada Dost",
-        "registration": "KA-04-MB-3112",
-        "hub": "North Hub",
-        "city": "Bengaluru",
-        "rating": 4.78,
-        "completed_deliveries": 520,
-        "avatar": "🚚",
-    },
+CITY_LANDMARKS: Dict[str, List[Dict[str, str]]] = {
+    "Bengaluru": [
+        {"name": "Central Logistics Hub", "area": "MG Road / Shivajinagar"},
+        {"name": "Embassy GolfLinks Tech Park", "area": "Domlur / Koramangala"},
+        {"name": "Indiranagar 100 Feet Road", "area": "Indiranagar"},
+        {"name": "HSR Layout Sector 1", "area": "HSR Layout"},
+        {"name": "International Tech Park (ITPL)", "area": "Whitefield"},
+        {"name": "Electronic City Phase 1", "area": "Electronic City"},
+        {"name": "RBD EcoSpace Outer Ring Rd", "area": "Bellandur"},
+        {"name": "Marathahalli Bridge Junction", "area": "Marathahalli"},
+        {"name": "JP Nagar 6th Phase", "area": "JP Nagar"},
+        {"name": "Jayanagar 4th T Block", "area": "Jayanagar"},
+        {"name": "Peenya Industrial Area Stage 2", "area": "Peenya"},
+        {"name": "Rajajinagar Industrial Suburb", "area": "Rajajinagar"},
+        {"name": "Yeshwanthpur APMC Wholesale Yard", "area": "Yeshwanthpur"},
+        {"name": "Hebbal Flyover Logistics Node", "area": "Hebbal"},
+        {"name": "Banashankari BDA Complex", "area": "Banashankari"},
+        {"name": "Malleshwaram 8th Cross", "area": "Malleshwaram"},
+        {"name": "BTM Layout Udupi Garden", "area": "BTM Layout"},
+        {"name": "Koramangala 4th Block", "area": "Koramangala"},
+        {"name": "Sarjapur Road Wipro Gate", "area": "Sarjapur"},
+        {"name": "Bannerghatta Rd IIM Bangalore", "area": "Bannerghatta"},
+        {"name": "Yelahanka New Town Cargo Depot", "area": "Yelahanka"},
+    ],
+    "Mumbai": [
+        {"name": "BKC Freight Gateway", "area": "Bandra-Kurla Complex"},
+        {"name": "Andheri MIDC Logistics Hub", "area": "Andheri East"},
+        {"name": "Powai Supreme Business Park", "area": "Powai"},
+        {"name": "Lower Parel Commercial Center", "area": "Lower Parel"},
+        {"name": "Vashi APMC Market Terminal", "area": "Navi Mumbai"},
+        {"name": "Dadar TT Circle Hub", "area": "Dadar Central"},
+        {"name": "Goregaon Nesco Cargo Depot", "area": "Goregaon East"},
+        {"name": "Thane Wagle Estate Hub", "area": "Thane West"},
+        {"name": "Kurla West Transit Point", "area": "Kurla West"},
+        {"name": "Malad Mindspace Terminal", "area": "Malad West"},
+        {"name": "Borivali National Park Depot", "area": "Borivali East"},
+        {"name": "Chembur Diamond Garden", "area": "Chembur"},
+        {"name": "Worli Seaface Logistics Node", "area": "Worli"},
+        {"name": "Ghatkopar Metro Logistics Depot", "area": "Ghatkopar"},
+        {"name": "Rabale Industrial Area", "area": "Airoli / Navi Mumbai"},
+        {"name": "Kandivali Industrial Estate", "area": "Kandivali West"},
+        {"name": "Kanjurmarg Logistics Park", "area": "Kanjurmarg"},
+        {"name": "Mulund Check Naka Terminal", "area": "Mulund"},
+        {"name": "Churchgate Cargo Point", "area": "South Mumbai"},
+        {"name": "Byculla Central Rail Depot", "area": "Byculla"},
+    ],
+    "Delhi": [
+        {"name": "Okhla Industrial Area Phase 2", "area": "Okhla"},
+        {"name": "Nehru Place Business Hub", "area": "Nehru Place"},
+        {"name": "Connaught Place Central Node", "area": "Connaught Place"},
+        {"name": "Karol Bagh Commercial Center", "area": "Karol Bagh"},
+        {"name": "Patparganj Industrial Estate", "area": "Patparganj"},
+        {"name": "Dwarka Sector 10 Depot", "area": "Dwarka"},
+        {"name": "Rohini Sector 18 Logistics Hub", "area": "Rohini"},
+        {"name": "Hauz Khas Terminal", "area": "Hauz Khas"},
+        {"name": "Mayapuri Industrial Area", "area": "Mayapuri"},
+        {"name": "Noida Sector 62 IT Cargo Hub", "area": "Noida"},
+        {"name": "Gurugram Cyber City Freight Point", "area": "DLF Phase 2"},
+        {"name": "Gurugram Udyog Vihar Phase 4", "area": "Udyog Vihar"},
+        {"name": "Faridabad Industrial Sector 24", "area": "Faridabad"},
+        {"name": "Chandni Chowk Wholesale Hub", "area": "Old Delhi"},
+        {"name": "Saket District Centre", "area": "Saket"},
+        {"name": "Vasant Kunj Commercial Spine", "area": "Vasant Kunj"},
+        {"name": "Laxmi Nagar Terminal", "area": "East Delhi"},
+        {"name": "Anand Vihar ISBT Freight Hub", "area": "Anand Vihar"},
+        {"name": "Janakpuri District Centre", "area": "West Delhi"},
+        {"name": "Shalimar Bagh Logistics Node", "area": "North Delhi"},
+    ],
+    "Hyderabad": [
+        {"name": "HITEC City Logistics Gateway", "area": "Madhapur"},
+        {"name": "Gachibowli Financial District Hub", "area": "Gachibowli"},
+        {"name": "Sanathnagar Industrial Hub", "area": "Sanathnagar"},
+        {"name": "Begumpet Cargo Transit Point", "area": "Begumpet"},
+        {"name": "Secunderabad Rail Freight Depot", "area": "Secunderabad"},
+        {"name": "Kukatpally KPHB Commercial Colony", "area": "Kukatpally"},
+        {"name": "Banjara Hills Road No 12", "area": "Banjara Hills"},
+        {"name": "Jubilee Hills Check Post", "area": "Jubilee Hills"},
+        {"name": "Ameerpet Junction Terminal", "area": "Ameerpet"},
+        {"name": "Uppal Industrial Area", "area": "Uppal"},
+        {"name": "Cherlapally Industrial Park", "area": "Cherlapally"},
+        {"name": "Kondapur Botanical Garden Node", "area": "Kondapur"},
+        {"name": "Balanagar IDPL Industrial Area", "area": "Balanagar"},
+        {"name": "Dilsukhnagar Main Rd Depot", "area": "Dilsukhnagar"},
+        {"name": "Charminar Distribution Hub", "area": "Old City"},
+        {"name": "Miyapur Metro Logistics Point", "area": "Miyapur"},
+        {"name": "Shamshabad Cargo Terminal", "area": "Airport Corridor"},
+        {"name": "Kompally NH44 Logistics Park", "area": "Kompally"},
+    ],
+    "Pune": [
+        {"name": "Hinjawadi Phase 1 IT Terminal", "area": "Hinjawadi"},
+        {"name": "Shivaji Nagar Logistics Node", "area": "Shivaji Nagar"},
+        {"name": "Hadapsar Magarpatta City Hub", "area": "Hadapsar"},
+        {"name": "Kothrud Paud Road Depot", "area": "Kothrud"},
+        {"name": "Viman Nagar Air Cargo Node", "area": "Viman Nagar"},
+        {"name": "Bhosari MIDC Industrial Hub", "area": "Pimpri-Chinchwad"},
+        {"name": "Chakan Automotive Logistics Park", "area": "Chakan"},
+        {"name": "Baner High Street Depot", "area": "Baner"},
+        {"name": "Kalyani Nagar Freight Center", "area": "Kalyani Nagar"},
+        {"name": "Swargate Central Transit Terminal", "area": "Swargate"},
+        {"name": "Wakad Phoenix Mall Corridor", "area": "Wakad"},
+        {"name": "Kharadi EON Free Zone", "area": "Kharadi"},
+        {"name": "Aundh DP Road Terminal", "area": "Aundh"},
+        {"name": "Senapati Bapat Road Depot", "area": "SB Road"},
+        {"name": "Fatima Nagar Junction", "area": "Wanowrie"},
+    ],
+    "Chennai": [
+        {"name": "Guindy Industrial Estate Terminal", "area": "Guindy"},
+        {"name": "Ambattur Industrial Estate", "area": "Ambattur"},
+        {"name": "T Nagar Commercial Hub", "area": "T Nagar"},
+        {"name": "OMR IT Corridor Hub", "area": "Sholinganallur"},
+        {"name": "Sriperumbudur Freight Park", "area": "Sriperumbudur"},
+        {"name": "Anna Nagar West Depot", "area": "Anna Nagar"},
+        {"name": "Velachery Bypass Node", "area": "Velachery"},
+        {"name": "Koyambedu Wholesale Market Yard", "area": "Koyambedu"},
+        {"name": "Adyar Kasturba Nagar", "area": "Adyar"},
+        {"name": "Tambaram Freight Station", "area": "Tambaram"},
+        {"name": "Porur Junction Cargo Center", "area": "Porur"},
+    ],
+    "Kolkata": [
+        {"name": "Salt Lake Sector V IT Hub", "area": "Salt Lake"},
+        {"name": "Rajarhat New Town Logistics Center", "area": "New Town"},
+        {"name": "Burrabazar Wholesale Hub", "area": "Burrabazar"},
+        {"name": "Park Street Commercial Terminal", "area": "Park Street"},
+        {"name": "Howrah Rail Freight Yard", "area": "Howrah"},
+        {"name": "Taratala Industrial Area", "area": "Taratala"},
+        {"name": "Dum Dum Air Cargo Point", "area": "Dum Dum"},
+        {"name": "Kasba Industrial Estate", "area": "Kasba"},
+    ],
+    "Ahmedabad": [
+        {"name": "Sanand Industrial Freight Hub", "area": "Sanand"},
+        {"name": "Changodar Logistics Park", "area": "Changodar"},
+        {"name": "SG Highway Commercial Node", "area": "SG Highway"},
+        {"name": "Naroda GIDC Industrial Area", "area": "Naroda"},
+        {"name": "Prahlad Nagar Business Hub", "area": "Prahlad Nagar"},
+        {"name": "Vatva GIDC Chemical & Freight Zone", "area": "Vatva"},
+    ],
 }
 
-INDIAN_LANDMARKS: List[Dict[str, str]] = [
-    {"name": "Central Logistics Hub", "area": "MG Road / Shivajinagar", "city": "Bengaluru"},
-    {"name": "Embassy GolfLinks Tech Park", "area": "Domlur / Koramangala", "city": "Bengaluru"},
-    {"name": "Indiranagar 100 Feet Road", "area": "Indiranagar", "city": "Bengaluru"},
-    {"name": "HSR Layout Sector 1", "area": "HSR Layout", "city": "Bengaluru"},
-    {"name": "International Tech Park (ITPL)", "area": "Whitefield", "city": "Bengaluru"},
-    {"name": "Electronic City Phase 1", "area": "Electronic City", "city": "Bengaluru"},
-    {"name": "RBD EcoSpace Outer Ring Rd", "area": "Bellandur", "city": "Bengaluru"},
-    {"name": "Marathahalli Bridge Junction", "area": "Marathahalli", "city": "Bengaluru"},
-    {"name": "JP Nagar 6th Phase", "area": "JP Nagar", "city": "Bengaluru"},
-    {"name": "Jayanagar 4th T Block", "area": "Jayanagar", "city": "Bengaluru"},
-    {"name": "Peenya Industrial Area Stage 2", "area": "Peenya", "city": "Bengaluru"},
-    {"name": "Rajajinagar Industrial Suburb", "area": "Rajajinagar", "city": "Bengaluru"},
-    {"name": "Yeshwanthpur APMC Wholesale Yard", "area": "Yeshwanthpur", "city": "Bengaluru"},
-    {"name": "Hebbal Flyover Logistics Node", "area": "Hebbal", "city": "Bengaluru"},
-    {"name": "Banashankari BDA Complex", "area": "Banashankari", "city": "Bengaluru"},
-    {"name": "Malleshwaram 8th Cross", "area": "Malleshwaram", "city": "Bengaluru"},
-    {"name": "BTM Layout Udupi Garden", "area": "BTM Layout", "city": "Bengaluru"},
-    {"name": "Koramangala 4th Block", "area": "Koramangala", "city": "Bengaluru"},
-    {"name": "Sarjapur Road Wipro Gate", "area": "Sarjapur", "city": "Bengaluru"},
-    {"name": "Bannerghatta Rd IIM Bangalore", "area": "Bannerghatta", "city": "Bengaluru"},
-    {"name": "Yelahanka New Town Cargo Depot", "area": "Yelahanka", "city": "Bengaluru"},
-]
+
+def get_city_landmark(city: str, node_idx: int) -> Dict[str, str]:
+    """Dynamically resolves realistic localized landmarks for any operational city."""
+    clean_city = (city or "Operations").strip()
+    matched_key = None
+    for k in CITY_LANDMARKS:
+        if k.lower() == clean_city.lower() or k.lower() in clean_city.lower() or clean_city.lower() in k.lower():
+            matched_key = k
+            break
+
+    if matched_key:
+        landmarks = CITY_LANDMARKS[matched_key]
+        lm = landmarks[node_idx % len(landmarks)]
+        return {"name": lm["name"], "area": lm["area"], "city": clean_city}
+
+    # Procedural zone generation for arbitrary configured cities
+    zone_letter = chr(65 + (node_idx % 26))
+    sector_num = (node_idx % 30) + 1
+    return {
+        "name": f"{clean_city} Logistics Hub #{node_idx}",
+        "area": f"Sector {sector_num} (Zone {zone_letter})",
+        "city": clean_city,
+    }
+
 
 ACTION_NAMES = [
     "ASSIGN_BEST_ORDER",
@@ -167,6 +255,7 @@ class SimulationRunner:
         self.cumulative_ppo_reward: float = 0.0
         self.last_ppo_action_idx: int = 4
         self.event_counter: int = 0
+        self.partner_deliveries: Dict[str, int] = {}
 
         # Incremental state tracking for PPO multi-objective rewards
         self.last_delivered_count: int = 0
@@ -260,6 +349,7 @@ class SimulationRunner:
             self.recent_actions.clear()
             self.repositioning_status.clear()
             self.recovery_routes.clear()
+            self.partner_deliveries.clear()
             self.last_ppo_reward = 0.0
             self.cumulative_ppo_reward = 0.0
             self.last_ppo_action_idx = 4
@@ -783,7 +873,7 @@ class SimulationRunner:
 
             vehicle = self.fleet_state.vehicles[vehicle_id]
             order = self.fleet_state.active_orders[order_id]
-            partner_info = DELIVERY_PARTNERS.get(vehicle_id, {"name": vehicle_id})
+            partner_info = self.get_partner_meta(vehicle_id)
 
             if vehicle.status == VehicleStatus.BROKEN_DOWN:
                 return {
@@ -885,10 +975,10 @@ class SimulationRunner:
                 if order.is_late(cur_t):
                     self.env.late_orders.add(order_id)
 
-            partner_meta = DELIVERY_PARTNERS.get(actual_vid, {"name": actual_vid or "Rider"})
-            if actual_vid and actual_vid in DELIVERY_PARTNERS:
-                DELIVERY_PARTNERS[actual_vid]["completed_deliveries"] = (
-                    DELIVERY_PARTNERS[actual_vid].get("completed_deliveries", 0) + 1
+            partner_meta = self.get_partner_meta(actual_vid)
+            if actual_vid:
+                self.partner_deliveries[actual_vid] = (
+                    self.partner_deliveries.get(actual_vid, 0) + 1
                 )
 
             self._log_event(
@@ -913,48 +1003,72 @@ class SimulationRunner:
             }
 
     def get_partner_meta(self, vehicle_id: Optional[str]) -> Dict[str, Any]:
-        """Dynamically retrieves delivery partner metadata from Supabase database or fallback."""
+        """Dynamically retrieves delivery partner metadata from Supabase database or synthesizes from fleet state."""
         if not vehicle_id:
-            return {"id": "UNASSIGNED", "name": "Unassigned Rider", "avatar": "🛵"}
+            return {"id": "UNASSIGNED", "name": "Unassigned Partner", "avatar": "🛵"}
         # Try fetching from Supabase
         try:
             from src.api.supabase_service import supabase_service
             db_partners = supabase_service.fetch_delivery_partners()
             for p in db_partners:
                 if p.get("id") == vehicle_id:
-                    return p
+                    return {
+                        **p,
+                        "completed_deliveries": int(p.get("completed_deliveries", 0) or 0) + self.partner_deliveries.get(vehicle_id, 0),
+                    }
         except Exception:
             pass
-        return DELIVERY_PARTNERS.get(vehicle_id, {"id": vehicle_id, "name": vehicle_id, "avatar": "🛵"})
+
+        # Dynamic fallback without hardcoded fake data
+        return {
+            "id": vehicle_id,
+            "name": f"Partner ({vehicle_id})",
+            "phone": "",
+            "vehicle_model": "Electric Fleet Vehicle",
+            "registration": vehicle_id,
+            "hub": f"{self.city} Hub",
+            "city": self.city,
+            "rating": None,
+            "completed_deliveries": self.partner_deliveries.get(vehicle_id, 0),
+            "avatar": "🚚",
+        }
 
     def get_delivery_partners(self) -> List[Dict[str, Any]]:
         """Returns partner profiles dynamically from Supabase enriched with live vehicle telemetry."""
         with self.lock:
             partners_list = []
+            db_map: Dict[str, Dict[str, Any]] = {}
             try:
                 from src.api.supabase_service import supabase_service
                 db_partners = supabase_service.fetch_delivery_partners()
                 if db_partners:
-                    source_dict = {p["id"]: p for p in db_partners}
-                else:
-                    source_dict = DELIVERY_PARTNERS
+                    db_map = {p["id"]: p for p in db_partners}
             except Exception:
-                source_dict = DELIVERY_PARTNERS
+                db_map = {}
 
-            for vid, meta in source_dict.items():
+            # Gather all vehicle IDs from registered DB partners and active fleet vehicles
+            vids = list(dict.fromkeys(list(db_map.keys()) + (list(self.fleet_state.vehicles.keys()) if self.fleet_state else [])))
+
+            for vid in vids:
+                meta = db_map.get(vid) or self.get_partner_meta(vid)
                 v = self.fleet_state.vehicles.get(vid) if self.fleet_state else None
                 assigned = list(v.assigned_orders) if v else []
-                cur_load = round(float(v.current_load), 1) if v else float(meta.get("current_load", 0.0))
-                max_wt = float(v.max_weight) if v else float(meta.get("max_weight", 100.0))
+                cur_load = round(float(v.current_load), 1) if v else float(meta.get("current_load", 0.0) or 0.0)
+                max_wt = float(v.max_weight) if v else float(meta.get("max_weight", 100.0) or 100.0)
                 rem_cap = round(max(0.0, max_wt - cur_load), 1)
                 status = v.status.value if v else meta.get("status", "IDLE")
-                fuel = round(float(v.fuel_level), 1) if v else float(meta.get("fuel_level", 100.0))
-                speed = round(float(v.current_speed_kmh), 1) if v else float(meta.get("speed_kmh", 0.0))
-                loc = (round(float(v.current_location[0]), 2), round(float(v.current_location[1]), 2)) if v else (40.0, 50.0)
+                fuel = round(float(v.fuel_level), 1) if v else float(meta.get("fuel_level", 100.0) or 100.0)
+                speed = round(float(v.current_speed_kmh), 1) if v else float(meta.get("speed_kmh", 0.0) or 0.0)
+                loc = (round(float(v.current_location[0]), 2), round(float(v.current_location[1]), 2)) if v else (
+                    float(meta.get("location_x") or 0.0), float(meta.get("location_y") or 0.0)
+                )
+                completed = int(meta.get("completed_deliveries", 0) or 0) + self.partner_deliveries.get(vid, 0)
 
                 partners_list.append({
                     **meta,
+                    "city": meta.get("city") or self.city,
                     "status": status,
+                    "completed_deliveries": completed,
                     "current_load": cur_load,
                     "max_weight": max_wt,
                     "remaining_capacity": rem_cap,
@@ -1029,16 +1143,16 @@ class SimulationRunner:
 
                 # Mesh neighbors
                 neighbors = list(mesh_topo.neighbors(vid)) if mesh_topo.has_node(vid) else []
-                partner_meta = DELIVERY_PARTNERS.get(vid, {})
+                partner_meta = self.get_partner_meta(vid)
 
                 vehicles_list.append({
                     "id": vid,
                     "partner_name": partner_meta.get("name", vid),
                     "partner_phone": partner_meta.get("phone", ""),
                     "vehicle_model": partner_meta.get("vehicle_model", "Commercial Delivery Vehicle"),
-                    "registration": partner_meta.get("registration", "KA-01-EQ-1024"),
-                    "hub": partner_meta.get("hub", "Central Hub"),
-                    "rating": partner_meta.get("rating", 4.9),
+                    "registration": partner_meta.get("registration", vid),
+                    "hub": partner_meta.get("hub", f"{self.city} Hub"),
+                    "rating": partner_meta.get("rating"),
                     "avatar": partner_meta.get("avatar", "🚚"),
                     "status": v.status.value,
                     "x": round(float(v.current_location[0]), 2),
@@ -1072,13 +1186,17 @@ class SimulationRunner:
             for oid, o in self.fleet_state.active_orders.items():
                 node_idx = self.env.node_id_map.get(oid, 0)
                 coord = node_coords.get(node_idx, (0.0, 0.0))
-                landmark = INDIAN_LANDMARKS[node_idx % len(INDIAN_LANDMARKS)]
-                assigned_partner = DELIVERY_PARTNERS.get(o.assigned_vehicle_id, {}).get("name", o.assigned_vehicle_id)
+                landmark = get_city_landmark(self.city, node_idx)
+                assigned_partner = (
+                    self.get_partner_meta(o.assigned_vehicle_id).get("name", o.assigned_vehicle_id)
+                    if o.assigned_vehicle_id else "Unassigned"
+                )
                 orders_list.append({
                     "id": oid,
                     "customer_id": node_idx,
                     "address": f"{landmark['name']}, {landmark['area']}, {landmark['city']}",
                     "area": landmark["area"],
+                    "city": landmark["city"],
                     "payout_inr": int(round(80 + o.demand_weight * 2.5)),
                     "x": coord[0],
                     "y": coord[1],
@@ -1099,12 +1217,13 @@ class SimulationRunner:
             for oid, o in self.fleet_state.active_orders.items():
                 node_idx = self.env.node_id_map.get(oid, 0)
                 coord = node_coords.get(node_idx, (0.0, 0.0))
-                landmark = INDIAN_LANDMARKS[node_idx % len(INDIAN_LANDMARKS)]
+                landmark = get_city_landmark(self.city, node_idx)
                 customers_list.append({
                     "id": node_idx,
                     "order_id": oid,
-                    "address": f"{landmark['name']}, {landmark['area']}",
+                    "address": f"{landmark['name']}, {landmark['area']}, {landmark['city']}",
                     "area": landmark["area"],
+                    "city": landmark["city"],
                     "x": coord[0],
                     "y": coord[1],
                     "demand": o.demand_weight,

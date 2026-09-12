@@ -6,13 +6,79 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from "../../lib/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
 
-const HUBS = [
-  { name: 'Koramangala South Hub', lat: 12.9352, lon: 77.6245 },
-  { name: 'Indiranagar Metro Hub', lat: 12.9784, lon: 77.6408 },
-  { name: 'Whitefield ITPL Hub', lat: 12.9698, lon: 77.7499 },
-  { name: 'Electronic City Phase 1 Hub', lat: 12.8399, lon: 77.6770 },
-  { name: 'HSR Layout Sector 2 Hub', lat: 12.9116, lon: 77.6534 },
-];
+const CITY_HUBS = {
+  Bengaluru: [
+    'Koramangala South Hub',
+    'Indiranagar Central Hub',
+    'Whitefield ITPL Hub',
+    'Electronic City Phase 1 Hub',
+    'HSR Layout Sector 2 Hub',
+  ],
+  Mumbai: [
+    'BKC Central Freight Hub',
+    'Andheri MIDC Cargo Terminal',
+    'Vashi APMC Market Hub',
+    'Powai Tech Logistics Point',
+    'Thane Wagle Estate Hub',
+  ],
+  Delhi: [
+    'Okhla Phase 2 Logistics Depot',
+    'Connaught Place Central Hub',
+    'Nehru Place Commercial Hub',
+    'Noida Sector 62 IT Hub',
+    'Gurugram Cyber City Freight Point',
+  ],
+  Hyderabad: [
+    'HITEC City Logistics Gateway',
+    'Gachibowli Cargo Terminal',
+    'Sanathnagar Industrial Hub',
+    'Secunderabad Rail Freight Depot',
+    'Kukatpally Commercial Hub',
+  ],
+  Pune: [
+    'Hinjawadi Phase 1 Logistics Hub',
+    'Shivaji Nagar Central Terminal',
+    'Hadapsar Magarpatta City Hub',
+    'Kothrud Transit Point',
+    'Bhosari MIDC Hub',
+  ],
+  Chennai: [
+    'Guindy Industrial Terminal',
+    'Ambattur Industrial Hub',
+    'OMR IT Corridor Hub',
+    'T Nagar Commercial Center',
+    'Sriperumbudur Freight Park',
+  ],
+  Kolkata: [
+    'Salt Lake Sector V Hub',
+    'Rajarhat New Town Center',
+    'Burrabazar Freight Hub',
+    'Howrah Rail Depot',
+    'Taratala Industrial Terminal',
+  ],
+  Ahmedabad: [
+    'Sanand Industrial Freight Hub',
+    'Changodar Logistics Park',
+    'SG Highway Commercial Node',
+    'Naroda GIDC Hub',
+  ],
+};
+
+function getHubsForCity(cityName) {
+  if (!cityName) return ['Central Logistics Hub', 'North Depot', 'South Hub', 'East Hub', 'West Terminal'];
+  const clean = cityName.trim();
+  for (const [k, list] of Object.entries(CITY_HUBS)) {
+    if (k.toLowerCase() === clean.toLowerCase() || clean.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(clean.toLowerCase())) {
+      return list;
+    }
+  }
+  return [
+    `${clean} Central Logistics Hub`,
+    `${clean} North Sector Depot`,
+    `${clean} South Industrial Hub`,
+    `${clean} East Commercial Terminal`,
+  ];
+}
 
 const VEHICLE_PRESETS = [
   { name: 'Tata Ace EV (Mini Truck)', capacityKg: 600, batteryKwh: 21.3, rangeKm: 154, type: '4-Wheeler EV' },
@@ -41,15 +107,28 @@ function SignupForm() {
   const [operationsCity, setOperationsCity] = useState('');
 
   // Partner specific
+  const [partnerCity, setPartnerCity] = useState('');
   const [vehicleModel, setVehicleModel] = useState(VEHICLE_PRESETS[0].name);
   const [registrationPlate, setRegistrationPlate] = useState('');
-  const [selectedHub, setSelectedHub] = useState(HUBS[0].name);
+  const [selectedHub, setSelectedHub] = useState('Central Logistics Hub');
   const [capacityKg, setCapacityKg] = useState(VEHICLE_PRESETS[0].capacityKg);
   const [batteryKwh, setBatteryKwh] = useState(VEHICLE_PRESETS[0].batteryKwh);
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('swarm_registered_city');
+      if (stored) {
+        setPartnerCity(stored);
+        setOperationsCity(stored);
+        const hubs = getHubsForCity(stored);
+        if (hubs.length > 0) setSelectedHub(hubs[0]);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const matched = VEHICLE_PRESETS.find((v) => v.name === vehicleModel);
@@ -67,13 +146,12 @@ function SignupForm() {
 
     try {
       let createdPartnerId = null;
+      const registeredCity = (role === 'manager' ? operationsCity.trim() : (partnerCity.trim() || operationsCity.trim() || 'Operations')) || 'Operations';
 
       // 1. If role is partner, generate a unique partner ID and insert into delivery_partners
       if (role === 'partner') {
         const cleanReg = registrationPlate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
         createdPartnerId = `PTR_${cleanReg || Date.now().toString().slice(-6)}`;
-
-        const hub = HUBS.find((h) => h.name === selectedHub) || HUBS[0];
 
         // Insert into public.delivery_partners matching database schema
         const { error: partnerInsertErr } = await supabase.from('delivery_partners').upsert({
@@ -81,19 +159,19 @@ function SignupForm() {
           name: fullName,
           phone: phone,
           vehicle_model: vehicleModel,
-          registration: registrationPlate.trim().toUpperCase() || 'KA-01-EQ-5544',
+          registration: registrationPlate.trim().toUpperCase(),
           hub: selectedHub,
-          city: 'Bengaluru',
-          rating: 5.0,
+          city: registeredCity,
+          rating: null,
           completed_deliveries: 0,
-          avatar: '🛵',
+          avatar: '🚚',
           status: 'AVAILABLE',
           current_load: 0.0,
-          max_weight: parseFloat(capacityKg) || 100.0,
+          max_weight: parseFloat(capacityKg) || null,
           fuel_level: 100.0,
           speed_kmh: 0.0,
-          location_x: 40.0,
-          location_y: 50.0,
+          location_x: null,
+          location_y: null,
         });
 
         if (partnerInsertErr) {
@@ -101,7 +179,6 @@ function SignupForm() {
         }
       }
 
-      const registeredCity = (role === 'manager' ? operationsCity.trim() : 'Bengaluru') || 'Bengaluru';
       if (typeof window !== 'undefined') {
         localStorage.setItem('swarm_registered_city', registeredCity);
       }
@@ -329,6 +406,25 @@ function SignupForm() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Operating City
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={partnerCity}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPartnerCity(val);
+                        const hubs = getHubsForCity(val);
+                        if (hubs.length > 0) setSelectedHub(hubs[0]);
+                      }}
+                      placeholder="e.g. Mumbai, Delhi, Bengaluru, Pune"
+                      className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Vehicle Model
                     </label>
                     <select
@@ -343,7 +439,9 @@ function SignupForm() {
                       ))}
                     </select>
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Registration Plate Number
@@ -353,14 +451,12 @@ function SignupForm() {
                       required
                       value={registrationPlate}
                       onChange={(e) => setRegistrationPlate(e.target.value)}
-                      placeholder="e.g. KA-01-EQ-5544"
+                      placeholder="e.g. MH-01-AB-1234"
                       className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="sm:col-span-1">
+                  <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Max Payload (kg)
                     </label>
@@ -373,7 +469,7 @@ function SignupForm() {
                     />
                   </div>
 
-                  <div className="sm:col-span-2">
+                  <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Home Base Hub
                     </label>
@@ -382,9 +478,9 @@ function SignupForm() {
                       onChange={(e) => setSelectedHub(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     >
-                      {HUBS.map((h) => (
-                        <option key={h.name} value={h.name}>
-                          {h.name}
+                      {getHubsForCity(partnerCity || operationsCity).map((h) => (
+                        <option key={h} value={h}>
+                          {h}
                         </option>
                       ))}
                     </select>
