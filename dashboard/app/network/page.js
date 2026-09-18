@@ -4,6 +4,7 @@ import Section from "../../components/Section";
 import Stat from "../../components/Stat";
 import LiveMeshFigure from "../../components/LiveMeshFigure";
 import { useDashboardState } from "../../lib/useDashboardState";
+import { numeric, unavailable } from "../../lib/presentation";
 
 export default function NetworkPage() {
   const { state, connectionStatus, toggleCloud } = useDashboardState();
@@ -107,13 +108,13 @@ export default function NetworkPage() {
         />
         <Stat
           label="Radio Range"
-          value={`${mesh.transmission_range_km} km`}
+          value={numeric(mesh.transmission_range_km, " km")}
           help="Direct vehicle-to-vehicle"
         />
         <Stat
-          label="Avg Latency"
-          value={`${network.avg_latency_ms} ms`}
-          help="Single-hop packet transit"
+          label="Delivery rate"
+          value={typeof network.messages_sent === "number" && network.messages_sent > 0 && typeof network.messages_delivered === "number" ? `${((network.messages_delivered / network.messages_sent) * 100).toFixed(0)}%` : "—"}
+          help="Delivered mesh messages"
         />
         <Stat
           label="Messages Relayed"
@@ -140,8 +141,8 @@ export default function NetworkPage() {
             </span>
           </div>
 
-          <div className="h-64 bg-slate-950 rounded-xl p-3 border border-slate-800 relative overflow-hidden">
-            <LiveMeshFigure mesh={mesh} activeRecovery={incidents[0]} />
+          <div className="h-64 bg-slate-50 rounded-xl p-3 border border-slate-200 relative overflow-hidden">
+            <LiveMeshFigure mesh={mesh} cloudStatus={network.cloud_status} activeRecovery={incidents[0]} />
           </div>
 
           <div className="flex items-center justify-between mt-3 text-xs text-slate-500 font-mono">
@@ -153,7 +154,7 @@ export default function NetworkPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Broken Down Node
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-4 h-0.5 bg-cyan-400" /> RF Link
+                <span className="w-4 h-0.5 bg-slate-400" /> RF Link
               </span>
             </div>
             <span>Auto-Updated Every Simulation Step</span>

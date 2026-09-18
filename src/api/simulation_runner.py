@@ -1197,7 +1197,6 @@ class SimulationRunner:
                     "address": f"{landmark['name']}, {landmark['area']}, {landmark['city']}",
                     "area": landmark["area"],
                     "city": landmark["city"],
-                    "payout_inr": int(round(80 + o.demand_weight * 2.5)),
                     "x": coord[0],
                     "y": coord[1],
                     "assigned_vehicle": o.assigned_vehicle_id,
@@ -1279,14 +1278,6 @@ class SimulationRunner:
             success_pct = round((deliv_count / max(1, total_orders)) * 100.0, 1)
             on_time_pct = round((max(0, deliv_count - late_count) / max(1, total_orders)) * 100.0, 1)
 
-            # Demand predictions per quadrant
-            demand_zones = [
-                {"zone": "North-East", "predicted_demand": 38.4, "actual_demand": 34.0, "diff": "+4.4", "trend": "UP"},
-                {"zone": "South-West", "predicted_demand": 22.1, "actual_demand": 24.0, "diff": "-1.9", "trend": "STABLE"},
-                {"zone": "North-West", "predicted_demand": 19.8, "actual_demand": 18.0, "diff": "+1.8", "trend": "STABLE"},
-                {"zone": "South-East", "predicted_demand": 29.5, "actual_demand": 31.0, "diff": "-1.5", "trend": "DOWN"},
-            ]
-
             return {
                 "simulation": {
                     "status": self.status,
@@ -1344,9 +1335,9 @@ class SimulationRunner:
                 },
                 "incidents": self.incidents,
                 "recovery_flow": self.recovery_flow,
-                "predictions": {
-                    "zones": demand_zones,
-                },
+                # Zone-level predictor telemetry is not exposed by the runtime.
+                # Do not return presentation-only forecast values.
+                "predictions": {"zones": []},
                 "positioning": self.repositioning_status,
                 "ppo": {
                     "enabled": self.ppo_agent is not None,
