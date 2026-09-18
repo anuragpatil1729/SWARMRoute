@@ -4,11 +4,11 @@ Evaluates the progressive addition of machine learning prediction modules to the
 
 | Configuration                     | Delivery Success (%)   | On-Time (%)   | Distance (km)   | Fuel (L)   | Avg Delay (mins)   | Recovery Time (s)   |
 |-----------------------------------|------------------------|---------------|-----------------|------------|--------------------|---------------------|
-| Config A (Baseline PPO, No ML)    | 76.3 ± 7.6%            | 59.3 ± 6.7%   | 174.2 ± 23.9    | 58.7 ± 7.4 | 6.7 ± 0.9          | 0.000s              |
-| Config B (PPO + Travel Time)      | 76.3 ± 7.6%            | 59.3 ± 6.7%   | 174.2 ± 23.9    | 58.7 ± 7.4 | 6.7 ± 0.9          | 0.000s              |
-| Config C (PPO + Fuel Predictor)   | 76.3 ± 7.6%            | 59.3 ± 6.7%   | 174.2 ± 23.9    | 58.7 ± 7.4 | 6.7 ± 0.9          | 0.000s              |
-| Config D (PPO + Demand Predictor) | 76.3 ± 7.6%            | 59.3 ± 6.7%   | 174.2 ± 23.9    | 58.7 ± 7.4 | 6.7 ± 0.9          | 0.000s              |
-| Config E (Full SWARMRoute)        | 76.3 ± 7.6%            | 59.3 ± 6.7%   | 174.2 ± 23.9    | 58.7 ± 7.4 | 6.7 ± 0.9          | 0.000s              |
+| Config A (Baseline PPO, No ML)    | 91.9 ± 5.9%            | 57.1 ± 6.0%   | 236.1 ± 24.3    | 78.7 ± 8.1 | 197.5 ± 150.5      | 0.130s              |
+| Config B (PPO + Travel Time)      | 91.9 ± 5.9%            | 57.1 ± 6.0%   | 236.1 ± 24.3    | 78.7 ± 8.1 | 197.5 ± 150.5      | 7.050s              |
+| Config C (PPO + Fuel Predictor)   | 89.6 ± 7.5%            | 58.6 ± 5.4%   | 229.7 ± 18.3    | 76.4 ± 6.0 | 154.8 ± 124.9      | 7.210s              |
+| Config D (PPO + Demand Predictor) | 91.9 ± 5.9%            | 57.1 ± 6.0%   | 236.1 ± 24.3    | 78.7 ± 8.1 | 199.3 ± 153.7      | 10.800s             |
+| Config E (Full SWARMRoute)        | 89.6 ± 7.5%            | 58.6 ± 5.4%   | 229.7 ± 18.3    | 76.4 ± 6.0 | 154.8 ± 124.9      | 26.500s             |
 
 ### Key Scientific Insights
 - **Baseline PPO (Config A)** operates purely on geometric spatial distance.
