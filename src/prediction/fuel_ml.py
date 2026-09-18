@@ -1,7 +1,10 @@
 from __future__ import annotations
 from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
+if sys.modules.get("pyarrow") is None:
+    sys.modules.pop("pyarrow", None)
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -58,6 +61,8 @@ class FuelConsumptionPredictor(BasePredictor):
         self.physics_model = DeterministicFuelModel()
 
     def train(self, X: np.ndarray, y: np.ndarray, test_size: float = 0.2) -> Dict[str, float]:
+        if sys.modules.get("pyarrow") is None:
+            sys.modules.pop("pyarrow", None)
         X_train, X_val, y_train, y_val = train_test_split(
             X, y, test_size=test_size, random_state=self.random_state
         )

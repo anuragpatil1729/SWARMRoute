@@ -158,6 +158,22 @@ class FleetAgent:
         if failed_vehicle_id not in self.truck_agents:
             return {"success": False, "reason": "Unknown vehicle"}
 
+        # Refresh edge-agent local state from the physical simulator immediately
+        # before the auction.  This keeps capacity, route and location bids
+        # grounded in the current simulation tick rather than construction-time
+        # snapshots.
+        for vehicle_id, vehicle in self.fleet_state.vehicles.items():
+            agent = self.truck_agents[vehicle_id]
+            agent.state.current_location = vehicle.current_location
+            agent.state.current_node = vehicle.current_node or 0
+            agent.state.next_node = vehicle.next_node
+            agent.state.current_route = list(vehicle.current_route)
+            agent.state.assigned_orders = list(vehicle.assigned_orders)
+            agent.state.current_load = vehicle.current_load
+            agent.state.status = vehicle.status
+            agent.state.connectivity = self.fleet_state.connectivity_state
+            self.mesh_network.update_node_position(vehicle_id, vehicle.current_location)
+
         broken_agent = self.truck_agents[failed_vehicle_id]
         sos_msg = broken_agent.trigger_breakdown(current_time_mins, node_id_map)
         self.total_mesh_messages += 1

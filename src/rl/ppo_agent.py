@@ -3,8 +3,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 import numpy as np
 
-# Prevent PyTorch / Keras / pyarrow C-extension collisions on macOS Python 3.13
-for _m in ("pyarrow", "tensorflow", "keras", "tensorboard"):
+# Prevent optional TensorFlow/Keras imports from being discovered by PyTorch.
+# Do not poison ``pyarrow``: scikit-learn checks sys.modules directly and a
+# ``None`` sentinel breaks its array validation on Python 3.14.
+for _m in ("tensorflow", "keras", "tensorboard"):
     if _m not in sys.modules:
         sys.modules[_m] = None
 

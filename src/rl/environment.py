@@ -19,6 +19,7 @@ from src.prediction.fuel_ml import FuelConsumptionPredictor
 from src.prediction.demand import DemandPredictor
 from src.optimization.predictive_positioning import PredictiveFleetPositioner
 from src.networking.mesh import MeshNetwork
+from src.agents.fleet_agent import FleetAgent
 from src.rl.reward import MultiObjectiveRewardConfig, FleetRewardCalculator, RewardConfig
 
 __all__ = [
@@ -92,6 +93,7 @@ class SWARMRLEnv(gym.Env):
         self.fuel_model = DeterministicFuelModel()
         self.positioner = PredictiveFleetPositioner(demand_predictor=demand_predictor, seed=seed)
         self.env: Optional[FleetSimulationEnvironment] = None
+        self.fleet_agent: Optional[FleetAgent] = None
         self.controlled_truck_id = "TRUCK_01"
         self.step_count = 0
 
@@ -134,6 +136,16 @@ class SWARMRLEnv(gym.Env):
             fuel_model=self.fuel_model,
             mesh_network=mesh,
             step_size_mins=self.step_size_mins,
+            seed=self.seed_val,
+        )
+        # The policy's recovery action uses the same mesh contract-net path as
+        # the operational simulator; it is not a parallel rule-only shortcut.
+        self.fleet_agent = FleetAgent(
+            fleet_state=fleet,
+            road_network=road,
+            mesh_network=mesh,
+            fuel_predictor=self.fuel_predictor,
+            use_ml_fuel=bool(self.fuel_predictor and getattr(self.fuel_predictor, "is_trained", False)),
             seed=self.seed_val,
         )
 
@@ -259,8 +271,11 @@ class SWARMRLEnv(gym.Env):
             zone_id = 1
         elif loc[1] > 50.0:
             zone_id = 2
-        forecasts = self.positioner.forecast_zone_demands(self.env.current_time_mins)
-        pred_demand = next((f.predicted_demand for f in forecasts if f.zone_id == zone_id), 25.0)
+        forecasts = self.positioner.forecast_zone_demands(
+            self.env.current_time_mins,
+            orders=list(self.env.fleet_state.active_orders.values()),
+        )
+        pred_demand = next((f.predicted_demand for f in forecasts if f.zone_id == zone_id), 0.0)
         pred_demand_norm = float(np.clip(pred_demand / 100.0, 0.0, 1.0))
 
         # Route info
@@ -525,53 +540,19 @@ class SWARMRLEnv(gym.Env):
                 stranded_id = target_broken.assigned_orders[0]
                 ord_obj = self.env.fleet_state.active_orders.get(stranded_id)
 
-                # Find best available surviving truck via mesh
-                best_recipient = None
-                best_detour = float("inf")
-                target_node = self.env.node_id_map.get(stranded_id, 1)
-
-                for vid, truck in self.env.fleet_state.vehicles.items():
-                    if truck.status != VehicleStatus.BROKEN_DOWN and ord_obj and truck.can_load(ord_obj.demand_weight):
-                        detour = math.hypot(
-                            truck.current_location[0] - ord_obj.destination[0],
-                            truck.current_location[1] - ord_obj.destination[1]
-                        )
-                        detour_cost = detour
-                        if self.fuel_predictor and getattr(self.fuel_predictor, "is_trained", False):
-                            try:
-                                pred_fuel = self.fuel_predictor.predict_fuel(
-                                    distance_km=detour,
-                                    vehicle_load_kg=truck.current_load + ord_obj.demand_weight,
-                                    max_payload_kg=truck.max_weight,
-                                    average_speed_kmh=truck.average_speed,
-                                )
-                                detour_cost = detour + pred_fuel * 2.0
-                            except Exception:
-                                pass
-
-                        if detour_cost < best_detour:
-                            best_detour = detour_cost
-                            best_recipient = truck
-
-                if best_recipient and ord_obj:
-                    # Execute atomic order transfer over mesh
-                    target_broken.assigned_orders.remove(stranded_id)
-                    target_broken.current_load = max(0.0, target_broken.current_load - ord_obj.demand_weight)
-
-                    best_recipient.assigned_orders.append(stranded_id)
-                    best_recipient.current_load += ord_obj.demand_weight
-                    if len(best_recipient.current_route) > 1:
-                        best_recipient.current_route.insert(-1, target_node)
-                    else:
-                        best_recipient.current_route.append(target_node)
-
-                    ord_obj.assigned_vehicle_id = best_recipient.vehicle_id
-                    ord_obj.status = OrderStatus.REASSIGNED
-                    self.env.failed_orders.discard(stranded_id)
-                    self.env.total_reassigned_orders_count += 1
-                    recoveries_this_step += 1
-                else:
+                if self.fleet_agent is None:
                     infeasible_action = True
+                else:
+                    result = self.fleet_agent.on_vehicle_breakdown_decentralized(
+                        target_broken.vehicle_id,
+                        self.env.current_time_mins,
+                        self.env.node_id_map,
+                    )
+                    recoveries_this_step = int(result.get("recovered_count", 0))
+                    if recoveries_this_step:
+                        self.env.total_reassigned_orders_count += recoveries_this_step
+                    else:
+                        infeasible_action = True
             else:
                 infeasible_action = True
 
