@@ -4,6 +4,13 @@ Exposes REST and SSE endpoints connected directly to the real simulation engine.
 """
 from __future__ import annotations
 
+# Pre-initialize OR-Tools / Protobuf descriptors on macOS Python 3.13 before other C-extensions
+try:
+    import ortools
+    from ortools.constraint_solver import pywrapcp
+except ImportError:
+    pass
+
 import asyncio
 import json
 import os
@@ -11,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Request
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
