@@ -9,8 +9,8 @@ const managerItems = [
   { href: "/fleet", label: "Fleet" },
   { href: "/orders", label: "Orders" },
   { href: "/network", label: "Network" },
-  { href: "/ai", label: "AI / Decisions" },
-  { href: "/benchmarks", label: "Analytics / Benchmark" },
+  { href: "/ai", label: "Decision Engine" },
+  { href: "/benchmarks", label: "Analytics" },
 ];
 
 const partnerItems = [
@@ -39,11 +39,11 @@ export default function Masthead() {
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              SwarmRoute India
+              SWARMRoute
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Autonomous Multi-Agent Fleet Dispatch & Dynamic Mesh Resilience
+            Fleet operations · live simulation · mesh resilience
           </p>
         </div>
 
