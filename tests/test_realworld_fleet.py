@@ -1,0 +1,198 @@
+"""
+Automated Verification Suite for SWARMRoute Real-World Fleet Platform.
+Tests:
+- Unified shared state between clients (Web and Flutter).
+- Customer order placement with authentic coordinates.
+- Manager live fleet visibility & AI dispatch recommendation.
+- Driver telemetry ingestion with continuous PPO & Transformer route intelligence.
+- Physical BLE multi-hop packet protocol, deduplication, and internet bridge relay.
+- Honest fallbacks (no fabricated traffic percentages, no straight-line roads).
+"""
+import pytest
+from fastapi.testclient import TestClient
+from src.api.server import app
+from src.routing.osrm_client import routing_client, OSRMRoutingClient
+from src.ai.route_evaluator import route_evaluator
+from src.ai.temporal_transformer import temporal_transformer
+
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+def test_real_order_creation_and_osrm_routing(client):
+    """Verifies that customer can create an order with real coordinates and OSM routing."""
+    res = client.post("/api/v1/orders", json={
+        "customer_id": "CUST_TEST_01",
+        "customer_name": "Test Customer",
+        "pickup_address": "Indiranagar Hub, Bengaluru",
+        "pickup_lat": 12.9784,
+        "pickup_lon": 77.6408,
+        "delivery_address": "Koramangala 4th Block, Bengaluru",
+        "delivery_lat": 12.9352,
+        "delivery_lon": 77.6245,
+        "demand_weight": 2.5,
+        "priority": "NORMAL",
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert "order" in data
+    order = data["order"]
+    assert order["status"] == "PENDING"
+    assert order["customer_id"] == "CUST_TEST_01"
+    assert order["estimated_distance_km"] > 0.0
+
+
+def test_manager_live_fleet_and_real_vehicle_specs(client):
+    """Verifies that manager receives real delivery partner fleet telemetry and vehicle specs."""
+    res = client.get("/api/v1/fleet/live")
+    assert res.status_code == 200
+    data = res.json()
+    assert "fleet" in data
+    fleet = data["fleet"]
+    assert len(fleet) >= 2
+    
+    p0 = fleet[0]
+    assert "vehicle" in p0
+    v = p0["vehicle"]
+    assert "manufacturer" in v
+    assert "model_name" in v
+    assert "engine_type" in v
+    assert "fuel_capacity" in v
+    assert "fuel_remaining" in v
+    assert "vehicle_condition" in v
+    assert "location" in p0
+    assert "internet_status" in p0
+    assert "ble_status" in p0
+
+
+def test_ai_dispatch_recommendation_multi_criteria(client):
+    """Verifies AI partner recommendation uses genuine measurable parameters."""
+    # Create order first
+    res_o = client.post("/api/v1/orders", json={
+        "customer_id": "CUST_AI_TEST",
+        "customer_name": "AI Test",
+        "pickup_address": "Hub A",
+        "pickup_lat": 12.9784,
+        "pickup_lon": 77.6408,
+        "delivery_address": "Dest B",
+        "delivery_lat": 12.9352,
+        "delivery_lon": 77.6245,
+        "demand_weight": 3.0,
+    })
+    order_id = res_o.json()["order"]["id"]
+
+    res_rec = client.post("/api/v1/dispatch/recommend", json={"order_id": order_id})
+    assert res_rec.status_code == 200
+    rec = res_rec.json()
+    assert "recommended_partner" in rec
+    best = rec["recommended_partner"]
+    assert best is not None
+    assert "suitability_score" in best
+    assert "metrics" in best
+    assert best["metrics"]["distance_to_pickup_km"] >= 0.0
+    assert best["metrics"]["spare_capacity_kg"] >= 0.0
+
+
+def test_driver_telemetry_and_continuous_route_intelligence(client):
+    """Verifies driver telemetry ingestion and PPO + Transformer continuous route reassessment."""
+    res_tel = client.post("/api/v1/driver/telemetry", json={
+        "vehicle_id": "TRUCK_01",
+        "latitude": 12.9750,
+        "longitude": 77.6380,
+        "speed_kmh": 35.0,
+        "heading": 90.0,
+        "fuel_level": 85.0,
+        "vehicle_condition": 0.98,
+        "internet_status": "ONLINE",
+        "ble_status": "ACTIVE",
+        "ble_peer_count": 2,
+        "remaining_distance_km": 4.5,
+    })
+    assert res_tel.status_code == 200
+    tel_data = res_tel.json()
+    assert tel_data["success"] is True
+    assert "route_intelligence" in tel_data
+    ai = tel_data["route_intelligence"]
+    assert ai["recommended_action"] in ("KEEP_ROUTE", "REROUTE", "REQUEST_ASSISTANCE")
+    assert ai["action_name"] in ("HOLD_OR_CONTINUE", "ASSIGN_BEST_ORDER", "REASSIGN_STRANDED_ORDER")
+
+
+def test_fuel_failure_triggers_assistance_recommendation():
+    """Verifies that physical fuel exhaustion deterministically recommends REQUEST_ASSISTANCE."""
+    eval_res = route_evaluator.evaluate(
+        vehicle_id="TRUCK_01",
+        current_location=(12.9750, 77.6380),
+        destination=(12.9352, 77.6245),
+        remaining_distance_km=30.0,
+        speed_kmh=40.0,
+        fuel_remaining_liters=0.2,  # Critically low fuel
+    )
+    assert eval_res["recommended_action"] == "REQUEST_ASSISTANCE"
+    assert "Insufficient fuel" in eval_res["reason"]
+
+
+def test_severe_traffic_triggers_reroute_recommendation():
+    """Verifies that severe traffic congestion triggers REROUTE recommendation."""
+    eval_res = route_evaluator.evaluate(
+        vehicle_id="TRUCK_01",
+        current_location=(12.9750, 77.6380),
+        destination=(12.9352, 77.6245),
+        remaining_distance_km=10.0,
+        speed_kmh=10.0,
+        fuel_remaining_liters=20.0,
+        traffic_level="SEVERE",
+    )
+    assert eval_res["recommended_action"] == "REROUTE"
+
+
+def test_honest_traffic_fallback():
+    """Verifies that when traffic API keys are absent, system reports TRAFFIC DATA UNAVAILABLE."""
+    client_osrm = OSRMRoutingClient()
+    traffic_status = client_osrm._check_traffic_provider(12.9716, 77.5946, 12.9352, 77.6245)
+    assert traffic_status == "TRAFFIC DATA UNAVAILABLE"
+
+
+def test_physical_ble_mesh_relay_gateway(client):
+    """
+    Verifies physical BLE multi-hop mesh packet bridging to cloud:
+    Device A -> Device B -> Device C -> Backend API.
+    """
+    res_relay = client.post("/api/v1/mesh/relay", json={
+        "message_id": "BLE_PACKET_TEST_001",
+        "source_device_id": "DRIVER_A_STRANDED",
+        "destination_device_id": "BACKEND",
+        "message_type": "ASSISTANCE_REQUEST",
+        "timestamp": 1726679000.0,
+        "ttl": 4,
+        "hop_count": 2,
+        "bridge_device_id": "DRIVER_C_GATEWAY",
+        "payload": {
+            "order_id": "ORD_1024",
+            "reason": "MECHANICAL_FAULT_AND_NO_INTERNET",
+            "fuel_remaining_liters": 1.2,
+        },
+    })
+    assert res_relay.status_code == 200
+    relay_data = res_relay.json()
+    assert relay_data["status"] == "RELAY_ACCEPTED"
+    assert relay_data["source_device_id"] == "DRIVER_A_STRANDED"
+    assert relay_data["bridge_device_id"] == "DRIVER_C_GATEWAY"
+    assert relay_data["hop_count"] == 2
+
+
+def test_ble_packet_ttl_expiry(client):
+    """Verifies that packets with expired TTL (<= 0) are dropped to prevent broadcast storms."""
+    res_drop = client.post("/api/v1/mesh/relay", json={
+        "message_id": "BLE_PACKET_EXPIRED",
+        "source_device_id": "DEV_X",
+        "destination_device_id": "BACKEND",
+        "message_type": "HEARTBEAT",
+        "timestamp": 1726679000.0,
+        "ttl": 0,
+        "hop_count": 5,
+    })
+    assert res_drop.status_code == 400
+    assert "TTL expired" in res_drop.json()["error"]

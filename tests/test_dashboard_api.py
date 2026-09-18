@@ -103,8 +103,9 @@ def test_dashboard_api_ppo_stepping_and_recovery_regression():
         assert "reward" in state["ppo"]["history"][-1]
         assert "action" in state["ppo"]["history"][-1]
 
-    # Break vehicle TRUCK_01 and verify contract-net recovery reassigns stranded orders
-    res_brk = client.post("/api/disruption/break", json={"vehicle_id": "TRUCK_01"})
+    # Break an active vehicle with assigned orders and verify contract-net recovery reassigns stranded orders
+    target_vid = next((v["id"] for v in state["vehicles"] if len(v.get("assigned_orders", [])) > 0), "TRUCK_02")
+    res_brk = client.post("/api/disruption/break", json={"vehicle_id": target_vid})
     assert res_brk.status_code == 200
     brk_data = res_brk.json()
     assert brk_data["success"] is True
@@ -112,14 +113,14 @@ def test_dashboard_api_ppo_stepping_and_recovery_regression():
     # Check incident was recorded with RECOVERED status and surviving vehicle assigned
     incident = brk_data["incident"]
     assert incident["recovery_status"] == "RECOVERED"
-    assert incident["recovery_vehicle"] != "TRUCK_01"
+    assert incident["recovery_vehicle"] != target_vid
     assert len(incident["stranded_orders"]) > 0
 
     # Verify orders were actually transferred in simulation environment
     state_after = client.get("/api/state").json()
-    truck_01 = next(v for v in state_after["vehicles"] if v["id"] == "TRUCK_01")
-    assert truck_01["status"] == "BROKEN_DOWN"
-    assert len(truck_01["assigned_orders"]) == 0
+    broken_veh = next(v for v in state_after["vehicles"] if v["id"] == target_vid)
+    assert broken_veh["status"] == "BROKEN_DOWN"
+    assert len(broken_veh["assigned_orders"]) == 0
     assert state_after["performance"]["reassigned"] > 0
 
 

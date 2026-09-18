@@ -263,8 +263,14 @@ class FleetSimulationEnvironment:
                 self.total_breakdowns_count += 1
                 v_id = ev.payload.get("vehicle_id")
                 if v_id in self.fleet_state.vehicles:
-                    self.fleet_state.vehicles[v_id].status = VehicleStatus.BROKEN_DOWN
-                    # Note: engine breakdown halts vehicle movement; radio transmitter remains active to broadcast SOS until recovery
+                    broken_v = self.fleet_state.vehicles[v_id]
+                    broken_v.status = VehicleStatus.BROKEN_DOWN
+                    # Mark uncompleted assigned orders as failed unless reassigned
+                    for oid in broken_v.assigned_orders:
+                        if oid not in self.delivered_orders:
+                            self.failed_orders.add(oid)
+                            if oid in self.fleet_state.active_orders:
+                                self.fleet_state.active_orders[oid].status = OrderStatus.FAILED
             elif ev.event_type == EventType.WEATHER:
                 if "snapshot" in ev.payload and isinstance(ev.payload["snapshot"], WeatherSnapshot):
                     self.current_weather = ev.payload["snapshot"]
