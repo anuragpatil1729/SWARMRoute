@@ -196,3 +196,103 @@ def test_ble_packet_ttl_expiry(client):
     })
     assert res_drop.status_code == 400
     assert "TTL expired" in res_drop.json()["error"]
+
+
+def test_system_capabilities_endpoint(client):
+    """Verifies truthful operational state of all platform components."""
+    res = client.get("/api/v1/system/capabilities")
+    assert res.status_code == 200
+    caps = res.json()
+    assert "database" in caps
+    assert "routing" in caps
+    assert caps["traffic"] == "unavailable"
+    assert caps["transformer"] == "trained"
+    assert caps["ppo"] == "loaded"
+    assert caps["gps"] == "device"
+    assert caps["ble"] == "native_android_gatt"
+
+
+def test_auth_token_and_role_access_control(client):
+    """Verifies server-side JWT issuance and role-based permissions."""
+    # 1. Issue Manager Token
+    res_mgr = client.post("/api/v1/auth/token", json={
+        "email": "manager@swarmroute.io",
+        "role": "MANAGER",
+        "name": "Fleet Dispatcher",
+    })
+    assert res_mgr.status_code == 200
+    mgr_token = res_mgr.json()["access_token"]
+    assert len(mgr_token) > 20
+
+    # 2. Issue Customer Token
+    res_cust = client.post("/api/v1/auth/token", json={
+        "email": "cust1@example.com",
+        "role": "CUSTOMER",
+        "name": "Cust 1",
+    })
+    assert res_cust.status_code == 200
+    cust1_token = res_cust.json()["access_token"]
+
+    # 3. Create Order
+    res_order = client.post("/api/v1/orders", json={
+        "customer_id": "CUST_ISOLATED_A",
+        "customer_name": "Isolated Cust A",
+        "pickup_address": "Hub 1",
+        "pickup_lat": 12.9784,
+        "pickup_lon": 77.6408,
+        "delivery_address": "Dest 1",
+        "delivery_lat": 12.9352,
+        "delivery_lon": 77.6245,
+    })
+    order_id = res_order.json()["order"]["id"]
+
+    # Customer 2 should NOT be allowed to track Customer A's order
+    res_cust2 = client.post("/api/v1/auth/token", json={
+        "email": "cust2@example.com",
+        "role": "CUSTOMER",
+        "name": "Cust 2",
+    })
+    cust2_token = res_cust2.json()["access_token"]
+    res_forbidden = client.get(
+        f"/api/v1/orders/{order_id}/track",
+        headers={"Authorization": f"Bearer {cust2_token}"},
+    )
+    assert res_forbidden.status_code == 403
+
+
+def test_driver_order_lifecycle_progression(client):
+    """Verifies driver mobile client parcel delivery status progression."""
+    # Create order
+    res_o = client.post("/api/v1/orders", json={
+        "customer_id": "CUST_LIFECYCLE",
+        "customer_name": "Lifecycle Test",
+        "pickup_address": "Depot",
+        "pickup_lat": 12.9784,
+        "pickup_lon": 77.6408,
+        "delivery_address": "Customer Door",
+        "delivery_lat": 12.9352,
+        "delivery_lon": 77.6245,
+    })
+    order_id = res_o.json()["order"]["id"]
+
+    # Allocate
+    client.post("/api/v1/dispatch/allocate", json={
+        "order_id": order_id,
+        "vehicle_id": "DP_01",
+    })
+
+    # Driver picks up order
+    res_pu = client.post(f"/api/v1/driver/orders/{order_id}/status", json={
+        "status": "PICKED_UP",
+        "vehicle_id": "DP_01",
+    })
+    assert res_pu.status_code == 200
+    assert res_pu.json()["new_status"] == "PICKED_UP"
+
+    # Driver delivers order
+    res_del = client.post(f"/api/v1/driver/orders/{order_id}/status", json={
+        "status": "DELIVERED",
+        "vehicle_id": "DP_01",
+    })
+    assert res_del.status_code == 200
+    assert res_del.json()["new_status"] == "DELIVERED"

@@ -138,12 +138,10 @@ class TemporalTransformerEngine:
                 self.is_trained = True
             except Exception as e:
                 print(f"[TemporalTransformerEngine] Checkpoint load warning: {e}")
-                self.model.eval()
-                self.is_trained = True
+                self.is_trained = False
         else:
-            # Self-contained initialization with stable evaluation mode
-            self.model.eval()
-            self.is_trained = True
+            # Checkpoint not yet trained
+            self.is_trained = False
 
     def record_step(self, vehicle_id: str, telemetry: Dict[str, Any]) -> None:
         """Appends a new normalized observation step into vehicle's temporal buffer."""
@@ -193,8 +191,21 @@ class TemporalTransformerEngine:
         """
         if not TORCH_AVAILABLE or self.model is None:
             return {
-                "status": "MODEL UNAVAILABLE",
-                "reason": "PyTorch or Transformer weights unavailable",
+                "status": "MODEL_UNAVAILABLE",
+                "reason": "PyTorch or Transformer architecture unavailable",
+                "embedding": [0.0] * TrajectoryTemporalTransformer.HIDDEN_DIM,
+                "trends": {
+                    "speed_trend": 0.0,
+                    "fuel_drain_trend": 0.0,
+                    "delay_risk": 0.0,
+                    "reroute_desirability": 0.0,
+                },
+            }
+
+        if not self.is_trained:
+            return {
+                "status": "TRANSFORMER_NOT_TRAINED",
+                "reason": f"No validated Transformer checkpoint found at {self.model_path}",
                 "embedding": [0.0] * TrajectoryTemporalTransformer.HIDDEN_DIM,
                 "trends": {
                     "speed_trend": 0.0,

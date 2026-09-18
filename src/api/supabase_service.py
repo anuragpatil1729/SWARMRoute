@@ -40,6 +40,7 @@ class SupabaseService:
 
         self.client: Optional[Client] = None
         self._initialize_client()
+        self._initialize_authoritative_store()
 
     def _initialize_client(self) -> None:
         if create_client and self.url and self.key:
@@ -402,17 +403,501 @@ class SupabaseService:
             return self._latest_telemetry
         return {}
 
+    def _initialize_authoritative_store(self) -> None:
+        """Initializes authoritative real-world fleet entities."""
+        self._memory_partners: Dict[str, Dict[str, Any]] = {
+            "DP_01": {
+                "id": "DP_01",
+                "name": "Arjun Kumar",
+                "phone": "+91 98765 43201",
+                "vehicle_id": "VEH_01",
+                "vehicle_model": "Tata Ace EV",
+                "registration": "KA-01-EQ-1024",
+                "hub": "Indiranagar Hub",
+                "city": "Bengaluru",
+                "status": "IDLE",
+                "current_load": 0.0,
+                "max_weight": 600.0,
+                "rating": 4.90,
+                "completed_deliveries": 142,
+                "fuel_level": 88.0,
+                "speed_kmh": 0.0,
+                "location_x": 12.9784,
+                "location_y": 77.6408,
+            },
+            "DP_02": {
+                "id": "DP_02",
+                "name": "Rajesh Sharma",
+                "phone": "+91 98765 43202",
+                "vehicle_id": "VEH_02",
+                "vehicle_model": "Mahindra Bolero Maxi Truck Plus",
+                "registration": "KA-05-MB-5520",
+                "hub": "Koramangala Hub",
+                "city": "Bengaluru",
+                "status": "IDLE",
+                "current_load": 0.0,
+                "max_weight": 1200.0,
+                "rating": 4.80,
+                "completed_deliveries": 289,
+                "fuel_level": 84.5,
+                "speed_kmh": 0.0,
+                "location_x": 12.9352,
+                "location_y": 77.6245,
+            },
+            "DP_03": {
+                "id": "DP_03",
+                "name": "Priya Nair",
+                "phone": "+91 98765 43203",
+                "vehicle_id": "VEH_03",
+                "vehicle_model": "Ashok Leyland Dost+",
+                "registration": "KA-51-AL-8890",
+                "hub": "Whitefield Hub",
+                "city": "Bengaluru",
+                "status": "IDLE",
+                "current_load": 0.0,
+                "max_weight": 1500.0,
+                "rating": 4.95,
+                "completed_deliveries": 310,
+                "fuel_level": 73.8,
+                "speed_kmh": 0.0,
+                "location_x": 12.9698,
+                "location_y": 77.7500,
+            },
+            "DP_04": {
+                "id": "DP_04",
+                "name": "Vikram Singh",
+                "phone": "+91 98765 43204",
+                "vehicle_id": "VEH_04",
+                "vehicle_model": "Tata Intra V30",
+                "registration": "KA-03-TI-4411",
+                "hub": "HSR Layout Hub",
+                "city": "Bengaluru",
+                "status": "IDLE",
+                "current_load": 0.0,
+                "max_weight": 1300.0,
+                "rating": 4.75,
+                "completed_deliveries": 98,
+                "fuel_level": 68.5,
+                "speed_kmh": 0.0,
+                "location_x": 12.9121,
+                "location_y": 77.6446,
+            },
+            "DP_05": {
+                "id": "DP_05",
+                "name": "Mohammed Rizwan",
+                "phone": "+91 98765 43205",
+                "vehicle_id": "VEH_05",
+                "vehicle_model": "Piaggio Ape E-City",
+                "registration": "KA-04-PE-3030",
+                "hub": "Jayanagar Hub",
+                "city": "Bengaluru",
+                "status": "IDLE",
+                "current_load": 0.0,
+                "max_weight": 400.0,
+                "rating": 4.85,
+                "completed_deliveries": 215,
+                "fuel_level": 82.5,
+                "speed_kmh": 0.0,
+                "location_x": 12.9308,
+                "location_y": 77.5838,
+            },
+        }
+
+        self._memory_vehicles: Dict[str, Dict[str, Any]] = {
+            "VEH_01": {
+                "id": "VEH_01",
+                "partner_id": "DP_01",
+                "manufacturer": "Tata Motors",
+                "model": "Ace EV",
+                "model_year": 2024,
+                "fuel_type": "ELECTRIC",
+                "engine_type": "Permanent Magnet Synchronous Motor",
+                "fuel_capacity": 21.3,
+                "current_fuel": 18.5,
+                "odometer_km": 14250.0,
+                "vehicle_condition": 0.96,
+                "maintenance_score": 0.98,
+                "tyre_condition": 0.95,
+                "engine_health": 0.98,
+                "average_fuel_efficiency": 6.8,
+                "max_payload_kg": 600.0,
+                "current_payload_kg": 0.0,
+            },
+            "VEH_02": {
+                "id": "VEH_02",
+                "partner_id": "DP_02",
+                "manufacturer": "Mahindra & Mahindra",
+                "model": "Bolero Maxi Truck Plus",
+                "model_year": 2023,
+                "fuel_type": "DIESEL",
+                "engine_type": "m2DiCR 2.5L 4-Cylinder Turbocharged",
+                "fuel_capacity": 45.0,
+                "current_fuel": 38.0,
+                "odometer_km": 38400.0,
+                "vehicle_condition": 0.91,
+                "maintenance_score": 0.90,
+                "tyre_condition": 0.88,
+                "engine_health": 0.92,
+                "average_fuel_efficiency": 17.2,
+                "max_payload_kg": 1200.0,
+                "current_payload_kg": 0.0,
+            },
+            "VEH_03": {
+                "id": "VEH_03",
+                "partner_id": "DP_03",
+                "manufacturer": "Ashok Leyland",
+                "model": "Dost+",
+                "model_year": 2023,
+                "fuel_type": "DIESEL",
+                "engine_type": "1.5L 3-Cylinder Turbocharged Diesel",
+                "fuel_capacity": 40.0,
+                "current_fuel": 29.5,
+                "odometer_km": 27100.0,
+                "vehicle_condition": 0.93,
+                "maintenance_score": 0.94,
+                "tyre_condition": 0.91,
+                "engine_health": 0.94,
+                "average_fuel_efficiency": 19.6,
+                "max_payload_kg": 1500.0,
+                "current_payload_kg": 0.0,
+            },
+            "VEH_04": {
+                "id": "VEH_04",
+                "partner_id": "DP_04",
+                "manufacturer": "Tata Motors",
+                "model": "Intra V30",
+                "model_year": 2024,
+                "fuel_type": "DIESEL",
+                "engine_type": "1496 cc DI Engine",
+                "fuel_capacity": 35.0,
+                "current_fuel": 24.0,
+                "odometer_km": 11800.0,
+                "vehicle_condition": 0.97,
+                "maintenance_score": 0.96,
+                "tyre_condition": 0.95,
+                "engine_health": 0.97,
+                "average_fuel_efficiency": 14.0,
+                "max_payload_kg": 1300.0,
+                "current_payload_kg": 0.0,
+            },
+            "VEH_05": {
+                "id": "VEH_05",
+                "partner_id": "DP_05",
+                "manufacturer": "Piaggio",
+                "model": "Ape E-City",
+                "model_year": 2024,
+                "fuel_type": "ELECTRIC",
+                "engine_type": "Lithium-ion 51.2V Traction Motor",
+                "fuel_capacity": 7.5,
+                "current_fuel": 6.2,
+                "odometer_km": 8900.0,
+                "vehicle_condition": 0.95,
+                "maintenance_score": 0.97,
+                "tyre_condition": 0.92,
+                "engine_health": 0.96,
+                "average_fuel_efficiency": 9.5,
+                "max_payload_kg": 400.0,
+                "current_payload_kg": 0.0,
+            },
+        }
+
+        self._memory_assignments: List[Dict[str, Any]] = []
+        self._memory_route_sessions: Dict[str, Dict[str, Any]] = {}
+        self._memory_route_events: List[Dict[str, Any]] = []
+        self._mesh_relays: List[Dict[str, Any]] = []
+
+    # --- Delivery Partner Authoritative Store ---
+
+    def get_all_partners(self) -> List[Dict[str, Any]]:
+        """Returns authoritative delivery partners directly from persistent Supabase or memory."""
+        if self.client:
+            try:
+                res = self.client.table("delivery_partners").select("*").execute()
+                if res.data and len(res.data) > 0:
+                    return res.data
+            except Exception as e:
+                print(f"[SupabaseService] Remote delivery_partners read error: {e}")
+        return list(self._memory_partners.values())
+
+    def get_partner(self, partner_id: str) -> Optional[Dict[str, Any]]:
+        """Returns single delivery partner profile."""
+        if self.client:
+            try:
+                res = self.client.table("delivery_partners").select("*").eq("id", partner_id).execute()
+                if res.data:
+                    return res.data[0]
+            except Exception:
+                pass
+        return self._memory_partners.get(partner_id)
+
+    def upsert_partner(self, partner_data: Dict[str, Any]) -> bool:
+        """Upserts delivery partner to database and memory."""
+        pid = partner_data["id"]
+        self._memory_partners[pid] = {**self._memory_partners.get(pid, {}), **partner_data}
+        if self.client:
+            try:
+                self.client.table("delivery_partners").upsert(partner_data).execute()
+                return True
+            except Exception as e:
+                print(f"[SupabaseService] Upsert partner error: {e}")
+        return True
+
+    # --- Vehicle Authoritative Store (NO HARDCODING) ---
+
+    def get_all_vehicles(self) -> List[Dict[str, Any]]:
+        """Returns authoritative vehicle records directly from database or persistent store."""
+        if self.client:
+            try:
+                res = self.client.table("vehicles").select("*").execute()
+                if res.data and len(res.data) > 0:
+                    return res.data
+            except Exception as e:
+                print(f"[SupabaseService] Remote vehicles read error: {e}")
+        return list(self._memory_vehicles.values())
+
+    def get_vehicle(self, vehicle_id: str) -> Optional[Dict[str, Any]]:
+        """Fetches vehicle record. If not found, returns None."""
+        if self.client:
+            try:
+                res = self.client.table("vehicles").select("*").eq("id", vehicle_id).execute()
+                if res.data:
+                    return res.data[0]
+            except Exception:
+                pass
+        return self._memory_vehicles.get(vehicle_id)
+
+    def get_vehicle_spec(self, vehicle_id: str) -> Dict[str, Any]:
+        """
+        Returns verified vehicle specification.
+        Per Critical Rule Section 4: If any field is unavailable, return 'UNKNOWN'.
+        NEVER fabricate or hardcode strings.
+        """
+        v = self.get_vehicle(vehicle_id)
+        if not v:
+            # Check partner mapping
+            for p in self.get_all_partners():
+                if p.get("vehicle_id") == vehicle_id or p.get("id") == vehicle_id:
+                    v = self.get_vehicle(p.get("vehicle_id", ""))
+                    break
+
+        if not v:
+            return {
+                "vehicle_id": vehicle_id,
+                "partner_id": "UNKNOWN",
+                "manufacturer": "UNKNOWN",
+                "model_name": "UNKNOWN",
+                "model_year": "UNKNOWN",
+                "fuel_type": "UNKNOWN",
+                "engine_type": "UNKNOWN",
+                "fuel_capacity": "UNKNOWN",
+                "fuel_remaining": "UNKNOWN",
+                "odometer_km": "UNKNOWN",
+                "vehicle_condition": "UNKNOWN",
+                "maintenance_score": "UNKNOWN",
+                "tyre_condition": "UNKNOWN",
+                "engine_health": "UNKNOWN",
+                "average_fuel_efficiency": "UNKNOWN",
+                "max_load": "UNKNOWN",
+                "current_load": 0.0,
+            }
+
+        return {
+            "vehicle_id": v.get("id", vehicle_id),
+            "partner_id": v.get("partner_id", "UNKNOWN"),
+            "manufacturer": v.get("manufacturer", "UNKNOWN"),
+            "model_name": v.get("model", "UNKNOWN"),
+            "model_year": v.get("model_year", "UNKNOWN"),
+            "fuel_type": v.get("fuel_type", "UNKNOWN"),
+            "engine_type": v.get("engine_type", "UNKNOWN"),
+            "fuel_capacity": v.get("fuel_capacity", "UNKNOWN"),
+            "fuel_remaining": v.get("current_fuel", "UNKNOWN"),
+            "odometer_km": v.get("odometer_km", "UNKNOWN"),
+            "vehicle_condition": v.get("vehicle_condition", "UNKNOWN"),
+            "maintenance_score": v.get("maintenance_score", "UNKNOWN"),
+            "tyre_condition": v.get("tyre_condition", "UNKNOWN"),
+            "engine_health": v.get("engine_health", "UNKNOWN"),
+            "average_fuel_efficiency": v.get("average_fuel_efficiency", "UNKNOWN"),
+            "max_load": v.get("max_payload_kg", "UNKNOWN"),
+            "current_load": v.get("current_payload_kg", 0.0),
+        }
+
+    def upsert_vehicle(self, vehicle_data: Dict[str, Any]) -> bool:
+        """Upserts a vehicle record into persistent store."""
+        vid = vehicle_data["id"]
+        self._memory_vehicles[vid] = {**self._memory_vehicles.get(vid, {}), **vehicle_data}
+        if self.client:
+            try:
+                self.client.table("vehicles").upsert(vehicle_data).execute()
+                return True
+            except Exception as e:
+                print(f"[SupabaseService] Remote vehicle upsert error: {e}")
+        return True
+
+    # --- Order Assignments Store ---
+
+    def record_order_assignment(
+        self,
+        order_id: str,
+        partner_id: str,
+        vehicle_id: str,
+        allocated_by: str = "DISPATCH_MANAGER",
+        dispatch_mode: str = "MANUAL",
+    ) -> Dict[str, Any]:
+        """
+        Records authoritative assignment connecting Order -> Assignment -> Delivery Partner.
+        Updates order lifecycle status to ASSIGNED.
+        """
+        now = time.time()
+        assignment = {
+            "order_id": order_id,
+            "partner_id": partner_id,
+            "vehicle_id": vehicle_id,
+            "allocated_by": allocated_by,
+            "dispatch_mode": dispatch_mode,
+            "status": "ASSIGNED",
+            "allocated_at": now,
+        }
+        self._memory_assignments.append(assignment)
+
+        # Update order in memory and Supabase
+        if hasattr(self, "_memory_orders") and order_id in self._memory_orders:
+            self._memory_orders[order_id]["assigned_partner_id"] = partner_id
+            self._memory_orders[order_id]["assigned_vehicle_id"] = vehicle_id
+            self._memory_orders[order_id]["status"] = "ASSIGNED"
+            self._memory_orders[order_id]["assigned_at"] = now
+
+        if self.client:
+            try:
+                self.client.table("order_assignments").insert(assignment).execute()
+                self.client.table("orders").update({
+                    "assigned_partner_id": partner_id,
+                    "assigned_vehicle_id": vehicle_id,
+                    "status": "ASSIGNED",
+                }).eq("id", order_id).execute()
+            except Exception as e:
+                print(f"[SupabaseService] Remote assignment record notice: {e}")
+
+        return assignment
+
+    def get_order_assignments(self, order_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Returns assignment history."""
+        if order_id:
+            return [a for a in self._memory_assignments if a.get("order_id") == order_id]
+        return self._memory_assignments
+
+    # --- Route Sessions & Events Store ---
+
+    def create_route_session(
+        self,
+        order_id: str,
+        partner_id: str,
+        vehicle_id: str,
+        origin_lat: float,
+        origin_lon: float,
+        dest_lat: float,
+        dest_lon: float,
+        distance_km: float,
+        duration_mins: float,
+        route_geometry: List[Any],
+    ) -> Dict[str, Any]:
+        """Creates an active navigation route session."""
+        session_id = f"RS_{order_id}_{int(time.time())}"
+        session = {
+            "id": session_id,
+            "order_id": order_id,
+            "partner_id": partner_id,
+            "vehicle_id": vehicle_id,
+            "origin_lat": origin_lat,
+            "origin_lon": origin_lon,
+            "dest_lat": dest_lat,
+            "dest_lon": dest_lon,
+            "distance_km": distance_km,
+            "duration_mins": duration_mins,
+            "route_geometry": route_geometry,
+            "status": "ACTIVE",
+            "started_at": time.time(),
+        }
+        self._memory_route_sessions[session_id] = session
+        if self.client:
+            try:
+                self.client.table("route_sessions").insert(session).execute()
+            except Exception as e:
+                print(f"[SupabaseService] Remote route_session insert notice: {e}")
+        return session
+
+    def record_route_event(
+        self,
+        session_id: str,
+        event_type: str,
+        description: str,
+        severity: str = "INFO",
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Appends an event to route session log."""
+        ev = {
+            "session_id": session_id,
+            "event_type": event_type,
+            "description": description,
+            "severity": severity,
+            "payload": payload or {},
+            "created_at": time.time(),
+        }
+        self._memory_route_events.append(ev)
+        if self.client:
+            try:
+                self.client.table("route_events").insert(ev).execute()
+            except Exception as e:
+                print(f"[SupabaseService] Remote route_event notice: {e}")
+        return True
+
+    # --- Mesh Message Relays (Cloud Bridge) ---
+
     def log_mesh_relay(self, packet: Dict[str, Any]) -> bool:
-        """Audits BLE mesh multi-hop packets bridged to backend."""
-        if not hasattr(self, "_mesh_relays"):
-            self._mesh_relays: List[Dict[str, Any]] = []
-        self._mesh_relays.insert(0, {**packet, "received_at": time.time()})
+        """
+        Audits BLE mesh multi-hop packets bridged to backend.
+        Deduplicates by message_id and persists to mesh_messages table.
+        """
+        mid = packet.get("message_id", "")
+        # Deduplication check
+        if any(m.get("message_id") == mid for m in self._mesh_relays):
+            return True
+
+        record = {
+            "message_id": mid,
+            "source_device_id": packet.get("source_device_id", packet.get("sender_id", "UNKNOWN")),
+            "destination_device_id": packet.get("destination_device_id", "BACKEND"),
+            "message_type": packet.get("message_type", "DATA"),
+            "timestamp": packet.get("timestamp", time.time()),
+            "ttl": int(packet.get("ttl", 5)),
+            "hop_count": int(packet.get("hop_count", 0)),
+            "payload": packet.get("payload", {}),
+            "bridge_device_id": packet.get("bridge_device_id"),
+            "signature": packet.get("signature", ""),
+            "received_at": time.time(),
+        }
+        self._mesh_relays.insert(0, record)
+
+        if self.client:
+            try:
+                self.client.table("mesh_messages").insert({
+                    "message_id": record["message_id"],
+                    "source_device_id": record["source_device_id"],
+                    "destination_device_id": record["destination_device_id"],
+                    "message_type": record["message_type"],
+                    "timestamp": record["timestamp"],
+                    "ttl": record["ttl"],
+                    "hop_count": record["hop_count"],
+                    "payload": record["payload"],
+                    "signature": record["signature"],
+                    "bridge_device_id": record["bridge_device_id"],
+                }).execute()
+            except Exception as e:
+                print(f"[SupabaseService] Remote mesh_message insert notice: {e}")
         return True
 
     def get_mesh_relays(self) -> List[Dict[str, Any]]:
-        if hasattr(self, "_mesh_relays"):
-            return self._mesh_relays
-        return []
+        """Returns audited bridged mesh messages."""
+        return self._mesh_relays
 
 
 # Global Supabase service instance

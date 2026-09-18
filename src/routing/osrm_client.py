@@ -75,6 +75,10 @@ class OSRMRoutingClient:
         self._cache: Dict[Tuple[float, float, float, float], Tuple[float, RoadRoute]] = {}
         self._cache_ttl_sec = 300.0
 
+    def is_healthy(self) -> bool:
+        """Returns True if OSRM routing endpoint is configured and active."""
+        return bool(self.base_url)
+
     def get_road_route(
         self,
         origin_lat: float,

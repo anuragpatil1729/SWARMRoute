@@ -82,6 +82,11 @@ class RouteIntelligenceEvaluator:
                 print(f"[RouteIntelligence] PPO load attempt: {e}")
                 self.ppo_agent = None
 
+    @property
+    def is_loaded(self) -> bool:
+        """Returns True if trained PPO agent is actively loaded."""
+        return self.ppo_agent is not None
+
     def evaluate(
         self,
         vehicle_id: str,
