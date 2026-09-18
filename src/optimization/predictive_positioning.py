@@ -52,35 +52,62 @@ class PredictiveFleetPositioner:
         self,
         current_time_mins: float,
         day_of_week: int = 2,
+        orders: Optional[List[Order]] = None,
     ) -> List[ZoneForecast]:
         """
         Queries DemandPredictor for next-period forecasted demand per zone.
         Separates predicted values from actual ground-truth arrivals.
         """
         hour_slot = int((current_time_mins / 60.0) % 24)
+        # Runtime forecasts are based on actual released simulation orders,
+        # aggregated spatially rather than on fixed illustrative zone values.
+        # Synthetic generators remain training-data utilities only.
+        order_stream = list(orders or [])
+        zone_counts = {zone_id: 0.0 for zone_id in self.zone_centroids}
+        recent_counts = {zone_id: 0.0 for zone_id in self.zone_centroids}
+        for order in order_stream:
+            if order.release_time > current_time_mins:
+                continue
+            zone_id = self._zone_for_coordinate(order.destination)
+            zone_counts[zone_id] += 1.0
+            if order.release_time >= current_time_mins - 60.0:
+                recent_counts[zone_id] += 1.0
         forecasts = []
 
         for z_id, centroid in self.zone_centroids.items():
             if self.demand_predictor.is_trained:
+                observed_count = zone_counts[z_id]
+                recent_count = recent_counts[z_id]
                 feat = np.array([[
                     z_id,
                     day_of_week,
                     hour_slot,
-                    30.0,   # historical mean
-                    28.0,   # rolling avg
-                    np.sin(2 * np.pi * 100 / 365.0),
-                    np.cos(2 * np.pi * 100 / 365.0),
+                    observed_count,
+                    recent_count,
+                    np.sin(2 * np.pi * (current_time_mins / 1440.0) / 365.0),
+                    np.cos(2 * np.pi * (current_time_mins / 1440.0) / 365.0),
                 ]])
                 pred_val = float(self.demand_predictor.predict(feat)[0])
             else:
-                # Default baseline zone demand expectation
-                pred_val = 25.0 + 10.0 * math.sin(z_id + hour_slot * 0.2)
+                # An untrained model may not claim a forecast.  The only
+                # usable signal is the observed current stream.
+                pred_val = recent_counts[z_id]
 
             forecasts.append(ZoneForecast(zone_id=z_id, center=centroid, predicted_demand=round(pred_val, 2)))
 
         # Sort zones by descending forecasted demand intensity
         forecasts.sort(key=lambda z: z.predicted_demand, reverse=True)
         return forecasts
+
+    def _zone_for_coordinate(self, coordinate: Tuple[float, float]) -> int:
+        """Return the quadrant whose centroid is closest to a simulation point."""
+        return min(
+            self.zone_centroids,
+            key=lambda zone_id: math.hypot(
+                coordinate[0] - self.zone_centroids[zone_id][0],
+                coordinate[1] - self.zone_centroids[zone_id][1],
+            ),
+        )
 
     def plan_repositioning(
         self,
@@ -92,7 +119,11 @@ class PredictiveFleetPositioner:
         """
         Evaluates idle trucks and assigns proactive movement towards high-demand zone centroids.
         """
-        forecasts = self.forecast_zone_demands(current_time_mins, day_of_week)
+        forecasts = self.forecast_zone_demands(
+            current_time_mins,
+            day_of_week,
+            list(fleet_state.active_orders.values()),
+        )
         if not forecasts:
             return []
 

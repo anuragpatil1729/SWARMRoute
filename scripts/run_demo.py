@@ -176,6 +176,7 @@ def run_demo(
     disruption_triggered = False
     recovery_executed = False
     rec_time_sec = 0.0
+    policy_advanced_simulation = False
 
     print(f"[SIMULATION] {format_sim_time(0.0)} Dynamic simulation started (Horizon: {duration_mins:.0f}m, Step: 2m).")
 
@@ -210,28 +211,14 @@ def run_demo(
                 stranded_orders = list(broken_veh.assigned_orders)
                 print(f"[RECOVERY]   {format_sim_time(cur_t)} Stranded orders identified: {stranded_orders} on {target_broken_vid}.")
 
-                # RF Mesh Broadcast
-                print(f"[MESH]       {format_sim_time(cur_t + 1.0)} Broadcasting SOS/auction request across decentralized RF mesh topology...")
-                t_rec_0 = time.perf_counter()
-
-                # Decentralized Contract-Net Bidding with ML Fuel Evaluation
-                rec_res = fleet_agent.on_vehicle_breakdown_decentralized(
-                    failed_vehicle_id=target_broken_vid,
-                    current_time_mins=cur_t,
-                    node_id_map=node_id_map,
-                )
-                rec_time_sec = time.perf_counter() - t_rec_0
-
-                print(f"[RECOVERY]   {format_sim_time(cur_t + 1.0)} Decentralized Contract-Net auction completed in {rec_time_sec * 1000.0:.2f} ms.")
-                if fuel_pred is not None:
-                    print(f"[ML]         {format_sim_time(cur_t + 1.0)} Bids evaluated marginal detour and ML predicted fuel consumption.")
-
-                # PPO Policy Evaluation on Current Disrupted State
+                # PPO is the decision gate: no recovery auction runs before
+                # the policy observes this disruption and selects action 1.
                 if ppo_agent is not None and rl_env is not None:
                     rl_env.env = env
+                    rl_env.fleet_agent = fleet_agent
                     rl_env.controlled_truck_id = [vid for vid in fleet_state.vehicles if vid != target_broken_vid][0]
                     obs = rl_env._get_observation()
-                    ppo_act = ppo_agent.predict(obs, deterministic=True)
+                    ppo_act = ppo_agent.predict(obs, action_masks=rl_env.action_masks(), deterministic=True)
                     action_names = {
                         0: "ASSIGN_BEST_ORDER",
                         1: "REASSIGN_STRANDED_ORDER",
@@ -240,20 +227,28 @@ def run_demo(
                         4: "HOLD_OR_CONTINUE",
                     }
                     print(f"[PPO]        {format_sim_time(cur_t + 1.0)} Observation vector evaluated (25 features). PPO Policy Action: {ppo_act} ({action_names.get(ppo_act, 'UNKNOWN')}).")
-
-                if rec_res.get("success"):
-                    recovery_executed = True
-                    transfers = rec_res.get("transfers", [])
-                    for tx in transfers:
-                        oid = tx.get("order_id")
-                        to_v = tx.get("to_vehicle")
-                        print(f"[RECOVERY]   {format_sim_time(cur_t + 2.0)} ATOMIC REASSIGNMENT: Stranded order {oid} awarded to {to_v}.")
-                    env.execute_action({"type": "REASSIGN_ORDERS", "transfers": transfers})
+                    before = env.total_reassigned_orders_count
+                    t_rec_0 = time.perf_counter()
+                    _, _, _, _, policy_info = rl_env.step(ppo_act)
+                    rec_time_sec = time.perf_counter() - t_rec_0
+                    policy_advanced_simulation = True
+                    recovered_count = env.total_reassigned_orders_count - before
+                    if recovered_count:
+                        recovery_executed = True
+                        print(f"[MESH]       {format_sim_time(cur_t + 1.0)} PPO-selected recovery transmitted SOS and contract-net bids.")
+                        if fuel_pred is not None:
+                            print(f"[ML]         {format_sim_time(cur_t + 1.0)} Bids used ML predicted marginal fuel; physical fuel remains authoritative.")
+                        print(f"[RECOVERY]   {format_sim_time(cur_t + 1.0)} {recovered_count} order(s) atomically reassigned in {rec_time_sec * 1000.0:.2f} ms.")
+                    else:
+                        print(f"[RECOVERY]   {format_sim_time(cur_t + 1.0)} PPO did not select a feasible transfer; stranded cargo remains pending.")
                 else:
-                    print(f"[RECOVERY]   {format_sim_time(cur_t + 1.0)} No peer vehicle had remaining payload capacity to absorb stranded cargo.")
+                    print(f"[PPO]        {format_sim_time(cur_t + 1.0)} No checkpoint available; no recovery action was executed.")
 
         # Advance discrete physical simulation
-        env.step()
+        if policy_advanced_simulation:
+            policy_advanced_simulation = False
+        else:
+            env.step()
 
     # 7. Final Authoritative Metrics
     metrics = env.get_metrics()
@@ -271,7 +266,8 @@ def run_demo(
     print(f"[RESULT] Fuel Consumption:     {metrics['total_fuel_liters']:.2f} L (Authoritative Physics Model)")
     print(f"[RESULT] CO2 Emissions:        {metrics['total_co2_kg']:.2f} kg")
     print(f"[RESULT] Fleet Utilization:    {metrics['vehicle_utilization_pct']:.1f}%")
-    print(f"[RESULT] Autonomous Recovery:  {rec_time_sec:.4f} s (100% Peer-to-Peer Mesh)")
+    recovery_label = "executed via peer-to-peer mesh" if recovery_executed else "not executed by PPO"
+    print(f"[RESULT] Autonomous Recovery:  {rec_time_sec:.4f} s ({recovery_label})")
     print(f"[RESULT] Mesh Messages:        {mesh_stats['total_messages']} transmitted ({mesh_stats['delivery_success_rate'] * 100.0:.1f}% link delivery)")
     print("================================================================================\n")
 

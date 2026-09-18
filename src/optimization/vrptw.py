@@ -110,7 +110,22 @@ class VRPTWSolver:
             for i in range(num_nodes):
                 for j in range(num_nodes):
                     if i != j:
-                        pairs.append([dist_matrix_raw[i][j], 10.0, 2, 45.0, 1, 1, 0, 100.0])
+                        source_node, target_node = node_ids[i], node_ids[j]
+                        road = road_network.graph.get_edge_data(source_node, target_node, {}).get("road")
+                        traffic = road.traffic_level if road is not None else TrafficLevel.NORMAL
+                        traffic_code = {
+                            TrafficLevel.LIGHT: 0, TrafficLevel.NORMAL: 1,
+                            TrafficLevel.MODERATE: 2, TrafficLevel.HEAVY: 3,
+                            TrafficLevel.SEVERE: 4, TrafficLevel.BLOCKED: 5,
+                        }.get(traffic, 1)
+                        # These edge attributes are state-derived when a road
+                        # exists; otherwise use the documented normal-road
+                        # model assumption for the Euclidean fallback edge.
+                        historical_speed = road.speed_limit if road is not None else 45.0
+                        pairs.append([
+                            dist_matrix_raw[i][j], 0.0, 0, historical_speed,
+                            traffic_code, 1, 0, 0.0,
+                        ])
                         pair_indices.append((i, j))
             if pairs:
                 pred_hrs_batch = travel_time_predictor.predict(np.array(pairs))

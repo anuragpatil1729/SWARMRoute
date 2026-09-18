@@ -247,8 +247,13 @@ class FleetSimulationEnvironment:
             self.event_engine.apply_event(ev, self.fleet_state)
             if ev.event_type == EventType.CONNECTIVITY_LOSS:
                 self.conn_manager.on_cloud_lost()
+                # FleetState is the authoritative state consumed by dispatch,
+                # recovery, API, and dashboard code.  Do not leave the event
+                # manager and the published state in different modes.
+                self.fleet_state.connectivity_state = self.conn_manager.current_state
             elif ev.event_type == EventType.CONNECTIVITY_RESTORED:
                 self.conn_manager.on_cloud_restored()
+                self.fleet_state.connectivity_state = self.conn_manager.current_state
             elif ev.event_type == EventType.VEHICLE_BREAKDOWN:
                 self.total_breakdowns_count += 1
                 v_id = ev.payload.get("vehicle_id")
@@ -384,21 +389,11 @@ class FleetSimulationEnvironment:
                             v.status = VehicleStatus.IDLE
                             v.next_node = None
 
-        # 4. Check for unserved orders on broken vehicles or unassigned orders during cloud outage
-        for v_id, v in self.fleet_state.vehicles.items():
-            if v.status == VehicleStatus.BROKEN_DOWN:
-                for oid in v.assigned_orders:
-                    if oid not in self.delivered_orders:
-                        self.failed_orders.add(oid)
-                        if oid in self.fleet_state.active_orders:
-                            self.fleet_state.active_orders[oid].status = OrderStatus.FAILED
-
-        if self.fleet_state.connectivity_state != ConnectivityState.CLOUD_MODE:
-            all_assigned = {oid for veh in self.fleet_state.vehicles.values() for oid in veh.assigned_orders}
-            for oid, ord_obj in self.fleet_state.active_orders.items():
-                if oid not in all_assigned and oid not in self.delivered_orders:
-                    self.failed_orders.add(oid)
-                    ord_obj.status = OrderStatus.FAILED
+        # 4. A breakdown creates *stranded* cargo, not an instantaneous failed
+        # delivery.  Keeping these orders pending is essential: the next fleet
+        # decision (PPO or contract-net) must be able to recover them.  Orders
+        # that remain unserved are finalized as failed only in get_metrics(),
+        # at the end of the simulated horizon.
 
         # 5. Calculate reward (negative cost step)
         step_reward = -1.0 * (

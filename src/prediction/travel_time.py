@@ -1,8 +1,14 @@
 from __future__ import annotations
 import math
 from pathlib import Path
+import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
+# Some launcher environments insert ``pyarrow: None`` to avoid an optional
+# binary import.  scikit-learn interprets the key as a loaded module, so remove
+# that sentinel before importing its dataframe helpers.
+if sys.modules.get("pyarrow") is None:
+    sys.modules.pop("pyarrow", None)
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -50,6 +56,10 @@ class TravelTimePredictor(BasePredictor):
         )
 
     def train(self, X: np.ndarray, y: np.ndarray, test_size: float = 0.2) -> Dict[str, float]:
+        # Launchers may reinsert this optional-dependency sentinel after module
+        # import; sklearn requires an absent key rather than ``None``.
+        if sys.modules.get("pyarrow") is None:
+            sys.modules.pop("pyarrow", None)
         X_train, X_val, y_train, y_val = train_test_split(
             X, y, test_size=test_size, random_state=self.random_state
         )
