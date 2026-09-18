@@ -22,6 +22,8 @@ class EventType(str, Enum):
     CONNECTIVITY_RESTORED = "CONNECTIVITY_RESTORED"
     MESH_LINK_FAILURE = "MESH_LINK_FAILURE"
     MESH_LINK_RESTORED = "MESH_LINK_RESTORED"
+    WEATHER = "WEATHER"
+
 
 
 class FleetEvent(BaseModel):
@@ -118,6 +120,11 @@ class EventEngine:
         elif event_type in (EventType.MESH_LINK_FAILURE, EventType.MESH_LINK_RESTORED):
             # Tracked in payload for mesh network synchronization
             pass
+
+        elif event_type == EventType.WEATHER:
+            # Weather condition or snapshot recorded on fleet state
+            fleet_state.weather_state = payload.get("weather") or payload.get("snapshot") or payload
+
 
         event.handled = True
         self.history.append(event)

@@ -11,6 +11,7 @@ from src.models.fleet_state import FleetState, ConnectivityState
 from src.prediction.fuel import FuelModel, DeterministicFuelModel
 from src.simulation.traffic import TrafficSimulator
 from src.simulation.events import EventEngine, FleetEvent, EventType
+from src.data.weather import get_default_provider, WeatherProvider, WeatherSnapshot
 from src.networking.mesh import MeshNetwork
 from src.networking.connectivity import ConnectivityManager
 from src.networking.messages import MeshMessage, MessageType
@@ -55,6 +56,7 @@ class FleetSimulationEnvironment:
         fuel_model: Optional[FuelModel] = None,
         traffic_sim: Optional[TrafficSimulator] = None,
         mesh_network: Optional[MeshNetwork] = None,
+        weather_provider: Optional[WeatherProvider] = None,
         step_size_mins: float = 1.0,
         seed: int = 42,
     ) -> None:
@@ -65,9 +67,12 @@ class FleetSimulationEnvironment:
         self.fuel_model = fuel_model or DeterministicFuelModel()
         self.traffic_sim = traffic_sim or TrafficSimulator(seed=seed)
         self.mesh_network = mesh_network or MeshNetwork(seed=seed)
+        self.weather_provider = weather_provider or get_default_provider(use_live=False, seed=seed)
         self.conn_manager = ConnectivityManager(initial_state=fleet_state.connectivity_state)
         self.reoptimizer = DynamicReoptimizer(fuel_model=self.fuel_model)
         self.event_engine = EventEngine()
+        self.current_weather: Optional[WeatherSnapshot] = None
+
 
         self.current_time_mins = 0.0
         self.step_size_mins = step_size_mins
@@ -260,6 +265,17 @@ class FleetSimulationEnvironment:
                 if v_id in self.fleet_state.vehicles:
                     self.fleet_state.vehicles[v_id].status = VehicleStatus.BROKEN_DOWN
                     # Note: engine breakdown halts vehicle movement; radio transmitter remains active to broadcast SOS until recovery
+            elif ev.event_type == EventType.WEATHER:
+                if "snapshot" in ev.payload and isinstance(ev.payload["snapshot"], WeatherSnapshot):
+                    self.current_weather = ev.payload["snapshot"]
+                else:
+                    v_id = ev.payload.get("vehicle_id")
+                    if v_id and v_id in self.fleet_state.vehicles:
+                        loc = self.fleet_state.vehicles[v_id].current_location
+                    else:
+                        loc = (40.0, 50.0)
+                    self.current_weather = self.weather_provider.get_current(loc[0], loc[1])
+                self.fleet_state.weather_state = self.current_weather
 
         # 3. Physically move active vehicles along edges
         for v_id, v in self.fleet_state.vehicles.items():
@@ -314,7 +330,8 @@ class FleetSimulationEnvironment:
                         if road_obj.status == RoadStatus.CLOSED:
                             traffic_mult = 0.001
 
-                effective_speed = max(1.0, v.average_speed * traffic_mult)
+                weather_mult = self.current_weather.speed_multiplier if self.current_weather is not None else 1.0
+                effective_speed = max(1.0, v.average_speed * traffic_mult * weather_mult)
                 v.current_speed_kmh = effective_speed
 
                 # Distance moved in this discrete time step
@@ -329,7 +346,7 @@ class FleetSimulationEnvironment:
 
                 # Compute step fuel consumption
                 # Physics model: base rate + payload factor + traffic multiplier
-                step_fuel = (v.fuel_efficiency / 100.0) * actual_move * (1.0 + 0.3 * (v.current_load / max(v.max_weight, 1.0))) * (1.0 / max(traffic_mult, 0.1))
+                step_fuel = (v.fuel_efficiency / 100.0) * actual_move * (1.0 + 0.3 * (v.current_load / max(v.max_weight, 1.0))) * (1.0 / max(traffic_mult * weather_mult, 0.1))
                 v.fuel_level = max(0.0, v.fuel_level - step_fuel)
                 self.total_fuel_liters += step_fuel
                 self.total_co2_kg += step_fuel * 2.68

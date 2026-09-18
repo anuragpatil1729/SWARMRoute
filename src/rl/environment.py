@@ -21,6 +21,8 @@ from src.optimization.predictive_positioning import PredictiveFleetPositioner
 from src.networking.mesh import MeshNetwork
 from src.agents.fleet_agent import FleetAgent
 from src.rl.reward import MultiObjectiveRewardConfig, FleetRewardCalculator, RewardConfig
+from src.data.weather import get_default_provider, WeatherProvider, WeatherSnapshot
+
 
 __all__ = [
     "SWARMRLEnv",
@@ -72,6 +74,7 @@ class SWARMRLEnv(gym.Env):
         travel_time_predictor: Optional[TravelTimePredictor] = None,
         fuel_predictor: Optional[FuelConsumptionPredictor] = None,
         demand_predictor: Optional[DemandPredictor] = None,
+        weather_provider: Optional[WeatherProvider] = None,
     ) -> None:
         super().__init__()
         self.dataset_name = dataset_name
@@ -84,6 +87,8 @@ class SWARMRLEnv(gym.Env):
         self.travel_time_predictor = travel_time_predictor
         self.fuel_predictor = fuel_predictor
         self.demand_predictor = demand_predictor
+        self.weather_provider = weather_provider or get_default_provider(use_live=False, seed=seed)
+
 
         self.observation_space = spaces.Box(
             low=-5.0, high=10.0, shape=(self.OBS_DIM,), dtype=np.float32
@@ -135,6 +140,7 @@ class SWARMRLEnv(gym.Env):
             node_id_map=node_map,
             fuel_model=self.fuel_model,
             mesh_network=mesh,
+            weather_provider=self.weather_provider,
             step_size_mins=self.step_size_mins,
             seed=self.seed_val,
         )
@@ -148,6 +154,7 @@ class SWARMRLEnv(gym.Env):
             use_ml_fuel=bool(self.fuel_predictor and getattr(self.fuel_predictor, "is_trained", False)),
             seed=self.seed_val,
         )
+
 
         # Schedule training disruption scenario
         if len(vehicles) > 1:
@@ -227,12 +234,18 @@ class SWARMRLEnv(gym.Env):
         load_norm = float(np.clip(v.current_load / max(v.max_weight, 1.0), 0.0, 1.0))
         fuel_norm = float(np.clip(v.fuel_level / 100.0, 0.0, 1.0))
 
-        # Traffic index
+        # Environmental friction index (traffic congestion and adverse weather severity)
         traffic_norm = 0.2
         if v.current_node is not None and v.next_node is not None:
             if self.env.road_network.graph.has_edge(v.current_node, v.next_node):
                 t_level = self.env.road_network.graph.edges[v.current_node, v.next_node].get("traffic_level", TrafficLevel.NORMAL)
                 traffic_norm = 1.0 if t_level in (TrafficLevel.SEVERE, TrafficLevel.BLOCKED) else (0.6 if t_level == TrafficLevel.HEAVY else 0.2)
+
+        if self.weather_provider is not None:
+            weather_snap = self.weather_provider.get_current(loc[0], loc[1])
+            weather_severity = weather_snap.severity
+            traffic_norm = float(np.clip(max(traffic_norm, weather_severity), 0.0, 1.0))
+
 
         # Stranded orders count (orders assigned to broken trucks that are not delivered)
         stranded_count = sum(

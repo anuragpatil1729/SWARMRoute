@@ -28,6 +28,8 @@ class FleetState(BaseModel):
     connectivity_state: ConnectivityState = Field(
         default=ConnectivityState.CLOUD_MODE, description="Current communication topology state"
     )
+    weather_state: Optional[Any] = Field(default=None, description="Current weather condition or snapshot")
+
 
     def get_vehicle(self, vehicle_id: str) -> Optional[Vehicle]:
         return self.vehicles.get(vehicle_id)
