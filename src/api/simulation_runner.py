@@ -6,11 +6,19 @@ and real-time disruption handling.
 """
 from __future__ import annotations
 
+# Pre-initialize OR-Tools / Protobuf descriptors on macOS Python 3.13
+try:
+    import ortools
+    from ortools.constraint_solver import pywrapcp
+except ImportError:
+    pass
+
 import math
 import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
 
 import networkx as nx
 import numpy as np
