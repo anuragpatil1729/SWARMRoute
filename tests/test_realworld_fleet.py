@@ -296,3 +296,92 @@ def test_driver_order_lifecycle_progression(client):
     })
     assert res_del.status_code == 200
     assert res_del.json()["new_status"] == "DELIVERED"
+
+
+def test_driver_telemetry_active_order_vs_no_active_order(client):
+    """
+    Verifies the fix that driver telemetry only computes road routing
+    when an authentic delivery order is assigned, and never fabricates fake destinations.
+    """
+    # 1. Driver with NO active order
+    res_idle = client.post("/api/v1/driver/telemetry", json={
+        "vehicle_id": "IDLE_DRIVER_99",
+        "latitude": 12.9716,
+        "longitude": 77.5946,
+        "speed_kmh": 0.0,
+        "fuel_level": 90.0,
+    })
+    assert res_idle.status_code == 200
+    idle_data = res_idle.json()
+    assert idle_data["active_order"] is None
+    assert idle_data["route_intelligence"]["status"] == "NO_ACTIVE_ROUTE"
+
+    # 2. Driver WITH active assigned order
+    res_o = client.post("/api/v1/orders", json={
+        "customer_id": "CUST_ROUTED",
+        "customer_name": "Routed Customer",
+        "pickup_address": "Indiranagar Hub",
+        "pickup_lat": 12.9784,
+        "pickup_lon": 77.6408,
+        "delivery_address": "Koramangala 4th Block",
+        "delivery_lat": 12.9352,
+        "delivery_lon": 77.6245,
+        "demand_weight": 2.0,
+    })
+    order_id = res_o.json()["order"]["id"]
+    client.post("/api/v1/dispatch/allocate", json={
+        "order_id": order_id,
+        "vehicle_id": "DP_02",
+    })
+
+    res_active = client.post("/api/v1/driver/telemetry", json={
+        "vehicle_id": "DP_02",
+        "latitude": 12.9780,
+        "longitude": 77.6400,
+        "speed_kmh": 25.0,
+        "heading": 180.0,
+        "fuel_level": 75.0,
+    })
+    assert res_active.status_code == 200
+    active_data = res_active.json()
+    assert active_data["active_order"] is not None
+    assert active_data["active_order"]["id"] == order_id
+    assert "route" in active_data
+    assert "coordinates" in active_data["route"]
+    assert len(active_data["route"]["coordinates"]) > 1
+
+
+def test_route_compatible_assistance_recommendation_endpoint(client):
+    """Verifies that the backend evaluates nearby candidate drivers for emergency assistance."""
+    res = client.post("/api/v1/dispatch/assistance/recommend", json={
+        "stranded_vehicle_id": "STRANDED_DP_99",
+        "latitude": 12.9750,
+        "longitude": 77.6380,
+        "required_capacity_kg": 5.0,
+        "max_distance_km": 25.0,
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert "candidates" in data
+    assert len(data["candidates"]) > 0
+    best = data["candidates"][0]
+    assert "suitability_score" in best
+    assert "distance_to_stranded_km" in best
+    assert "spare_capacity_kg" in best
+    assert best["spare_capacity_kg"] >= 5.0
+
+
+def test_driver_device_hardware_linking(client):
+    """Verifies pairing of driver Android smartphone device ID to driver/vehicle profile."""
+    res = client.post("/api/v1/driver/device/link", json={
+        "device_id": "SMARTPHONE_PIXEL_8A",
+        "driver_id": "DRV_PIXEL_01",
+        "vehicle_id": "DP_01",
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert data["linked"]["device_id"] == "SMARTPHONE_PIXEL_8A"
+    assert data["linked"]["driver_id"] == "DRV_PIXEL_01"
+

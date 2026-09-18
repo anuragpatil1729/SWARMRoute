@@ -17,9 +17,10 @@ class MainActivity : FlutterActivity() {
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "startMesh" -> {
-                    val deviceId = call.argument<String>("deviceId") ?: "TRUCK_UNKNOWN"
+                    val deviceId = call.argument<String>("deviceId") ?: "DEV_UNKNOWN"
+                    val driverId = call.argument<String>("driverId") ?: "DRIVER_UNKNOWN"
                     val backendUrl = call.argument<String>("backendUrl") ?: "http://10.0.2.2:8000"
-                    val started = bleMeshEngine?.startMesh(deviceId, backendUrl) ?: false
+                    val started = bleMeshEngine?.startMesh(deviceId, driverId, backendUrl) ?: false
                     result.success(started)
                 }
                 "stopMesh" -> {
@@ -34,6 +35,14 @@ class MainActivity : FlutterActivity() {
                 "getDiscoveredPeers" -> {
                     val peers = bleMeshEngine?.getDiscoveredPeers() ?: emptyList<Map<String, Any>>()
                     result.success(peers)
+                }
+                "getMeshStatus" -> {
+                    val status = bleMeshEngine?.getMeshStatus() ?: emptyMap<String, Any>()
+                    result.success(status)
+                }
+                "flushGatewayQueue" -> {
+                    bleMeshEngine?.flushStoreAndForwardQueue()
+                    result.success(true)
                 }
                 else -> {
                     result.notImplemented()

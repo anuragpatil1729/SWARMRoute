@@ -365,10 +365,55 @@ class SupabaseService:
                 update_data = {"status": status}
                 if vehicle_id:
                     update_data["assigned_vehicle_id"] = vehicle_id
-                self.client.table("orders").update(update_data).eq("id", order_id).execute()
             except Exception as e:
-                print(f"[SupabaseService] Remote status update error: {e}")
+                logger.warning(f"Supabase order status update failed: {e}")
         return True
+
+    def get_driver_active_order(self, driver_or_vehicle_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves the currently assigned active order for a driver or vehicle.
+        Active states: ASSIGNED, PICKED_UP, IN_TRANSIT.
+        Returns None if no active delivery order is found.
+        """
+        active_statuses = {"ASSIGNED", "PICKED_UP", "IN_TRANSIT"}
+        all_orders = self.get_all_real_orders()
+        for o in all_orders:
+            if o.get("status") in active_statuses:
+                assigned_p = o.get("assigned_partner_id") or o.get("assigned_vehicle_id")
+                if assigned_p and str(assigned_p) == str(driver_or_vehicle_id):
+                    return o
+                # Also check vehicle mapping
+                p = self.get_partner(str(driver_or_vehicle_id))
+                if p and p.get("vehicle_id") and (o.get("assigned_vehicle_id") == p["vehicle_id"] or o.get("assigned_partner_id") == p["id"]):
+                    return o
+        return None
+
+    def link_device_to_driver(self, device_id: str, driver_id: str, vehicle_id: Optional[str] = None) -> bool:
+        """Associates physical phone device_id with driver_id and vehicle_id."""
+        if not hasattr(self, "_device_bindings"):
+            self._device_bindings: Dict[str, Dict[str, Any]] = {}
+        self._device_bindings[device_id] = {
+            "device_id": device_id,
+            "driver_id": driver_id,
+            "vehicle_id": vehicle_id or f"VEH_{driver_id[-2:]}",
+            "updated_at": time.time(),
+        }
+        if self.client:
+            try:
+                self.client.table("profiles").update({
+                    "device_id": device_id,
+                }).eq("id", driver_id).execute()
+            except Exception as e:
+                print(f"[SupabaseService] Remote device link notice: {e}")
+        return True
+
+    def get_driver_by_device(self, device_id: str) -> Optional[Dict[str, Any]]:
+        """Finds driver profile associated with physical device_id."""
+        if hasattr(self, "_device_bindings") and device_id in self._device_bindings:
+            binding = self._device_bindings[device_id]
+            return self.get_partner(binding["driver_id"])
+        return None
+
 
     def record_driver_telemetry(self, vehicle_id: str, telemetry: Dict[str, Any]) -> bool:
         """Records driver telemetry for fleet monitoring and customer tracking."""

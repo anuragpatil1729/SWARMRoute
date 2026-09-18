@@ -4,7 +4,9 @@ import android.bluetooth.*
 import android.bluetooth.le.*
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
@@ -20,15 +22,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
- * Authentic Android Native BLE Multi-Hop Mesh Engine for SWARMRoute.
- * Provides physical device-to-device communication:
- * - Real BLE Advertising (Peripheral Mode)
- * - Real BLE Scanning (Central Mode)
- * - Real GATT Server for packet reception
- * - Real GATT Client for packet forwarding
- * - Deduplication cache (no duplicate loops)
- * - TTL decrement & hop counting
- * - Internet Gateway bridge: relays mesh packets to backend if device has cellular/Wi-Fi
+ * Production Android Smartphone BLE Multi-Hop Mesh Engine for SWARMRoute.
+ * 
+ * Hardware Role:
+ * Every delivery driver's Android smartphone acts simultaneously as:
+ * 1. BLE Central: Scans for nearby SWARMRoute driver phones
+ * 2. BLE Peripheral/GATT Server: Advertises service and accepts connections
+ * 3. Mesh Relay Node: Validates, decrements TTL, increments hop count, deduplicates, store-and-forward
+ * 4. GPS Source: Captured via native device location
+ * 5. Internet Gateway: When cellular/Wi-Fi is available, bridges mesh packets to SWARMRoute cloud backend
  */
 class BleMeshEngine(private val context: Context, private val channel: MethodChannel) {
 
@@ -37,7 +39,12 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
         val MESH_SERVICE_UUID: UUID = UUID.fromString("0000FE26-0000-1000-8000-00805F9B34FB")
         val RX_CHAR_UUID: UUID = UUID.fromString("0000FE27-0000-1000-8000-00805F9B34FB")
         val TX_CHAR_UUID: UUID = UUID.fromString("0000FE28-0000-1000-8000-00805F9B34FB")
-        private const val MAX_SEEN_MESSAGES = 1000
+        
+        private const val MAX_SEEN_MESSAGES = 2000
+        private const val PEER_STALE_TIMEOUT_MS = 45000L
+        private const val CHUNK_PREFIX = "CHK:"
+        private const val DEFAULT_MTU = 512
+        private const val PACKET_EXPIRY_SECONDS = 3600.0
     }
 
     private var bluetoothManager: BluetoothManager? = null
@@ -45,17 +52,24 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
     private var bleAdvertiser: BluetoothLeAdvertiser? = null
     private var bleScanner: BluetoothLeScanner? = null
     private var gattServer: BluetoothGattServer? = null
+    private var connectivityManager: ConnectivityManager? = null
 
     private var myDeviceId: String = "DEV_UNKNOWN"
+    private var myDriverId: String = "DRIVER_UNKNOWN"
     private var isRunning: Boolean = false
+    private var isAdvertising: Boolean = false
+    private var isScanning: Boolean = false
     private var backendBaseUrl: String = "http://10.0.2.2:8000"
 
-    // Deduplication cache: message_id -> timestamp
-    private val seenMessageIds = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+    // Deduplication cache: message_id -> timestamp ms
+    private val seenMessageIds = ConcurrentHashMap<String, Long>()
     // Peer table: device_id -> PeerInfo
     private val discoveredPeers = ConcurrentHashMap<String, PeerInfo>()
-    // Store-and-forward message queue for unreachable destinations
+    // Store-and-forward message queue for unreachable destinations or offline recovery
     private val storeAndForwardQueue = ConcurrentLinkedQueue<JSONObject>()
+    // Incoming chunk assembly buffer: msgId -> Map<chunkIndex, dataString>
+    private val chunkBuffers = ConcurrentHashMap<String, ConcurrentHashMap<Int, String>>()
+    private val chunkExpectedTotal = ConcurrentHashMap<String, Int>()
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -66,8 +80,53 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
         var lastSeenTimestamp: Long
     )
 
-    fun startMesh(deviceId: String, backendUrl: String): Boolean {
+    // Periodic peer table maintenance
+    private val pruneStalePeersRunnable = object : Runnable {
+        override fun run() {
+            if (!isRunning) return
+            val now = System.currentTimeMillis()
+            val it = discoveredPeers.entries.iterator()
+            var pruned = false
+            while (it.hasNext()) {
+                val entry = it.next()
+                if (now - entry.value.lastSeenTimestamp > PEER_STALE_TIMEOUT_MS) {
+                    it.remove()
+                    pruned = true
+                    logEvent("PEER_PRUNED_STALE", mapOf("peer_id" to entry.key))
+                }
+            }
+            if (pruned) {
+                notifyPeerTableChanged()
+            }
+            mainHandler.postDelayed(this, 15000L)
+        }
+    }
+
+    // Network callback to automatically flush store-and-forward queue when internet recovers
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            logEvent("INTERNET_GATEWAY_AVAILABLE", mapOf("device_id" to myDeviceId))
+            mainHandler.post {
+                channel.invokeMethod("onGatewayStateChanged", mapOf("has_internet" to true))
+            }
+            flushStoreAndForwardQueue()
+        }
+
+        override fun onLost(network: Network) {
+            logEvent("INTERNET_DISCONNECTED_BLE_ONLY", mapOf("device_id" to myDeviceId))
+            mainHandler.post {
+                channel.invokeMethod("onGatewayStateChanged", mapOf("has_internet" to false))
+            }
+        }
+    }
+
+    // ==========================================
+    // LIFECYCLE CONTROLS
+    // ==========================================
+
+    fun startMesh(deviceId: String, driverId: String, backendUrl: String): Boolean {
         myDeviceId = deviceId
+        myDriverId = driverId
         backendBaseUrl = backendUrl.trimEnd('/')
 
         bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -75,7 +134,18 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
 
         if (bluetoothAdapter == null || !bluetoothAdapter!!.isEnabled) {
             Log.w(TAG, "Bluetooth adapter unavailable or disabled.")
+            logEvent("BLE_START_FAILED", mapOf("reason" to "BLUETOOTH_DISABLED"))
             return false
+        }
+
+        connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        try {
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            connectivityManager?.registerNetworkCallback(request, networkCallback)
+        } catch (e: Exception) {
+            Log.w(TAG, "Network callback registration note: ${e.message}")
         }
 
         isRunning = true
@@ -83,7 +153,8 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
         startAdvertising()
         startScanning()
 
-        Log.i(TAG, "SWARMRoute physical BLE mesh started for node: $myDeviceId")
+        mainHandler.postDelayed(pruneStalePeersRunnable, 15000L)
+        logEvent("BLE_STARTED", mapOf("device_id" to myDeviceId, "driver_id" to myDriverId))
         return true
     }
 
@@ -91,19 +162,30 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
         isRunning = false
         stopAdvertising()
         stopScanning()
+        mainHandler.removeCallbacks(pruneStalePeersRunnable)
+
+        try {
+            connectivityManager?.unregisterNetworkCallback(networkCallback)
+        } catch (_: Exception) {}
+
         gattServer?.close()
         gattServer = null
         discoveredPeers.clear()
-        Log.i(TAG, "SWARMRoute physical BLE mesh stopped.")
+        chunkBuffers.clear()
+        chunkExpectedTotal.clear()
+
+        logEvent("BLE_STOPPED", mapOf("device_id" to myDeviceId))
     }
 
     // ==========================================
     // 1. REAL BLE ADVERTISING (Peripheral Mode)
     // ==========================================
+
     private fun startAdvertising() {
         bleAdvertiser = bluetoothAdapter?.bluetoothLeAdvertiser
         if (bleAdvertiser == null) {
-            Log.w(TAG, "BLE Peripheral advertising not supported on this chipset.")
+            Log.w(TAG, "BLE Peripheral advertising not supported on this device.")
+            logEvent("BLE_ADVERTISER_UNSUPPORTED", mapOf("device_id" to myDeviceId))
             return
         }
 
@@ -114,11 +196,13 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
             .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
             .build()
 
+        // Encode short device prefix in advertisement packet
+        val identityBytes = myDeviceId.toByteArray(StandardCharsets.UTF_8).take(8).toByteArray()
         val data = AdvertiseData.Builder()
             .setIncludeDeviceName(false)
             .setIncludeTxPowerLevel(false)
             .addServiceUuid(ParcelUuid(MESH_SERVICE_UUID))
-            .addServiceData(ParcelUuid(MESH_SERVICE_UUID), myDeviceId.toByteArray(StandardCharsets.UTF_8).take(8).toByteArray())
+            .addServiceData(ParcelUuid(MESH_SERVICE_UUID), identityBytes)
             .build()
 
         try {
@@ -131,6 +215,7 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
     private fun stopAdvertising() {
         try {
             bleAdvertiser?.stopAdvertising(advertiseCallback)
+            isAdvertising = false
         } catch (e: SecurityException) {
             Log.e(TAG, "Error stopping advertising: ${e.message}")
         }
@@ -138,17 +223,20 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
 
     private val advertiseCallback = object : AdvertiseCallback() {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
-            Log.i(TAG, "BLE Mesh advertising started successfully.")
+            isAdvertising = true
+            logEvent("BLE_ADVERTISING_STARTED", mapOf("device_id" to myDeviceId))
         }
 
         override fun onStartFailure(errorCode: Int) {
-            Log.e(TAG, "BLE Mesh advertising failed with error code: $errorCode")
+            isAdvertising = false
+            logEvent("BLE_ADVERTISING_FAILED", mapOf("error_code" to errorCode))
         }
     }
 
     // ==========================================
     // 2. REAL BLE SCANNING (Central Mode)
     // ==========================================
+
     private fun startScanning() {
         bleScanner = bluetoothAdapter?.bluetoothLeScanner
         if (bleScanner == null) {
@@ -166,7 +254,8 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
 
         try {
             bleScanner?.startScan(listOf(filter), scanSettings, scanCallback)
-            Log.i(TAG, "BLE Mesh continuous scanning started.")
+            isScanning = true
+            logEvent("BLE_SCANNING_STARTED", mapOf("device_id" to myDeviceId))
         } catch (e: SecurityException) {
             Log.e(TAG, "Missing BLUETOOTH_SCAN permission: ${e.message}")
         }
@@ -175,6 +264,7 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
     private fun stopScanning() {
         try {
             bleScanner?.stopScan(scanCallback)
+            isScanning = false
         } catch (e: SecurityException) {
             Log.e(TAG, "Error stopping scan: ${e.message}")
         }
@@ -185,12 +275,13 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
             result?.let { res ->
                 val serviceData = res.scanRecord?.getServiceData(ParcelUuid(MESH_SERVICE_UUID))
                 val peerId = if (serviceData != null && serviceData.isNotEmpty()) {
-                    String(serviceData, StandardCharsets.UTF_8)
+                    String(serviceData, StandardCharsets.UTF_8).trim()
                 } else {
                     res.device.address
                 }
 
-                if (peerId != myDeviceId) {
+                if (peerId != myDeviceId && peerId.isNotEmpty()) {
+                    val isNew = !discoveredPeers.containsKey(peerId)
                     discoveredPeers[peerId] = PeerInfo(
                         deviceId = peerId,
                         bluetoothAddress = res.device.address,
@@ -198,22 +289,25 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
                         lastSeenTimestamp = System.currentTimeMillis()
                     )
 
-                    // Notify Flutter UI of peer discovery
-                    mainHandler.post {
-                        channel.invokeMethod("onPeerDiscovered", mapOf(
-                            "peer_id" to peerId,
-                            "address" to res.device.address,
-                            "rssi" to res.rssi
-                        ))
+                    if (isNew) {
+                        logEvent("PEER_DISCOVERED", mapOf("peer_id" to peerId, "rssi" to res.rssi, "address" to res.device.address))
                     }
+                    notifyPeerTableChanged()
                 }
             }
+        }
+    }
+
+    private fun notifyPeerTableChanged() {
+        mainHandler.post {
+            channel.invokeMethod("onPeersUpdated", getDiscoveredPeers())
         }
     }
 
     // ==========================================
     // 3. GATT SERVER (Packet Reception)
     // ==========================================
+
     private fun startGattServer() {
         try {
             gattServer = bluetoothManager?.openGattServer(context, gattServerCallback)
@@ -234,7 +328,7 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
             service.addCharacteristic(rxChar)
             service.addCharacteristic(txChar)
             gattServer?.addService(service)
-            Log.i(TAG, "BLE Mesh GATT Server initialized.")
+            logEvent("GATT_SERVER_READY", mapOf("service" to MESH_SERVICE_UUID.toString()))
         } catch (e: SecurityException) {
             Log.e(TAG, "Missing BLUETOOTH_CONNECT permission: ${e.message}")
         }
@@ -259,27 +353,82 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
             }
 
             if (characteristic?.uuid == RX_CHAR_UUID && value != null) {
-                val jsonStr = String(value, StandardCharsets.UTF_8)
-                try {
-                    val packet = JSONObject(jsonStr)
-                    handleIncomingPacket(packet, device?.address ?: "UNKNOWN")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to parse mesh packet: ${e.message}")
-                }
+                val chunkOrJson = String(value, StandardCharsets.UTF_8)
+                handleRawIncomingBytes(chunkOrJson, device?.address ?: "UNKNOWN")
             }
+        }
+    }
+
+    private fun handleRawIncomingBytes(rawPayload: String, fromAddress: String) {
+        // Check if rawPayload is a chunk
+        if (rawPayload.startsWith(CHUNK_PREFIX)) {
+            // Format: CHK:msgId:index:total:data
+            val parts = rawPayload.split(":", limit = 5)
+            if (parts.size == 5) {
+                val msgId = parts[1]
+                val index = parts[2].toIntOrNull() ?: 0
+                val total = parts[3].toIntOrNull() ?: 1
+                val chunkData = parts[4]
+
+                val buffer = chunkBuffers.computeIfAbsent(msgId) { ConcurrentHashMap() }
+                buffer[index] = chunkData
+                chunkExpectedTotal[msgId] = total
+
+                if (buffer.size == total) {
+                    // Reassemble full packet
+                    val sb = java.lang.StringBuilder()
+                    for (i in 0 until total) {
+                        sb.append(buffer[i] ?: "")
+                    }
+                    chunkBuffers.remove(msgId)
+                    chunkExpectedTotal.remove(msgId)
+                    try {
+                        val packet = JSONObject(sb.toString())
+                        handleIncomingPacket(packet, fromAddress)
+                    } catch (e: Exception) {
+                        logEvent("PACKET_REJECTED", mapOf("reason" to "CHUNK_REASSEMBLY_JSON_ERROR", "error" to (e.message ?: "")))
+                    }
+                }
+                return
+            }
+        }
+
+        // Direct full JSON packet
+        try {
+            val packet = JSONObject(rawPayload)
+            handleIncomingPacket(packet, fromAddress)
+        } catch (e: Exception) {
+            logEvent("PACKET_REJECTED", mapOf("reason" to "MALFORMED_JSON", "error" to (e.message ?: "")))
         }
     }
 
     // ====================================================
     // 4. PACKET PROTOCOL, DEDUPLICATION & MULTI-HOP RELAY
     // ====================================================
+
     fun broadcastPacket(packetJson: String): Boolean {
         try {
             val packet = JSONObject(packetJson)
             val msgId = packet.optString("message_id")
             if (msgId.isNotEmpty()) {
-                seenMessageIds.add(msgId)
+                seenMessageIds[msgId] = System.currentTimeMillis()
             }
+            logEvent("PACKET_CREATED", mapOf(
+                "message_id" to msgId,
+                "type" to packet.optString("message_type"),
+                "ttl" to packet.optInt("ttl", 5)
+            ))
+
+            // Attempt cloud upload first if internet is available
+            if (isInternetAvailable()) {
+                relayPacketToBackend(packet)
+            } else {
+                // Queue for store-and-forward
+                storeAndForwardQueue.add(packet)
+                logEvent("PACKET_QUEUED", mapOf("message_id" to msgId, "queue_size" to storeAndForwardQueue.size))
+            }
+
+            // Transmit across physical BLE to reachable peers
             forwardPacketToPeers(packet, excludeAddress = null)
             return true
         } catch (e: Exception) {
@@ -293,50 +442,89 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
         val destId = packet.optString("destination_device_id", "BROADCAST")
         val ttl = packet.optInt("ttl", 5)
         val hopCount = packet.optInt("hop_count", 0)
+        val timestamp = packet.optDouble("timestamp", 0.0)
 
-        // 1. Deduplication check: drop packet if seen previously (Prevents infinite broadcast loops)
+        // Security check: Payload size validation (< 4KB)
+        if (packet.toString().length > 4096) {
+            logEvent("PACKET_REJECTED", mapOf("message_id" to msgId, "reason" to "EXCEEDS_MAX_PAYLOAD_SIZE"))
+            return
+        }
+
+        // Security check: Expiry timestamp validation (< 3600s)
+        val nowSec = System.currentTimeMillis() / 1000.0
+        if (timestamp > 0.0 && (nowSec - timestamp) > PACKET_EXPIRY_SECONDS) {
+            logEvent("PACKET_REJECTED", mapOf("message_id" to msgId, "reason" to "TIMESTAMP_EXPIRED"))
+            return
+        }
+
+        // Deduplication check: drop packet if already seen
         if (msgId.isNotEmpty()) {
-            if (seenMessageIds.contains(msgId)) {
-                Log.d(TAG, "Dropping duplicate packet: $msgId")
+            if (seenMessageIds.containsKey(msgId)) {
+                logEvent("PACKET_DEDUPLICATED", mapOf("message_id" to msgId, "from_address" to fromAddress))
                 return
             }
             if (seenMessageIds.size > MAX_SEEN_MESSAGES) {
                 seenMessageIds.clear()
             }
-            seenMessageIds.add(msgId)
+            seenMessageIds[msgId] = System.currentTimeMillis()
         }
 
-        // 2. Decrement TTL and increment hop count
+        // Decrement TTL and increment hop count
         if (ttl <= 1) {
-            Log.w(TAG, "Dropping packet $msgId: TTL expired (hop: $hopCount)")
+            logEvent("PACKET_TTL_EXPIRED", mapOf("message_id" to msgId, "hop_count" to hopCount))
             return
         }
         packet.put("ttl", ttl - 1)
         packet.put("hop_count", hopCount + 1)
 
-        Log.i(TAG, "Received mesh packet: $msgId from $fromAddress, hopCount: ${hopCount + 1}")
+        logEvent("PACKET_VALIDATED", mapOf(
+            "message_id" to msgId,
+            "type" to packet.optString("message_type"),
+            "hop_count" to (hopCount + 1),
+            "remaining_ttl" to (ttl - 1)
+        ))
 
-        // 3. Notify Flutter application layer
+        // Notify Flutter application layer
         mainHandler.post {
             channel.invokeMethod("onPacketReceived", packet.toString())
         }
 
-        // 4. Multi-hop forwarding: If this device has an active internet connection,
-        // bridge the packet directly to the SWARMRoute cloud backend!
+        // Multi-hop forwarding: If this device has active internet, bridge immediately to cloud
         if (isInternetAvailable()) {
             relayPacketToBackend(packet)
+        } else {
+            storeAndForwardQueue.add(packet)
+            logEvent("PACKET_QUEUED", mapOf("message_id" to msgId, "queue_size" to storeAndForwardQueue.size))
         }
 
-        // 5. If not destination, forward packet to reachable physical BLE peers
+        // Forward packet to physical BLE peers (multi-hop mesh)
         if (destId != myDeviceId) {
             forwardPacketToPeers(packet, excludeAddress = fromAddress)
         }
     }
 
     private fun forwardPacketToPeers(packet: JSONObject, excludeAddress: String?) {
-        val rawBytes = packet.toString().toByteArray(StandardCharsets.UTF_8)
+        val rawJson = packet.toString()
+        val rawBytes = rawJson.toByteArray(StandardCharsets.UTF_8)
 
-        // Forward to all discovered peers within physical radio reach
+        // Chunking if packet exceeds typical BLE MTU safe payload (200 bytes)
+        val chunks = mutableListOf<ByteArray>()
+        if (rawBytes.size > 200) {
+            val msgId = packet.optString("message_id", UUID.randomUUID().toString())
+            val chunkSize = 180
+            val totalChunks = (rawBytes.size + chunkSize - 1) / chunkSize
+            for (i in 0 until totalChunks) {
+                val start = i * chunkSize
+                val end = kotlin.math.min(rawBytes.size, (i + 1) * chunkSize)
+                val chunkSlice = String(rawBytes.copyOfRange(start, end), StandardCharsets.UTF_8)
+                val chunkString = "$CHUNK_PREFIX$msgId:$i:$totalChunks:$chunkSlice"
+                chunks.add(chunkString.toByteArray(StandardCharsets.UTF_8))
+            }
+        } else {
+            chunks.add(rawBytes)
+        }
+
+        // Forward to all reachable discovered peers
         for (peer in discoveredPeers.values) {
             if (peer.bluetoothAddress == excludeAddress) continue
 
@@ -345,17 +533,25 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
                 device.connectGatt(context, false, object : BluetoothGattCallback() {
                     override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
                         if (newState == BluetoothProfile.STATE_CONNECTED) {
+                            logEvent("GATT_CONNECTED", mapOf("peer_id" to peer.deviceId, "address" to peer.bluetoothAddress))
                             try {
-                                gatt?.discoverServices()
+                                gatt?.requestMtu(DEFAULT_MTU)
                             } catch (e: SecurityException) {
-                                Log.e(TAG, "discoverServices SecurityException: ${e.message}")
+                                gatt?.discoverServices()
                             }
                         } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                            logEvent("GATT_DISCONNECTED", mapOf("peer_id" to peer.deviceId))
                             try {
                                 gatt?.close()
-                            } catch (e: SecurityException) {
-                                Log.e(TAG, "close SecurityException: ${e.message}")
-                            }
+                            } catch (_: SecurityException) {}
+                        }
+                    }
+
+                    override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
+                        try {
+                            gatt?.discoverServices()
+                        } catch (e: SecurityException) {
+                            Log.e(TAG, "discoverServices error: ${e.message}")
                         }
                     }
 
@@ -364,14 +560,20 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
                             val service = gatt?.getService(MESH_SERVICE_UUID)
                             val rxChar = service?.getCharacteristic(RX_CHAR_UUID)
                             if (rxChar != null) {
-                                rxChar.value = rawBytes
                                 rxChar.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-                                try {
-                                    gatt.writeCharacteristic(rxChar)
-                                    Log.i(TAG, "Successfully forwarded packet over BLE hop to ${peer.deviceId}")
-                                } catch (e: SecurityException) {
-                                    Log.e(TAG, "writeCharacteristic SecurityException: ${e.message}")
+                                for (chunk in chunks) {
+                                    rxChar.value = chunk
+                                    try {
+                                        gatt.writeCharacteristic(rxChar)
+                                        Thread.sleep(25) // Small pause between frames
+                                    } catch (e: SecurityException) {
+                                        Log.e(TAG, "writeCharacteristic error: ${e.message}")
+                                    }
                                 }
+                                logEvent("PACKET_FORWARDED", mapOf(
+                                    "message_id" to packet.optString("message_id"),
+                                    "target_peer" to peer.deviceId
+                                ))
                             }
                         }
                     }
@@ -383,8 +585,9 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
     }
 
     // ==========================================
-    // 5. INTERNET GATEWAY BRIDGE
+    // 5. INTERNET GATEWAY & STORE-AND-FORWARD FLUSH
     // ==========================================
+
     private fun isInternetAvailable(): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
         val network = cm.activeNetwork ?: return false
@@ -392,41 +595,98 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun relayPacketToBackend(packet: JSONObject) {
+    fun flushStoreAndForwardQueue() {
+        if (!isInternetAvailable() || storeAndForwardQueue.isEmpty()) return
+
         Thread {
-            try {
-                val relayUrl = URL("$backendBaseUrl/api/v1/mesh/relay")
-                val conn = relayUrl.openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json")
-                conn.connectTimeout = 4000
-                conn.readTimeout = 4000
-                conn.doOutput = true
-
-                val relayPayload = JSONObject().apply {
-                    put("message_id", packet.optString("message_id"))
-                    put("source_device_id", packet.optString("source_device_id"))
-                    put("destination_device_id", packet.optString("destination_device_id", "BACKEND"))
-                    put("message_type", packet.optString("message_type", "ASSISTANCE_REQUEST"))
-                    put("timestamp", packet.optDouble("timestamp", System.currentTimeMillis() / 1000.0))
-                    put("ttl", packet.optInt("ttl", 5))
-                    put("hop_count", packet.optInt("hop_count", 1))
-                    put("payload", packet.optJSONObject("payload") ?: JSONObject())
-                    put("bridge_device_id", myDeviceId)
+            while (!storeAndForwardQueue.isEmpty()) {
+                val packet = storeAndForwardQueue.peek() ?: break
+                val success = uploadPacketDirectly(packet)
+                if (success) {
+                    storeAndForwardQueue.poll()
+                    logEvent("BACKEND_ACK_RECEIVED", mapOf(
+                        "message_id" to packet.optString("message_id"),
+                        "remaining_queue" to storeAndForwardQueue.size
+                    ))
+                } else {
+                    // Delay retry
+                    try { Thread.sleep(2000) } catch (_: InterruptedException) {}
+                    break
                 }
-
-                OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8).use { writer ->
-                    writer.write(relayPayload.toString())
-                    writer.flush()
-                }
-
-                val code = conn.responseCode
-                Log.i(TAG, "Mesh internet bridge: Relayed packet ${packet.optString("message_id")} to cloud (HTTP $code)")
-                conn.disconnect()
-            } catch (e: Exception) {
-                Log.w(TAG, "Mesh internet bridge relay attempt deferred: ${e.message}")
             }
         }.start()
+    }
+
+    private fun relayPacketToBackend(packet: JSONObject) {
+        Thread {
+            val ok = uploadPacketDirectly(packet)
+            if (!ok) {
+                // If upload failed, queue for store-and-forward retry
+                storeAndForwardQueue.add(packet)
+                logEvent("PACKET_QUEUED", mapOf(
+                    "message_id" to packet.optString("message_id"),
+                    "reason" to "HTTP_UPLOAD_FAILED",
+                    "queue_size" to storeAndForwardQueue.size
+                ))
+            }
+        }.start()
+    }
+
+    private fun uploadPacketDirectly(packet: JSONObject): Boolean {
+        return try {
+            val relayUrl = URL("$backendBaseUrl/api/v1/mesh/relay")
+            val conn = relayUrl.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.connectTimeout = 4000
+            conn.readTimeout = 4000
+            conn.doOutput = true
+
+            val relayPayload = JSONObject().apply {
+                put("message_id", packet.optString("message_id"))
+                put("source_device_id", packet.optString("source_device_id"))
+                put("source_driver_id", packet.optString("source_driver_id", myDriverId))
+                put("destination_device_id", packet.optString("destination_device_id", "BACKEND"))
+                put("message_type", packet.optString("message_type", "ASSISTANCE_REQUEST"))
+                put("timestamp", packet.optDouble("timestamp", System.currentTimeMillis() / 1000.0))
+                put("ttl", packet.optInt("ttl", 5))
+                put("hop_count", packet.optInt("hop_count", 1))
+                put("payload", packet.optJSONObject("payload") ?: JSONObject())
+                put("bridge_device_id", myDeviceId)
+            }
+
+            OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8).use { writer ->
+                writer.write(relayPayload.toString())
+                writer.flush()
+            }
+
+            val code = conn.responseCode
+            val success = code in 200..299
+            if (success) {
+                logEvent("MESH_PACKET_UPLOADED", mapOf(
+                    "message_id" to packet.optString("message_id"),
+                    "http_status" to code,
+                    "bridge_device" to myDeviceId
+                ))
+            }
+            conn.disconnect()
+            success
+        } catch (e: Exception) {
+            Log.w(TAG, "Mesh internet upload attempt: ${e.message}")
+            false
+        }
+    }
+
+    // ==========================================
+    // 6. OBSERVABILITY & STATUS REPORTING
+    // ==========================================
+
+    private fun logEvent(eventType: String, details: Map<String, Any>) {
+        val jsonDetails = JSONObject(details).toString()
+        Log.i(TAG, "[$eventType] $jsonDetails")
+        mainHandler.post {
+            channel.invokeMethod("onBleEvent", mapOf("event" to eventType, "details" to details))
+        }
     }
 
     fun getDiscoveredPeers(): List<Map<String, Any>> {
@@ -438,5 +698,18 @@ class BleMeshEngine(private val context: Context, private val channel: MethodCha
                 "last_seen_ms" to it.lastSeenTimestamp
             )
         }
+    }
+
+    fun getMeshStatus(): Map<String, Any> {
+        return mapOf(
+            "is_running" to isRunning,
+            "is_advertising" to isAdvertising,
+            "is_scanning" to isScanning,
+            "is_gateway" to isInternetAvailable(),
+            "peer_count" to discoveredPeers.size,
+            "queue_size" to storeAndForwardQueue.size,
+            "device_id" to myDeviceId,
+            "driver_id" to myDriverId
+        )
     }
 }

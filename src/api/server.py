@@ -653,6 +653,12 @@ def get_live_fleet(user: Optional[AuthenticatedUser] = Depends(get_current_user_
         fuel_val = t.get("fuel_level") if t and "fuel_level" in t else v_spec.get("fuel_remaining")
         cond_val = t.get("vehicle_condition") if t and "vehicle_condition" in t else v_spec.get("vehicle_condition")
 
+        loc_x = p.get("location_x")
+        loc_y = p.get("location_y")
+        has_gps = t is not None or (loc_x is not None and loc_y is not None)
+        lat = t["latitude"] if t else (float(loc_x) if loc_x is not None else None)
+        lon = t["longitude"] if t else (float(loc_y) if loc_y is not None else None)
+
         enriched.append({
             "partner_id": p.get("id"),
             "name": p.get("name", p.get("id")),
@@ -664,9 +670,9 @@ def get_live_fleet(user: Optional[AuthenticatedUser] = Depends(get_current_user_
                 "vehicle_condition": cond_val,
             },
             "location": {
-                "latitude": t["latitude"] if t else float(p.get("location_x", 12.9716)),
-                "longitude": t["longitude"] if t else float(p.get("location_y", 77.5946)),
-                "source": "REAL_GPS" if t else "BASE_LOCATION",
+                "latitude": lat,
+                "longitude": lon,
+                "source": "REAL_GPS" if t else ("BASE_LOCATION" if has_gps else "NO_GPS"),
             },
             "speed_kmh": t.get("speed_kmh", 0.0) if t else 0.0,
             "internet_status": t.get("internet_status", "ONLINE") if t else "ONLINE",
@@ -699,8 +705,8 @@ def recommend_partner_allocation(
     if not order:
         return JSONResponse(status_code=404, content={"error": "Order not found", "order_id": req.order_id})
 
-    pickup_lat = float(order.get("pickup_lat", 12.9716))
-    pickup_lon = float(order.get("pickup_lon", 77.5946))
+    pickup_lat = float(order.get("pickup_lat", 0.0))
+    pickup_lon = float(order.get("pickup_lon", 0.0))
     demand_weight = float(order.get("demand_weight", 1.0))
 
     partners = supabase_service.get_all_partners()
@@ -710,8 +716,12 @@ def recommend_partner_allocation(
     for p in partners:
         vid = p.get("vehicle_id") or p.get("id")
         t = live_telemetry.get(vid)
-        cur_lat = t["latitude"] if t else float(p.get("location_x", 12.9716))
-        cur_lon = t["longitude"] if t else float(p.get("location_y", 77.5946))
+        cur_lat = t["latitude"] if t else p.get("location_x")
+        cur_lon = t["longitude"] if t else p.get("location_y")
+        if cur_lat is None or cur_lon is None:
+            continue
+        cur_lat = float(cur_lat)
+        cur_lon = float(cur_lon)
         
         # Calculate road distance to pickup
         dist_km = routing_client.haversine_distance_km(cur_lat, cur_lon, pickup_lat, pickup_lon)
@@ -784,7 +794,7 @@ def allocate_order_to_partner(
         partner_id=req.vehicle_id,
         vehicle_id=req.vehicle_id,
         allocated_by=user.name if user else "DISPATCH_MANAGER",
-        dispatch_mode="AI_RECOMMENDED" if req.ai_recommended else "MANUAL",
+        dispatch_mode="AI_RECOMMENDED" if getattr(req, "ai_recommended", False) else "MANUAL",
     )
 
     emit_realtime_event("ORDER_ASSIGNED", {
@@ -804,13 +814,151 @@ def allocate_order_to_partner(
     }
 
 
-# --- Driver GPS Telemetry Ingestion (Vehicle-Aware Continuous AI Loop) ---
+# --- Route-Compatible Driver Assistance Recommendation ---
+
+class AssistanceRecommendRequest(BaseModel):
+    stranded_partner_id: Optional[str] = None
+    stranded_vehicle_id: Optional[str] = None
+    latitude: float
+    longitude: float
+    order_id: Optional[str] = None
+    reason: str = "FUEL_CRITICAL_OR_BREAKDOWN"
+    fuel_remaining_liters: float = 0.0
+    required_capacity_kg: float = 0.0
+    max_distance_km: float = 25.0
+
+
+@app.post("/api/v1/dispatch/assistance/recommend")
+def recommend_assistance_candidates(req: AssistanceRecommendRequest) -> Dict[str, Any]:
+    """
+    Evaluates real candidate delivery partners to assist a stranded driver:
+    - Distance to stranded vehicle
+    - Direction & route overlap to stranded vehicle / delivery dropoff
+    - Spare payload capacity vs order demand
+    - Fuel remaining vs detour required
+    - Vehicle condition & connectivity state
+    Returns fully transparent reasoning grounded in physical parameters.
+    """
+    stranded_id = req.stranded_partner_id or req.stranded_vehicle_id or ""
+    partners = supabase_service.get_all_partners()
+    live_telemetry = supabase_service.get_all_live_telemetry()
+    order = supabase_service.get_real_order(req.order_id) if req.order_id else None
+    order_demand = float(order.get("demand_weight", 1.0)) if order else float(req.required_capacity_kg)
+
+    candidates = []
+    for p in partners:
+        pid = p.get("id")
+        if pid == stranded_id:
+            continue  # cannot assist self
+
+        vid = p.get("vehicle_id") or pid
+        if vid == stranded_id:
+            continue
+
+        t = live_telemetry.get(vid)
+        cur_lat = t["latitude"] if t and "latitude" in t else p.get("location_x")
+        cur_lon = t["longitude"] if t and "longitude" in t else p.get("location_y")
+        if cur_lat is None or cur_lon is None:
+            continue  # cannot route to driver with no GPS
+
+        dist_to_stranded = routing_client.haversine_distance_km(float(cur_lat), float(cur_lon), req.latitude, req.longitude)
+        if req.max_distance_km and dist_to_stranded > req.max_distance_km:
+            continue
+
+        v_spec = supabase_service.get_vehicle_spec(vid)
+        max_cap = float(v_spec.get("max_load")) if isinstance(v_spec.get("max_load"), (int, float)) else float(p.get("max_weight", 500.0))
+        cur_load = float(v_spec.get("current_load", 0.0))
+        spare_capacity = max(0.0, max_cap - cur_load)
+        can_take_load = spare_capacity >= order_demand
+
+        fuel_val = t.get("fuel_level") if t and "fuel_level" in t else (
+            float(v_spec.get("fuel_remaining")) if isinstance(v_spec.get("fuel_remaining"), (int, float)) else float(p.get("fuel_level", 80.0))
+        )
+        cond_val = t.get("vehicle_condition") if t and "vehicle_condition" in t else (
+            float(v_spec.get("vehicle_condition")) if isinstance(v_spec.get("vehicle_condition"), (int, float)) else 0.95
+        )
+        conn_state = t.get("internet_status", "ONLINE") if t else "ONLINE"
+
+        active_order = supabase_service.get_driver_active_order(pid)
+        status = p.get("status", "IDLE")
+
+        proximity_pts = max(0.0, 35.0 - (dist_to_stranded * 2.5))
+        capacity_pts = 25.0 if can_take_load else 0.0
+        fuel_pts = min(20.0, (float(fuel_val) / 100.0) * 20.0)
+        cond_pts = min(10.0, float(cond_val) * 10.0)
+        avail_pts = 10.0 if status == "IDLE" else 5.0
+
+        total_pts = round(proximity_pts + capacity_pts + fuel_pts + cond_pts + avail_pts, 1)
+        reasoning = (
+            f"Reachable in {round(dist_to_stranded, 1)} km with {round(spare_capacity, 1)} kg spare payload and {round(fuel_val, 1)}% fuel"
+            if can_take_load else f"Insufficient payload capacity ({round(spare_capacity, 1)} kg available, {order_demand} kg required)"
+        )
+
+        candidates.append({
+            "partner_id": pid,
+            "partner_name": p.get("name", pid),
+            "suitability_score": total_pts,
+            "distance_to_stranded_km": round(dist_to_stranded, 2),
+            "spare_capacity_kg": round(spare_capacity, 1),
+            "metrics": {
+                "distance_to_stranded_km": round(dist_to_stranded, 2),
+                "spare_capacity_kg": round(spare_capacity, 1),
+                "can_take_load": can_take_load,
+                "fuel_level_pct": round(float(fuel_val), 1),
+                "vehicle_condition": round(float(cond_val), 2),
+                "connectivity": conn_state,
+                "status": status,
+                "has_active_order": active_order is not None,
+            },
+            "recommendation_reason": reasoning,
+        })
+
+    candidates.sort(key=lambda c: c["suitability_score"], reverse=True)
+    best = candidates[0] if candidates else None
+
+    return {
+        "success": True,
+        "stranded_partner_id": stranded_id,
+        "recommended_assisting_partner": best,
+        "candidates": candidates,
+        "evaluated_at": time.time(),
+    }
+
+
+# --- Device Identity Association Endpoint ---
+
+class DeviceLinkRequest(BaseModel):
+    device_id: str
+    driver_id: str
+    vehicle_id: Optional[str] = None
+
+
+@app.post("/api/v1/driver/device/link")
+def link_driver_device(req: DeviceLinkRequest) -> Dict[str, Any]:
+    """Binds physical smartphone device_id to authenticated driver and vehicle."""
+    success = supabase_service.link_device_to_driver(req.device_id, req.driver_id, req.vehicle_id)
+    return {
+        "success": success,
+        "device_id": req.device_id,
+        "driver_id": req.driver_id,
+        "vehicle_id": req.vehicle_id,
+        "linked": {
+            "device_id": req.device_id,
+            "driver_id": req.driver_id,
+            "vehicle_id": req.vehicle_id,
+        },
+        "linked_at": time.time(),
+    }
+
+
+# --- Driver GPS Telemetry Ingestion (Authentic Active Order Route Intelligence) ---
 
 @app.post("/api/v1/driver/telemetry")
 def ingest_driver_telemetry(req: DriverTelemetryRequest) -> Dict[str, Any]:
     """
     Ingests real device GPS and vehicle telemetry from Flutter driver app.
-    Feeds temporal transformer and triggers continuous route evaluation.
+    Feeds temporal transformer and evaluates continuous route intelligence against the driver's
+    GENUINE active delivery order (never artificial destinations).
     """
     telemetry_data = {
         "latitude": req.latitude,
@@ -831,18 +979,52 @@ def ingest_driver_telemetry(req: DriverTelemetryRequest) -> Dict[str, Any]:
     cap = float(v_spec.get("fuel_capacity")) if isinstance(v_spec.get("fuel_capacity"), (int, float)) else 60.0
     fuel_rem_liters = (req.fuel_level / 100.0) * cap
 
-    # Continuous Route Intelligence Assessment
-    ai_evaluation = route_evaluator.evaluate(
-        vehicle_id=req.vehicle_id,
-        current_location=(req.latitude, req.longitude),
-        destination=(req.latitude + 0.02, req.longitude + 0.02),
-        remaining_distance_km=req.remaining_distance_km,
-        speed_kmh=req.speed_kmh,
-        fuel_remaining_liters=fuel_rem_liters,
-        fuel_capacity_liters=cap,
-        vehicle_condition=req.vehicle_condition,
-        connectivity="CLOUD_MODE" if req.internet_status == "ONLINE" else "MESH_MODE",
-    )
+    # Continuous Route Intelligence Assessment Grounded in Active Order (Phase 11)
+    active_order = supabase_service.get_driver_active_order(req.vehicle_id)
+    ai_evaluation: Dict[str, Any] = {}
+    route_calc: Dict[str, Any] = {}
+
+    if active_order:
+        order_status = active_order.get("status", "ASSIGNED")
+        if order_status == "ASSIGNED":
+            dest_lat = float(active_order.get("pickup_lat") or active_order.get("delivery_lat", 0.0))
+            dest_lon = float(active_order.get("pickup_lon") or active_order.get("delivery_lon", 0.0))
+        else:
+            dest_lat = float(active_order.get("delivery_lat", 0.0))
+            dest_lon = float(active_order.get("delivery_lon", 0.0))
+
+        # Real road route distance calculation
+        route_calc = routing_client.get_road_route(req.latitude, req.longitude, dest_lat, dest_lon)
+        rem_dist_km = (
+            route_calc["route"]["distance_km"]
+            if (route_calc.get("success") and "route" in route_calc)
+            else req.remaining_distance_km
+        )
+
+        ai_evaluation = route_evaluator.evaluate(
+            vehicle_id=req.vehicle_id,
+            current_location=(req.latitude, req.longitude),
+            destination=(dest_lat, dest_lon),
+            remaining_distance_km=rem_dist_km,
+            speed_kmh=req.speed_kmh,
+            fuel_remaining_liters=fuel_rem_liters,
+            fuel_capacity_liters=cap,
+            vehicle_condition=req.vehicle_condition,
+            connectivity="CLOUD_MODE" if req.internet_status == "ONLINE" else "MESH_MODE",
+        )
+        ai_evaluation["active_order_id"] = active_order.get("id")
+        ai_evaluation["destination_type"] = "PICKUP" if order_status == "ASSIGNED" else "DELIVERY"
+    else:
+        # Honest reporting per Phase 11: Driver has no active delivery order
+        ai_evaluation = {
+            "status": "NO_ACTIVE_ROUTE",
+            "decision": "HOLD_OR_WAIT",
+            "recommended_action": "KEEP_ROUTE",
+            "action_name": "HOLD_OR_CONTINUE",
+            "reason": "Driver has no active delivery order assigned. Standing by.",
+            "message": "Driver has no active delivery order assigned",
+            "evaluated_at": time.time(),
+        }
 
     emit_realtime_event("DRIVER_TELEMETRY_UPDATED", {
         "vehicle_id": req.vehicle_id,
@@ -851,14 +1033,18 @@ def ingest_driver_telemetry(req: DriverTelemetryRequest) -> Dict[str, Any]:
         "speed_kmh": req.speed_kmh,
         "fuel_level": req.fuel_level,
         "decision": ai_evaluation.get("decision"),
+        "status": ai_evaluation.get("status"),
     })
 
     return {
         "success": True,
         "vehicle_id": req.vehicle_id,
+        "active_order": active_order,
+        "route": route_calc.get("route") if (active_order and route_calc.get("success")) else None,
         "recorded_at": time.time(),
         "route_intelligence": ai_evaluation,
     }
+
 
 
 # --- Driver Order Status Lifecycle Endpoint ---

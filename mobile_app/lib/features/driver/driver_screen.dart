@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../services/location_service.dart';
 import '../../services/routing_service.dart';
 import '../../services/ble_mesh_service.dart';
+import '../mesh/mesh_cockpit_screen.dart';
 import '../auth/login_screen.dart';
 
 class DriverScreen extends StatefulWidget {
@@ -53,7 +54,10 @@ class _DriverScreenState extends State<DriverScreen> {
     _locationService.addListener(_onLocationUpdate);
 
     // 2. Start physical native BLE mesh advertising & scanning
-    await _bleMesh.startMesh(widget.driverId);
+    await _bleMesh.startMesh(
+      deviceId: 'DEV_${widget.driverId}',
+      driverId: widget.driverId,
+    );
 
     // 3. Periodic telemetry transmission loop (every 5 seconds)
     _telemetryTimer = Timer.periodic(const Duration(seconds: 5), (_) => _sendTelemetry());
@@ -237,6 +241,23 @@ class _DriverScreenState extends State<DriverScreen> {
           ],
         ),
         actions: [
+          // Open Physical BLE Mesh Cockpit & Multi-Hop Test Screen
+          IconButton(
+            icon: const Icon(Icons.hub, color: Color(0xFF0284C7)),
+            tooltip: 'BLE Mesh Cockpit & Peer Table',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MeshCockpitScreen(
+                    meshService: _bleMesh,
+                    driverId: widget.driverId,
+                    deviceId: 'DEV_${widget.driverId}',
+                  ),
+                ),
+              );
+            },
+          ),
           // Simulate cellular cutout toggle for testing the BLE mesh recovery flow
           IconButton(
             icon: Icon(
@@ -452,6 +473,31 @@ class _DriverScreenState extends State<DriverScreen> {
                           backgroundColor: Colors.red.shade700,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MeshCockpitScreen(
+                                meshService: _bleMesh,
+                                driverId: widget.driverId,
+                                deviceId: 'DEV_${widget.driverId}',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.hub_outlined, color: Color(0xFF0284C7), size: 18),
+                        label: const Text('Open BLE Mesh Cockpit & Diagnostic Deck',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0284C7))),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF0284C7)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
                     ),
