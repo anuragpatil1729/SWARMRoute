@@ -9,11 +9,15 @@ export default function BenchmarksPage() {
     <div className="space-y-6">
       <div className="border border-slate-200 bg-white p-5 rounded-xl shadow-sm">
         <h2 className="text-xl font-bold text-slate-900">
-          Routing Method Comparison
+          Offline benchmark results
         </h2>
         <p className="text-xs text-slate-500 mt-1">
-          Autonomous dispatch and peer-to-peer resilience evaluated against static baseline heuristics.
+          Persisted experiment artifact; these metrics are not live operational telemetry.
         </p>
+      </div>
+
+      <div className="border border-amber-200 bg-amber-50 px-4 py-3 rounded-lg text-xs text-amber-900 font-mono">
+        OFFLINE EXPERIMENT · Comparative benchmark results loaded from committed evaluation artifacts.
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
