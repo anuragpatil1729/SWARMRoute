@@ -185,7 +185,8 @@ def run_scenario_evaluation(
             obs = rl_env._get_observation()
             prev_reassigned = env.total_reassigned_orders_count
             t_p0 = time.perf_counter()
-            act = ppo_agent.predict(obs, deterministic=True)
+            masks = rl_env.action_masks()
+            act = ppo_agent.predict(obs, action_masks=masks, deterministic=True)
             rl_env.step(act)
             if env.total_reassigned_orders_count > prev_reassigned:
                 total_rec_time += (time.perf_counter() - t_p0)

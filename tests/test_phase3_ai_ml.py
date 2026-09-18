@@ -229,6 +229,25 @@ def test_9_action_masking_and_infeasibility():
     assert reward <= -15.0
 
 
+def test_9b_maskable_ppo_inference_and_mask_compliance():
+    """Verify that MaskablePPO respects action masks and never selects masked actions."""
+    from src.rl.ppo_agent import PPOFleetAgent
+
+    env = SWARMRLEnv(dataset_name="C101", num_customers=15, num_vehicles=3, seed=42)
+    agent = PPOFleetAgent(env=env, use_masking=True, seed=42)
+    assert agent.use_masking is True
+
+    obs, _ = env.reset(seed=42)
+    masks = env.action_masks()
+    assert bool(masks[1]) is False  # Action 1 is masked out
+
+    # Predict across multiple samples; Action 1 must NEVER be selected
+    for _ in range(10):
+        action = agent.predict(obs, action_masks=masks, deterministic=False)
+        assert action != ACTION_REASSIGN_STRANDED_ORDER
+        assert masks[action] is True or bool(masks[action]) is True
+
+
 # =============================================================================
 # 10. REWARD FUNCTION
 # =============================================================================

@@ -276,9 +276,16 @@ class SWARMRLEnv(gym.Env):
 
         # Top-3 candidate orders (pending or stranded)
         cand_features = []
+        stranded_ids = {
+            oid
+            for veh in self.env.fleet_state.vehicles.values()
+            if veh.status == VehicleStatus.BROKEN_DOWN
+            for oid in veh.assigned_orders
+            if oid not in self.env.delivered_orders
+        }
         cands = [
             o for o in self.env.fleet_state.active_orders.values()
-            if o.status in (OrderStatus.PENDING, OrderStatus.REASSIGNED)
+            if (o.status in (OrderStatus.PENDING, OrderStatus.REASSIGNED) or o.order_id in stranded_ids)
             and o.order_id not in self.env.delivered_orders
         ]
         cands.sort(key=lambda o: math.hypot(loc[0] - o.destination[0], loc[1] - o.destination[1]))
@@ -287,9 +294,42 @@ class SWARMRLEnv(gym.Env):
             if i < len(cands):
                 cand = cands[i]
                 d = math.hypot(loc[0] - cand.destination[0], loc[1] - cand.destination[1])
+
+                # ML-informed effective distance: blend raw geometric distance with
+                # predicted travel time and predicted fuel cost when trained models
+                # are available, so the policy actually observes what the predictors know.
+                eff_d = d
+                if self.travel_time_predictor and getattr(self.travel_time_predictor, "is_trained", False):
+                    try:
+                        pred_hrs = self.travel_time_predictor.predict_trip(
+                            distance_km=d,
+                            traffic_level=TrafficLevel.NORMAL.value,
+                            hour_of_day=int((self.env.current_time_mins / 60.0) % 24),
+                            is_weekend=False,
+                        )
+                        # convert predicted minutes back into a distance-equivalent
+                        # using the vehicle's nominal speed, so units stay comparable
+                        eff_d = (pred_hrs * 60.0 / 60.0) * max(1.0, v.average_speed)
+                    except Exception:
+                        pass
+
+                fuel_ratio = (v.fuel_efficiency / 100.0) * d
+                if self.fuel_predictor and getattr(self.fuel_predictor, "is_trained", False):
+                    try:
+                        fuel_ratio = self.fuel_predictor.predict_fuel(
+                            distance_km=d,
+                            vehicle_load_kg=v.current_load + cand.demand_weight,
+                            max_payload_kg=v.max_weight,
+                            average_speed_kmh=v.average_speed,
+                        )
+                    except Exception:
+                        pass
+                # fold fuel signal in as a small multiplicative penalty on effective distance
+                eff_d = eff_d * (1.0 + np.clip(fuel_ratio / 50.0, 0.0, 0.5))
+
                 cand_urgency = cand.latest_delivery - self.env.current_time_mins
                 cand_features.extend([
-                    float(np.clip(d / 100.0, 0.0, 2.0)),
+                    float(np.clip(eff_d / 100.0, 0.0, 2.0)),
                     float(np.clip(cand.demand_weight / max(v.max_weight, 1.0), 0.0, 1.0)),
                     float(np.clip(cand_urgency / 120.0, -1.0, 2.0)),
                 ])
@@ -317,6 +357,80 @@ class SWARMRLEnv(gym.Env):
         ], dtype=np.float32)
 
         return np.nan_to_num(obs, nan=0.0, posinf=1.0, neginf=-1.0)
+
+    def action_masks(self) -> np.ndarray:
+        """
+        Returns a boolean mask of shape (5,) indicating which discrete actions
+        are structurally feasible in the current environment state.
+        
+        - Action 0 (ASSIGN_BEST_ORDER): Feasible if controlled truck is active and
+          has capacity to load at least one pending order.
+        - Action 1 (REASSIGN_STRANDED_ORDER): Feasible if broken_trucks[0] has an
+          un-delivered order and at least one surviving truck can load it (mirrors step()).
+        - Action 2 (ACCEPT_OR_REJECT_TRANSFER): Always feasible (evaluating or cleanly rejecting).
+        - Action 3 (REPOSITION_TO_DEMAND_ZONE): Feasible if truck is IDLE and a repositioning
+          target plan exists.
+        - Action 4 (HOLD_OR_CONTINUE): Always feasible.
+        """
+        if self.env is None or not self.env.fleet_state.vehicles:
+            return np.array([False, False, False, False, True], dtype=bool)
+
+        ctrl_id = self.controlled_truck_id
+        if ctrl_id not in self.env.fleet_state.vehicles or self.env.fleet_state.vehicles[ctrl_id].status == VehicleStatus.BROKEN_DOWN:
+            active_trucks = [
+                vid for vid, veh in self.env.fleet_state.vehicles.items()
+                if veh.status != VehicleStatus.BROKEN_DOWN
+            ]
+            if active_trucks:
+                ctrl_id = active_trucks[0]
+
+        v = self.env.fleet_state.vehicles.get(ctrl_id)
+
+        # Action 0: ASSIGN_BEST_ORDER
+        mask_0 = False
+        if v and v.status != VehicleStatus.BROKEN_DOWN:
+            pending_orders = [
+                o for o in self.env.fleet_state.active_orders.values()
+                if o.status == OrderStatus.PENDING and o.order_id not in self.env.delivered_orders
+            ]
+            mask_0 = any(v.can_load(cand.demand_weight) for cand in pending_orders)
+
+        # Action 1: REASSIGN_STRANDED_ORDER (exact mirror of step())
+        mask_1 = False
+        broken_trucks = [
+            veh for veh in self.env.fleet_state.vehicles.values()
+            if veh.status == VehicleStatus.BROKEN_DOWN and len(veh.assigned_orders) > 0
+        ]
+        if broken_trucks:
+            target_broken = broken_trucks[0]
+            stranded_id = target_broken.assigned_orders[0]
+            ord_obj = self.env.fleet_state.active_orders.get(stranded_id)
+            if ord_obj:
+                mask_1 = any(
+                    truck.status != VehicleStatus.BROKEN_DOWN and truck.can_load(ord_obj.demand_weight)
+                    for truck in self.env.fleet_state.vehicles.values()
+                )
+
+        # Action 2: ACCEPT_OR_REJECT_TRANSFER (always valid)
+        mask_2 = True
+
+        # Action 3: REPOSITION_TO_DEMAND_ZONE
+        # NOTE: At large scale (250k-1M steps), cache plan_repositioning result per tick
+        mask_3 = False
+        if v and v.status == VehicleStatus.IDLE:
+            plans = self.positioner.plan_repositioning(
+                self.env.fleet_state, self.env.road_network, self.env.current_time_mins
+            )
+            mask_3 = bool(plans)
+
+        # Action 4: HOLD_OR_CONTINUE
+        mask_4 = True
+
+        return np.array([mask_0, mask_1, mask_2, mask_3, mask_4], dtype=bool)
+
+    def get_action_mask(self) -> np.ndarray:
+        """Alias for action_masks."""
+        return self.action_masks()
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         self.step_count += 1

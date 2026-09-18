@@ -192,7 +192,8 @@ def run_single_benchmark_scenario(
             while env.current_time_mins < duration_mins and not env.is_done():
                 obs = rl_env._get_observation()
                 if mode == "PPO" and ppo_agent is not None:
-                    act = ppo_agent.predict(obs, deterministic=True)
+                    masks = rl_env.action_masks()
+                    act = ppo_agent.predict(obs, action_masks=masks, deterministic=True)
                 else:
                     act = int(rng.integers(0, 5))
                 rl_env.step(act)

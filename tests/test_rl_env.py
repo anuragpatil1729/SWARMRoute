@@ -91,3 +91,34 @@ def test_observation_dimension_contract():
     assert len(cand_features) == 9
     assert not np.isnan(cand_features).any()
 
+
+def test_action_masks_structure_and_behavior():
+    """Verify that action_masks() accurately captures structural feasibility."""
+    from src.models.vehicle import VehicleStatus
+
+    env = SWARMRLEnv(dataset_name="C101", num_customers=15, num_vehicles=3, seed=42)
+    env.reset(seed=42)
+
+    masks = env.action_masks()
+    assert isinstance(masks, np.ndarray)
+    assert masks.shape == (5,)
+    assert masks.dtype == bool
+
+    # Initial state: Action 4 (HOLD) and Action 2 (ACCEPT/REJECT) must be True
+    assert bool(masks[4]) is True
+    assert bool(masks[2]) is True
+
+    # No broken vehicles initially -> Action 1 (REASSIGN) must be False
+    assert bool(masks[1]) is False
+
+    # Simulate a breakdown on TRUCK_01 with assigned orders
+    truck1 = env.env.fleet_state.vehicles.get("TRUCK_01")
+    truck2 = env.env.fleet_state.vehicles.get("TRUCK_02")
+    if truck1 and truck2 and len(truck1.assigned_orders) > 0:
+        truck1.status = VehicleStatus.BROKEN_DOWN
+        first_order = env.env.fleet_state.active_orders.get(truck1.assigned_orders[0])
+        if first_order:
+            truck2.current_load = 0.0
+            masks_post = env.action_masks()
+            assert bool(masks_post[1]) is True
+

@@ -31,6 +31,7 @@ def train_ppo_cli(
     customers: int = 20,
     vehicles: int = 5,
     eval_episodes: int = 5,
+    masking: bool = True,
     save_path: str = "results/models/ppo_agent.zip",
     metrics_path: str = "results/logs/ppo_training_metrics.json",
 ) -> None:
@@ -72,9 +73,9 @@ def train_ppo_cli(
         demand_predictor=demand_pred,
     )
 
-    agent = PPOFleetAgent(env=env, seed=seed)
+    agent = PPOFleetAgent(env=env, use_masking=masking, seed=seed)
 
-    print("\nTraining PPO Agent...")
+    print(f"\nTraining PPO Agent (Action Masking: {agent.use_masking})...")
     train_results = agent.train(total_timesteps=timesteps)
 
     print("\nTraining Complete:")
@@ -99,6 +100,7 @@ def train_ppo_cli(
         "dataset": dataset,
         "seed": seed,
         "timesteps": timesteps,
+        "masking": agent.use_masking,
         "train_metrics": train_results,
         "eval_metrics": eval_metrics,
         "episode_rewards": agent.logger_callback.episode_rewards,
@@ -125,6 +127,7 @@ def main() -> None:
     parser.add_argument("--customers", type=int, default=20, help="Number of customers")
     parser.add_argument("--vehicles", type=int, default=5, help="Number of vehicles")
     parser.add_argument("--eval", type=int, default=5, help="Evaluation episodes")
+    parser.add_argument("--masking", action=argparse.BooleanOptionalAction, default=True, help="Use invalid action masking")
     parser.add_argument("--save-path", default="results/models/ppo_agent.zip", help="Path to save PPO zip model")
     parser.add_argument("--metrics-path", default="results/logs/ppo_training_metrics.json", help="Path to save metrics json")
     args = parser.parse_args()
@@ -136,6 +139,7 @@ def main() -> None:
         customers=args.customers,
         vehicles=args.vehicles,
         eval_episodes=args.eval,
+        masking=args.masking,
         save_path=args.save_path,
         metrics_path=args.metrics_path,
     )

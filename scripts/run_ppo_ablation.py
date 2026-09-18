@@ -202,7 +202,8 @@ def run_ablation_experiment(
             while env.current_time_mins < scenario.simulation_duration_mins and not env.is_done():
                 obs = rl_env._get_observation()
                 if ppo_agent is not None:
-                    act = ppo_agent.predict(obs, deterministic=True)
+                    masks = rl_env.action_masks()
+                    act = ppo_agent.predict(obs, action_masks=masks, deterministic=True)
                 else:
                     act = 4  # HOLD
                 rl_env.step(act)

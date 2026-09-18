@@ -86,6 +86,28 @@ class FuelConsumptionPredictor(BasePredictor):
         feat = np.array([[distance, vehicle_type_code, vehicle_load, average_speed, traffic_level_code, road_gradient, stop_count]])
         return float(self.predict(feat)[0])
 
+    def predict_fuel(
+        self,
+        distance_km: float,
+        vehicle_load_kg: float = 100.0,
+        max_payload_kg: float = 200.0,
+        average_speed_kmh: float = 40.0,
+        traffic_level: int = 1,
+        vehicle_type_code: int = 0,
+        road_gradient: float = 0.0,
+        stop_count: int = 1,
+    ) -> float:
+        """Alias for trip-level fuel consumption prediction in liters."""
+        return self.predict_single(
+            distance=distance_km,
+            vehicle_type_code=vehicle_type_code,
+            vehicle_load=vehicle_load_kg,
+            average_speed=average_speed_kmh,
+            traffic_level_code=traffic_level,
+            road_gradient=road_gradient,
+            stop_count=stop_count,
+        )
+
     def evaluate(self, X_test: np.ndarray, y_test: np.ndarray) -> Dict[str, float]:
         preds = self.predict(X_test)
         mae = float(mean_absolute_error(y_test, preds))

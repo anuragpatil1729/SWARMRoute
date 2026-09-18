@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 import numpy as np
 
-# Prevent PyTorch / Keras C-extension collisions on macOS Python 3.13
-for _m in ("tensorflow", "keras", "tensorboard"):
+# Prevent PyTorch / Keras / pyarrow C-extension collisions on macOS Python 3.13
+for _m in ("pyarrow", "tensorflow", "keras", "tensorboard"):
     if _m not in sys.modules:
         sys.modules[_m] = None
 
@@ -14,6 +14,13 @@ try:
 except ImportError:
     PPO = None
     BaseCallback = object
+
+try:
+    from sb3_contrib import MaskablePPO
+    from sb3_contrib.common.wrappers import ActionMasker
+except ImportError:
+    MaskablePPO = None
+    ActionMasker = None
 
 from src.rl.environment import SWARMRLEnv
 
@@ -65,29 +72,31 @@ class TrainingMetricsLogger(BaseCallback):
             self.co2_emissions.append(round(infos.get("total_co2_kg", 0.0), 2))
             self.late_deliveries.append(late)
             self.distances.append(round(infos.get("total_distance_km", 0.0), 2))
-            self.recoveries.append(int(infos.get("recoveries_count", 0)))
+            self.recoveries.append(infos.get("reassigned_orders", 0))
             self.failed_orders.append(failed)
-            self.recovery_times.append(round(infos.get("recovery_time_sec", 0.0), 4))
+            self.recovery_times.append(round(infos.get("recovery_time_sec", 0.0), 3))
 
         return True
 
 
 class PPOFleetAgent:
     """
-    Stable-Baselines3 PPO Reinforcement Learning Policy for Autonomous Fleet Decision Making.
-    Trained on the realistic Gymnasium SWARMRLEnv.
-    Supports reproducible seeds, model checkpointing, and evaluation.
+    Decentralized Edge Agent powered by Stable-Baselines3 PPO or MaskablePPO.
+    Incorporates invalid action masking to prevent infeasible action choices
+    (e.g., loading when full, reassigning when no truck is broken).
     """
     def __init__(
         self,
         env: Optional[SWARMRLEnv] = None,
         learning_rate: float = 3e-4,
-        n_steps: int = 64,
-        batch_size: int = 32,
+        n_steps: int = 256,
+        batch_size: int = 64,
         n_epochs: int = 4,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
         clip_range: float = 0.2,
+        ent_coef: float = 0.02,
+        use_masking: bool = True,
         seed: int = 42,
         device: str = "cpu",
     ) -> None:
@@ -96,27 +105,49 @@ class PPOFleetAgent:
 
         self.env = env
         self.seed = seed
-        self.model: Optional[PPO] = None
+        self.use_masking = use_masking and (MaskablePPO is not None) and (ActionMasker is not None)
+        self.model: Optional[Union[PPO, MaskablePPO]] = None
         self.logger_callback = TrainingMetricsLogger()
 
         if env is not None:
-            self.model = PPO(
-                policy="MlpPolicy",
-                env=self.env,
-                learning_rate=learning_rate,
-                n_steps=n_steps,
-                batch_size=batch_size,
-                n_epochs=n_epochs,
-                gamma=gamma,
-                gae_lambda=gae_lambda,
-                clip_range=clip_range,
-                seed=seed,
-                device=device,
-                verbose=0,
-            )
+            train_env = env
+            if self.use_masking:
+                if not isinstance(env, ActionMasker) and hasattr(env, "action_masks"):
+                    train_env = ActionMasker(env, lambda e: e.action_masks())
+                self.model = MaskablePPO(
+                    policy="MlpPolicy",
+                    env=train_env,
+                    learning_rate=learning_rate,
+                    n_steps=n_steps,
+                    batch_size=batch_size,
+                    n_epochs=n_epochs,
+                    gamma=gamma,
+                    gae_lambda=gae_lambda,
+                    clip_range=clip_range,
+                    ent_coef=ent_coef,
+                    seed=seed,
+                    device=device,
+                    verbose=0,
+                )
+            else:
+                self.model = PPO(
+                    policy="MlpPolicy",
+                    env=train_env,
+                    learning_rate=learning_rate,
+                    n_steps=n_steps,
+                    batch_size=batch_size,
+                    n_epochs=n_epochs,
+                    gamma=gamma,
+                    gae_lambda=gae_lambda,
+                    clip_range=clip_range,
+                    ent_coef=ent_coef,
+                    seed=seed,
+                    device=device,
+                    verbose=0,
+                )
 
     def train(self, total_timesteps: int = 1000) -> Dict[str, Any]:
-        """Trains the PPO policy on the SWARMRoute environment."""
+        """Trains the policy on the SWARMRLEnv environment."""
         if self.model is None:
             raise ValueError("Environment must be provided to train PPO model.")
 
@@ -131,18 +162,43 @@ class PPOFleetAgent:
             "episode_rewards": [round(r, 2) for r in ep_rewards[-10:]],
         }
 
-    def predict(self, observation: np.ndarray, deterministic: bool = True) -> int:
-        """Selects discrete fleet action given local observation vector."""
+    def predict(
+        self,
+        observation: np.ndarray,
+        action_masks: Optional[np.ndarray] = None,
+        deterministic: bool = True,
+    ) -> int:
+        """Selects discrete fleet action given local observation vector and optional action masks."""
         if self.model is None:
             return 4  # Default HOLD_OR_CONTINUE
-        action, _ = self.model.predict(observation, deterministic=deterministic)
+
+        # If action masks not explicitly provided, attempt retrieval from attached self.env
+        if action_masks is None and self.env is not None and hasattr(self.env, "action_masks"):
+            try:
+                action_masks = self.env.action_masks()
+            except Exception:
+                pass
+
+        if self.use_masking and MaskablePPO is not None and isinstance(self.model, MaskablePPO):
+            action, _ = self.model.predict(
+                observation,
+                action_masks=action_masks,
+                deterministic=deterministic,
+            )
+        else:
+            action, _ = self.model.predict(observation, deterministic=deterministic)
         return int(action)
 
-    def evaluate(self, env: Optional[SWARMRLEnv] = None, num_episodes: int = 3, n_episodes: Optional[int] = None) -> Dict[str, float]:
-        """Runs deterministic evaluation across episodes."""
+    def evaluate(
+        self,
+        env: Optional[SWARMRLEnv] = None,
+        num_episodes: int = 3,
+        n_episodes: Optional[int] = None,
+    ) -> Dict[str, float]:
+        """Runs deterministic evaluation across episodes respecting action masks."""
         eval_env = env or self.env
         if eval_env is None or self.model is None:
-            return {"mean_reward": 0.0, "std_reward": 0.0}
+            return {"mean_reward": 0.0, "std_reward": 0.0, "mean_deliveries": 0.0}
 
         ep_count = n_episodes if n_episodes is not None else num_episodes
         episode_rewards = []
@@ -154,7 +210,8 @@ class PPOFleetAgent:
             total_r = 0.0
 
             while not done:
-                action = self.predict(obs, deterministic=True)
+                masks = eval_env.action_masks() if hasattr(eval_env, "action_masks") else None
+                action = self.predict(obs, action_masks=masks, deterministic=True)
                 obs, r, term, trunc, step_info = eval_env.step(action)
                 total_r += r
                 done = term or trunc
@@ -174,4 +231,20 @@ class PPOFleetAgent:
             self.model.save(str(path))
 
     def load(self, path: Union[str, Path], env: Optional[SWARMRLEnv] = None) -> None:
-        self.model = PPO.load(str(path), env=env)
+        target_env = env or self.env
+        wrapped_env = target_env
+        if target_env is not None and hasattr(target_env, "action_masks") and not isinstance(target_env, ActionMasker) and ActionMasker is not None:
+            wrapped_env = ActionMasker(target_env, lambda e: e.action_masks())
+
+        loaded = False
+        if MaskablePPO is not None:
+            try:
+                self.model = MaskablePPO.load(str(path), env=wrapped_env)
+                self.use_masking = True
+                loaded = True
+            except Exception:
+                pass
+
+        if not loaded:
+            self.model = PPO.load(str(path), env=target_env)
+            self.use_masking = False

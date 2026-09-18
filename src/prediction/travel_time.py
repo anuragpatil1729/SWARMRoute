@@ -71,15 +71,47 @@ class TravelTimePredictor(BasePredictor):
         time_of_day: float = 9.0,
         day_of_week: int = 2,
         historical_speed: float = 45.0,
-        traffic_level: int = 1,
+        traffic_level: Any = 1,
         road_type: int = 1,
         vehicle_type: int = 0,
         vehicle_load: float = 100.0,
     ) -> float:
+        if isinstance(traffic_level, str):
+            mapping = {"LIGHT": 0, "NORMAL": 1, "MODERATE": 2, "HEAVY": 3, "SEVERE": 4, "BLOCKED": 5}
+            traffic_level = mapping.get(traffic_level.upper(), 1)
+        elif hasattr(traffic_level, "value") and isinstance(traffic_level.value, str):
+            mapping = {"LIGHT": 0, "NORMAL": 1, "MODERATE": 2, "HEAVY": 3, "SEVERE": 4, "BLOCKED": 5}
+            traffic_level = mapping.get(traffic_level.value.upper(), 1)
+        elif hasattr(traffic_level, "value") and isinstance(traffic_level.value, (int, float)):
+            traffic_level = int(traffic_level.value)
         features = np.array(
-            [[distance, time_of_day, day_of_week, historical_speed, traffic_level, road_type, vehicle_type, vehicle_load]]
+            [[distance, time_of_day, day_of_week, historical_speed, float(traffic_level), road_type, vehicle_type, vehicle_load]]
         )
         return float(self.predict(features)[0])
+
+    def predict_trip(
+        self,
+        distance_km: float,
+        traffic_level: int = 1,
+        hour_of_day: float = 9.0,
+        is_weekend: bool = False,
+        historical_speed: float = 45.0,
+        road_type: int = 1,
+        vehicle_type: int = 0,
+        vehicle_load: float = 100.0,
+    ) -> float:
+        """Alias for trip-level travel time prediction in hours."""
+        day_of_week = 5 if is_weekend else 2
+        return self.predict_single(
+            distance=distance_km,
+            time_of_day=hour_of_day,
+            day_of_week=day_of_week,
+            historical_speed=historical_speed,
+            traffic_level=traffic_level,
+            road_type=road_type,
+            vehicle_type=vehicle_type,
+            vehicle_load=vehicle_load,
+        )
 
     def evaluate(self, X_test: np.ndarray, y_test: np.ndarray) -> Dict[str, float]:
         preds = self.predict(X_test)
