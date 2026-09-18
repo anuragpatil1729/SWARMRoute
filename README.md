@@ -2,8 +2,6 @@
 
 SWARMRoute is an AI-driven, decentralized logistics fleet platform engineered to predict dynamic conditions, optimize multi-vehicle delivery schedules, dynamically reposition idle vehicles, and achieve autonomous self-healing recovery during disruptions—including vehicle breakdowns, sudden traffic gridlock, and Internet / cloud outages—using truck-to-truck mesh communication and PPO reinforcement learning.
 
-> [!NOTE]
-> **Software Simulation Project Scope**: SWARMRoute is a pure software simulation research platform. Wireless peer-to-peer ad-hoc mesh communication, vehicle physical movement, fuel burn kinematics, sensor telemetry, and traffic congestion events are simulated via discrete-event numerical models. Physical radio transceivers (DSRC / 802.11p OBUs, LoRa/ESP32 chips, real GPS antennas) and commercial live traffic APIs (Google Maps / HERE) are outside the current software simulation scope.
 
 ---
 
