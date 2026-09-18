@@ -2,293 +2,40 @@
 
 import { useMemo, useState } from "react";
 
-const PALETTE = [
-  "#2e6b34", "#3d5566", "#8a6d1f", "#7a9c5e", "#61635a",
-  "#5c7a8a", "#9c7a2e", "#4a7a4f", "#6b5c8a", "#2e6b34",
-];
+const palette = ["#2563eb", "#0f766e", "#7c3aed", "#0369a1", "#4d7c0f", "#b45309"];
 
-export default function LiveRouteMap({
-  customers = [],
-  depot = { x: 40, y: 50 },
-  routes = {},
-  recoveryRoutes = {},
-  vehicles = [],
-  trafficEdges = [],
-  selectedVehicleId = null,
-  onSelectVehicle = null,
-  onSelectOrder = null,
-}) {
-  const [activeTruck, setActiveTruck] = useState(null);
-
-  const effectiveSelected = selectedVehicleId || activeTruck;
-
-  const { minX, maxX, minY, maxY, coordsById } = useMemo(() => {
-    const map = {};
-    if (depot) map[0] = depot;
-
-    const xs = [depot?.x ?? 40];
-    const ys = [depot?.y ?? 50];
-
-    customers.forEach((c) => {
-      map[c.id] = c;
-      xs.push(c.x);
-      ys.push(c.y);
-    });
-
-    vehicles.forEach((v) => {
-      if (typeof v.x === "number" && typeof v.y === "number") {
-        xs.push(v.x);
-        ys.push(v.y);
-      }
-    });
-
-    return {
-      minX: Math.min(...xs),
-      maxX: Math.max(...xs),
-      minY: Math.min(...ys),
-      maxY: Math.max(...ys),
-      coordsById: map,
-    };
+export default function LiveRouteMap({ customers = [], depot, routes = {}, recoveryRoutes = {}, vehicles = [], trafficEdges = [], selectedVehicleId, onSelectVehicle }) {
+  const [localSelection, setLocalSelection] = useState(null);
+  const selected = selectedVehicleId ?? localSelection;
+  const geometry = useMemo(() => {
+    const nodes = {}; const points = [];
+    if (depot && Number.isFinite(depot.x) && Number.isFinite(depot.y)) { nodes[0] = depot; points.push(depot); }
+    customers.forEach((customer) => { if (Number.isFinite(customer.x) && Number.isFinite(customer.y)) { nodes[customer.id] = customer; points.push(customer); } });
+    vehicles.forEach((vehicle) => { if (Number.isFinite(vehicle.x) && Number.isFinite(vehicle.y)) points.push(vehicle); });
+    if (!points.length) return null;
+    return { nodes, minX: Math.min(...points.map((point) => point.x)), maxX: Math.max(...points.map((point) => point.x)), minY: Math.min(...points.map((point) => point.y)), maxY: Math.max(...points.map((point) => point.y)) };
   }, [customers, depot, vehicles]);
-
-  const pad = 24;
-  const w = 620;
-  const h = 420;
-  const scaleX = (x) => pad + ((x - minX) / (maxX - minX || 1)) * (w - pad * 2);
-  const scaleY = (y) => h - pad - ((y - minY) / (maxY - minY || 1)) * (h - pad * 2);
-
-  const gridLinesX = 6;
-  const gridLinesY = 5;
-
-  return (
-    <div>
-      <div className="border border-ink bg-panel p-3">
-        <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
-          {/* Axes box */}
-          <rect x={pad} y={pad} width={w - pad * 2} height={h - pad * 2} fill="none" stroke="#181a16" strokeWidth="1" />
-          {Array.from({ length: gridLinesX + 1 }).map((_, i) => {
-            const x = pad + (i / gridLinesX) * (w - pad * 2);
-            return <line key={`gx-${i}`} x1={x} y1={pad} x2={x} y2={h - pad} stroke="#e9e9e0" strokeWidth="1" />;
-          })}
-          {Array.from({ length: gridLinesY + 1 }).map((_, i) => {
-            const y = pad + (i / gridLinesY) * (h - pad * 2);
-            return <line key={`gy-${i}`} x1={pad} y1={y} x2={w - pad} y2={y} stroke="#e9e9e0" strokeWidth="1" />;
-          })}
-
-          {/* Traffic Congestion Edges */}
-          {trafficEdges.map((te, idx) => {
-            const c1 = coordsById[te.u];
-            const c2 = coordsById[te.v];
-            if (!c1 || !c2) return null;
-            return (
-              <line
-                key={`traffic-${idx}`}
-                x1={scaleX(c1.x)}
-                y1={scaleY(c1.y)}
-                x2={scaleX(c2.x)}
-                y2={scaleY(c2.y)}
-                stroke="#a13a2e"
-                strokeWidth="4"
-                strokeOpacity="0.6"
-                strokeDasharray="4 2"
-              />
-            );
-          })}
-
-          {/* Active Routes */}
-          {Object.entries(routes).map(([truckId, stopIds], idx) => {
-            const color = PALETTE[idx % PALETTE.length];
-            const dimmed = effectiveSelected && effectiveSelected !== truckId;
-            const pts = stopIds
-              .map((id) => coordsById[id])
-              .filter(Boolean)
-              .map((c) => `${scaleX(c.x)},${scaleY(c.y)}`)
-              .join(" ");
-
-            if (!pts) return null;
-            return (
-              <polyline
-                key={`route-${truckId}`}
-                points={pts}
-                fill="none"
-                stroke={color}
-                strokeWidth={dimmed ? 1 : 1.75}
-                opacity={dimmed ? 0.15 : 0.85}
-                strokeLinejoin="round"
-              />
-            );
-          })}
-
-          {/* Recovery Reassigned Routes (Dashed) */}
-          {Object.entries(recoveryRoutes).map(([truckId, stopIds], idx) => {
-            const pts = stopIds
-              .map((id) => coordsById[id])
-              .filter(Boolean)
-              .map((c) => `${scaleX(c.x)},${scaleY(c.y)}`)
-              .join(" ");
-
-            if (!pts) return null;
-            return (
-              <polyline
-                key={`rec-route-${truckId}`}
-                points={pts}
-                fill="none"
-                stroke="#8a6d1f"
-                strokeWidth="2.5"
-                strokeDasharray="5 3"
-                opacity={0.9}
-                strokeLinejoin="round"
-              />
-            );
-          })}
-
-          {/* Customers Nodes */}
-          {customers.map((c) => {
-            const isDelivered = c.status === "DELIVERED";
-            return (
-              <g
-                key={`cust-${c.id}`}
-                className="cursor-pointer"
-                onClick={() => onSelectOrder && onSelectOrder(c.order_id || `ORD_${c.id}`)}
-              >
-                <circle
-                  cx={scaleX(c.x)}
-                  cy={scaleY(c.y)}
-                  r={isDelivered ? 3 : 2.5}
-                  fill={isDelivered ? "#2e6b34" : "#61635a"}
-                />
-                <title>{`Customer #${c.id} (Demand: ${c.demand}kg)`}</title>
-              </g>
-            );
-          })}
-
-          {/* Depot */}
-          {depot && (
-            <g>
-              <rect
-                x={scaleX(depot.x) - 5}
-                y={scaleY(depot.y) - 5}
-                width={10}
-                height={10}
-                fill="#a13a2e"
-              />
-              <text
-                x={scaleX(depot.x) + 7}
-                y={scaleY(depot.y) + 3}
-                fontSize="9"
-                fontFamily="ui-monospace, monospace"
-                fill="#181a16"
-              >
-                DEPOT
-              </text>
-            </g>
-          )}
-
-          {/* Moving Vehicles */}
-          {vehicles.map((v, idx) => {
-            const isBroken = v.status === "BROKEN_DOWN";
-            const color = isBroken ? "#a13a2e" : PALETTE[idx % PALETTE.length];
-            const isSelected = effectiveSelected === v.id;
-            const vx = scaleX(v.x);
-            const vy = scaleY(v.y);
-
-            return (
-              <g
-                key={`veh-${v.id}`}
-                className="cursor-pointer"
-                onClick={() => {
-                  if (onSelectVehicle) onSelectVehicle(v.id);
-                  setActiveTruck(activeTruck === v.id ? null : v.id);
-                }}
-              >
-                {/* Ping animation or selection ring */}
-                {isSelected && (
-                  <circle cx={vx} cy={vy} r={11} fill="none" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
-                )}
-                {/* Truck marker */}
-                <circle
-                  cx={vx}
-                  cy={vy}
-                  r={isBroken ? 6 : 5}
-                  fill={isBroken ? "#a13a2e" : color}
-                  stroke="#fbfbf8"
-                  strokeWidth="1.5"
-                />
-                {isBroken ? (
-                  <text x={vx - 3} y={vy + 3} fontSize="8" fill="#ffffff" fontWeight="bold">!</text>
-                ) : null}
-                <text
-                  x={vx + 7}
-                  y={vy + 3}
-                  fontSize="9"
-                  fontFamily="ui-monospace, monospace"
-                  fontWeight="600"
-                  fill={isBroken ? "#a13a2e" : "#181a16"}
-                >
-                  {v.id.replace("TRUCK_", "T")}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Legend Box */}
-          <rect x={w - pad - 148} y={pad + 6} width={142} height={42} fill="#fbfbf8" stroke="#181a16" strokeWidth="1" />
-          <rect x={w - pad - 140} y={pad + 12} width={7} height={7} fill="#a13a2e" />
-          <text x={w - pad - 128} y={pad + 18} fontSize="9" fontFamily="ui-monospace, monospace" fill="#181a16">
-            Depot
-          </text>
-          <circle cx={w - pad - 136} cy={pad + 28} r={3} fill="#2e6b34" />
-          <text x={w - pad - 128} y={pad + 31} fontSize="9" fontFamily="ui-monospace, monospace" fill="#181a16">
-            Delivered
-          </text>
-          <circle cx={w - pad - 68} cy={pad + 28} r={3} fill="#61635a" />
-          <text x={w - pad - 60} y={pad + 31} fontSize="9" fontFamily="ui-monospace, monospace" fill="#181a16">
-            Pending
-          </text>
-        </svg>
-      </div>
-
-      {/* Fleet Filter Bar */}
-      <div className="mt-3 flex flex-wrap items-center gap-2 mono text-xs">
-        <button
-          onClick={() => {
-            setActiveTruck(null);
-            if (onSelectVehicle) onSelectVehicle(null);
-          }}
-          className={`px-2.5 py-1 border ${
-            !effectiveSelected ? "border-ink bg-panel2 text-ink font-semibold" : "border-rule text-muted hover:border-ink"
-          }`}
-        >
-          All Fleet
-        </button>
-        {vehicles.map((v, idx) => {
-          const isBroken = v.status === "BROKEN_DOWN";
-          const color = isBroken ? "#a13a2e" : PALETTE[idx % PALETTE.length];
-          const isSelected = effectiveSelected === v.id;
-          return (
-            <button
-              key={v.id}
-              onClick={() => {
-                const nextId = isSelected ? null : v.id;
-                setActiveTruck(nextId);
-                if (onSelectVehicle) onSelectVehicle(nextId);
-              }}
-              className="flex items-center gap-1.5 px-2 py-1 border transition-colors"
-              style={{
-                borderColor: isSelected ? color : "#c9c9bc",
-                backgroundColor: isSelected ? "#e9e9e0" : "transparent",
-                color: isSelected ? "#181a16" : "#61635a",
-              }}
-            >
-              <span className="w-2 h-2 inline-block rounded-full" style={{ background: color }} />
-              <span className="font-semibold">{v.id.replace("TRUCK_", "T")}</span>
-              <span className="text-[10px] text-muted">
-                {isBroken ? "(FAULT)" : `${v.speed_kmh}km/h`}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+  if (!geometry) return <div className="ops-map-empty">Map geometry has not been supplied by the simulation.</div>;
+  const { nodes, minX, maxX, minY, maxY } = geometry; const width = 720; const height = 480; const pad = 34;
+  const x = (value) => pad + ((value - minX) / (maxX - minX || 1)) * (width - 2 * pad);
+  const y = (value) => height - pad - ((value - minY) / (maxY - minY || 1)) * (height - 2 * pad);
+  const path = (stops) => stops.map((id) => nodes[id]).filter(Boolean).map((node) => `${x(node.x)},${y(node.y)}`).join(" ");
+  const choose = (id) => { const next = selected === id ? null : id; setLocalSelection(next); onSelectVehicle?.(next); };
+  return <div className="live-route-map">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="Simulation route map with fleet positions, delivery nodes, routes, traffic, and recovery routes">
+      <rect x={pad} y={pad} width={width - pad * 2} height={height - pad * 2} fill="#f8fafc" stroke="#cbd5e1" />
+      {Array.from({ length: 7 }).map((_, index) => <line key={`vertical-${index}`} x1={pad + index * (width - 2 * pad) / 6} x2={pad + index * (width - 2 * pad) / 6} y1={pad} y2={height - pad} stroke="#e2e8f0" />)}
+      {Array.from({ length: 6 }).map((_, index) => <line key={`horizontal-${index}`} x1={pad} x2={width - pad} y1={pad + index * (height - 2 * pad) / 5} y2={pad + index * (height - 2 * pad) / 5} stroke="#e2e8f0" />)}
+      {Object.entries(routes).map(([id, stops], index) => { const points = path(stops); if (!points) return null; return <polyline key={id} points={points} fill="none" stroke={palette[index % palette.length]} strokeWidth={selected && selected !== id ? 1.5 : 2.5} opacity={selected && selected !== id ? .16 : .75} strokeLinejoin="round" />; })}
+      {trafficEdges.map((edge, index) => { const source = nodes[edge.u]; const target = nodes[edge.v]; return source && target ? <line key={`traffic-${index}`} x1={x(source.x)} y1={y(source.y)} x2={x(target.x)} y2={y(target.y)} stroke="#dc2626" strokeWidth="5" strokeDasharray="7 4" opacity=".7"><title>{`Traffic: ${edge.level || "congested"}`}</title></line> : null; })}
+      {Object.entries(recoveryRoutes).map(([id, stops]) => { const points = path(stops); return points ? <polyline key={`recovery-${id}`} points={points} fill="none" stroke="#b45309" strokeWidth="3" strokeDasharray="8 5" strokeLinejoin="round"><title>{`Recovery route: ${id}`}</title></polyline> : null; })}
+      {customers.map((customer) => Number.isFinite(customer.x) && Number.isFinite(customer.y) ? <g key={customer.id}><circle cx={x(customer.x)} cy={y(customer.y)} r={customer.status === "DELIVERED" ? 4 : 3.2} fill={customer.status === "DELIVERED" ? "#16a34a" : "#64748b"} /><title>{`${customer.order_id || customer.id}: ${customer.status || "unknown"}`}</title></g> : null)}
+      {depot && Number.isFinite(depot.x) && Number.isFinite(depot.y) && <g><rect x={x(depot.x) - 6} y={y(depot.y) - 6} width="12" height="12" fill="#0f172a" /><text x={x(depot.x) + 9} y={y(depot.y) + 3} fontSize="10" fontFamily="ui-monospace, monospace" fill="#0f172a">DEPOT</text><title>Depot</title></g>}
+      {vehicles.map((vehicle, index) => Number.isFinite(vehicle.x) && Number.isFinite(vehicle.y) ? <g key={vehicle.id} className="cursor-pointer" onClick={() => choose(vehicle.id)} tabIndex="0" role="button" aria-label={`Select ${vehicle.id}`} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") choose(vehicle.id); }}>
+        {selected === vehicle.id && <circle cx={x(vehicle.x)} cy={y(vehicle.y)} r="12" fill="none" stroke="#0f172a" strokeWidth="1.5" strokeDasharray="3 2" />}
+        <circle cx={x(vehicle.x)} cy={y(vehicle.y)} r={vehicle.status === "BROKEN_DOWN" ? 7 : 6} fill={vehicle.status === "BROKEN_DOWN" ? "#dc2626" : palette[index % palette.length]} stroke="#fff" strokeWidth="2" /><text x={x(vehicle.x)} y={y(vehicle.y) + 3.5} textAnchor="middle" fontSize="8" fontWeight="700" fill="#fff">{vehicle.status === "BROKEN_DOWN" ? "!" : ""}</text><text x={x(vehicle.x) + 9} y={y(vehicle.y) - 8} fontSize="10" fontFamily="ui-monospace, monospace" fill="#0f172a">{vehicle.id}</text><title>{`${vehicle.id}: ${vehicle.status}`}</title>
+      </g> : null)}
+    </svg>
+    <div className="ops-map-filter" aria-label="Vehicle map filter"><button onClick={() => choose(null)} className={!selected ? "is-selected" : ""}>All fleet</button>{vehicles.map((vehicle) => <button key={vehicle.id} onClick={() => choose(vehicle.id)} className={selected === vehicle.id ? "is-selected" : ""}>{vehicle.id}</button>)}</div>
+  </div>;
 }

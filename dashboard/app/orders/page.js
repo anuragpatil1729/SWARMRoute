@@ -253,7 +253,7 @@ export default function OrdersPage() {
                 <th className="py-3 px-3">Priority</th>
                 <th className="py-3 px-3">Time Window</th>
                 <th className="py-3 px-3">ETA</th>
-                <th className="py-3 px-4">Payout (₹)</th>
+                <th className="py-3 px-4">Distance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-mono text-[12px]">
@@ -321,8 +321,8 @@ export default function OrdersPage() {
                     <td className="py-3 px-3 text-slate-700">
                       {isDelivered ? "Done" : `${o.eta} min`}
                     </td>
-                    <td className="py-3 px-4 text-emerald-700 font-bold">
-                      ₹{o.payout_inr || 120}
+                    <td className="py-3 px-4 text-slate-700">
+                      {typeof o.distance_remaining === "number" ? `${o.distance_remaining} km` : "—"}
                     </td>
                   </tr>
                 );

@@ -142,9 +142,6 @@ export default function DeliveryPartnerCockpit() {
   const pendingOrders = myOrders.filter((o) => o.status !== "DELIVERED");
   const isBroken = currentVehicle?.status === "BROKEN_DOWN";
 
-  // Calculate estimated total earnings for this shift (Base payout ₹80 + ₹2.5/kg)
-  const shiftEarningsINR = myOrders.reduce((sum, o) => sum + (o.payout_inr || 120), 0);
-
   const handleCompleteOrder = async (orderId) => {
     setLoadingOrderId(orderId);
     const res = await completeTask(orderId, activeId);
@@ -261,8 +258,8 @@ export default function DeliveryPartnerCockpit() {
           />
           <Stat
             label="Shift Earnings"
-            value={`₹${shiftEarningsINR}`}
-            help={`${completedCount} delivered / ${myOrders.length} tasks`}
+            value="—"
+            help="Payout telemetry is not provided by the simulation"
           />
           <Stat
             label="P2P Mesh Link"
@@ -381,7 +378,7 @@ export default function DeliveryPartnerCockpit() {
                         </div>
                         <div>
                           <span className="text-slate-400 block text-[9px]">PAYOUT</span>
-                          <span className="font-bold text-emerald-700">₹{order.payout_inr || 120}</span>
+                          <span className="text-slate-500">Not provided</span>
                         </div>
                       </div>
 

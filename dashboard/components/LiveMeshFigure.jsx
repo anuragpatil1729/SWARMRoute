@@ -2,112 +2,15 @@
 
 import { useMemo } from "react";
 
-export default function LiveMeshFigure({ mesh = { nodes: [], links: [] }, activeRecovery = null }) {
-  const { nodes, links, minX, maxX, minY, maxY } = useMemo(() => {
-    const rawNodes = mesh.nodes || [];
-    const rawLinks = mesh.links || [];
-
-    if (rawNodes.length === 0) {
-      return { nodes: [], links: [], minX: 0, maxX: 100, minY: 0, maxY: 100 };
-    }
-
-    const xs = rawNodes.map((n) => n.x);
-    const ys = rawNodes.map((n) => n.y);
-
-    return {
-      nodes: rawNodes,
-      links: rawLinks,
-      minX: Math.min(...xs),
-      maxX: Math.max(...xs),
-      minY: Math.min(...ys),
-      maxY: Math.max(...ys),
-    };
-  }, [mesh]);
-
-  const pad = 28;
-  const w = 460;
-  const h = 200;
-  const scaleX = (x) => pad + ((x - minX) / (maxX - minX || 1)) * (w - pad * 2);
-  const scaleY = (y) => h - pad - ((y - minY) / (maxY - minY || 1)) * (h - pad * 2);
-
-  const nodeMap = useMemo(() => {
-    const m = {};
-    nodes.forEach((n) => {
-      m[n.id] = { ...n, sx: scaleX(n.x), sy: scaleY(n.y) };
-    });
-    return m;
-  }, [nodes, minX, maxX, minY, maxY]);
-
-  if (nodes.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-xs text-muted mono">
-        Waiting for mesh nodes to initialize...
-      </div>
-    );
-  }
-
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      className="w-full h-full"
-      role="img"
-      aria-label="Live RF Mesh Topology"
-    >
-      {/* Dynamic Peer-to-Peer Communication Links */}
-      {links.map((link, idx) => {
-        const u = nodeMap[link.source];
-        const v = nodeMap[link.target];
-        if (!u || !v) return null;
-
-        const isRecoveryLink =
-          activeRecovery &&
-          ((link.source === activeRecovery.broken && link.target === activeRecovery.winner) ||
-            (link.target === activeRecovery.broken && link.source === activeRecovery.winner));
-
-        return (
-          <line
-            key={`mesh-link-${idx}`}
-            x1={u.sx}
-            y1={u.sy}
-            x2={v.sx}
-            y2={v.sy}
-            stroke={isRecoveryLink ? "#8a6d1f" : "#c9c9bc"}
-            strokeWidth={isRecoveryLink ? "2.5" : "1.25"}
-            strokeDasharray={isRecoveryLink ? "4 3" : undefined}
-          />
-        );
-      })}
-
-      {/* Nodes (Trucks) */}
-      {nodes.map((n) => {
-        const pt = nodeMap[n.id];
-        if (!pt) return null;
-        const isBroken = n.status === "BROKEN";
-
-        return (
-          <g key={n.id}>
-            <circle
-              cx={pt.sx}
-              cy={pt.sy}
-              r={isBroken ? 6 : 4.5}
-              fill={isBroken ? "#a13a2e" : "#2e6b34"}
-              stroke="#fbfbf8"
-              strokeWidth="1.5"
-            />
-            <text
-              x={pt.sx}
-              y={pt.sy - 8}
-              textAnchor="middle"
-              className="mono"
-              fontSize="9"
-              fontWeight="600"
-              fill={isBroken ? "#a13a2e" : "#181a16"}
-            >
-              {n.id.replace("TRUCK_", "T")}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
+export default function LiveMeshFigure({ mesh = {}, cloudStatus, activeRecovery }) {
+  const nodes = mesh.nodes || []; const links = mesh.links || [];
+  const layout = useMemo(() => { if (!nodes.length) return null; const xs = nodes.map((node) => node.x); const ys = nodes.map((node) => node.y); return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) }; }, [nodes]);
+  if (!layout) return <div className="ops-map-empty">No mesh nodes supplied by the simulation.</div>;
+  const width = 560; const height = 240; const pad = 34; const px = (value) => pad + ((value - layout.minX) / (layout.maxX - layout.minX || 1)) * (width - pad * 2); const py = (value) => height - pad - ((value - layout.minY) / (layout.maxY - layout.minY || 1)) * (height - pad * 2); const indexed = Object.fromEntries(nodes.map((node) => [node.id, node]));
+  const recoveryNodes = new Set([activeRecovery?.vehicle_id || activeRecovery?.broken, activeRecovery?.recovery_vehicle || activeRecovery?.winner].filter(Boolean));
+  return <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label={`Mesh topology; cloud is ${cloudStatus || "not reported"}`}>
+    <rect x="0" y="0" width={width} height={height} fill="#f8fafc" /><text x={pad} y="20" fontSize="10" fontFamily="ui-monospace, monospace" fill="#475569">CLOUD: {cloudStatus || "—"}</text>
+    {links.map((link, index) => { const source = indexed[link.source]; const target = indexed[link.target]; if (!source || !target) return null; const recovery = recoveryNodes.has(link.source) && recoveryNodes.has(link.target); return <line key={`${link.source}-${link.target}-${index}`} x1={px(source.x)} y1={py(source.y)} x2={px(target.x)} y2={py(target.y)} stroke={recovery ? "#b45309" : "#94a3b8"} strokeWidth={recovery ? "3" : "1.5"} strokeDasharray={recovery ? "6 3" : undefined}><title>{`${link.source} to ${link.target}${link.distance !== undefined ? `, ${link.distance} km` : ""}`}</title></line>; })}
+    {nodes.map((node) => <g key={node.id}><circle cx={px(node.x)} cy={py(node.y)} r={node.status === "BROKEN" ? 8 : 6} fill={node.status === "BROKEN" ? "#dc2626" : recoveryNodes.has(node.id) ? "#b45309" : "#2563eb"} stroke="#fff" strokeWidth="2" /><text x={px(node.x)} y={py(node.y) - 11} textAnchor="middle" fontSize="10" fontFamily="ui-monospace, monospace" fill="#0f172a">{node.id}</text><title>{`${node.id}: ${node.status}`}</title></g>)}
+  </svg>;
 }
