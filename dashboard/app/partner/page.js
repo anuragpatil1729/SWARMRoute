@@ -357,6 +357,8 @@ export default function DeliveryPartnerCockpit() {
                 <span className="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-bold border border-blue-200">
                   {availableOrders.length} Open
                 </span>
+              </div>
+
               {pendingOrders.length > 0 && (
                 <div 
                   onClick={() => setActiveTab("my_tasks")}
