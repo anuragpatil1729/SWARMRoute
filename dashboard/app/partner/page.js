@@ -41,18 +41,6 @@ export default function DeliveryPartnerCockpit() {
   const [activeTab, setActiveTab] = useState("available"); // "available" or "my_tasks"
   const [gpsActive, setGpsActive] = useState(false);
   const [gpsCoords, setGpsCoords] = useState(null);
-  const [chatText, setChatText] = useState("");
-  const [sendingChat, setSendingChat] = useState(false);
-  const [recentMeshChats, setRecentMeshChats] = useState([]);
-
-  useEffect(() => {
-    fetch("/api/simulation/mesh/chat-history")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setRecentMeshChats(data);
-      })
-      .catch(() => {});
-  }, [state]);
 
   if (connectionStatus === "OFFLINE" && !state) {
     return (
@@ -184,9 +172,6 @@ export default function DeliveryPartnerCockpit() {
         });
         return;
       }
-      const chRes = await fetch("/api/simulation/mesh/chat-history");
-      const chData = await chRes.json();
-      if (Array.isArray(chData)) setRecentMeshChats(chData);
       setActionFeedback({
         success: true,
         msg: `🚨 EMERGENCY SOS BROADCASTED! High-priority radio packets transmitted across RF mesh.`,
@@ -273,39 +258,6 @@ export default function DeliveryPartnerCockpit() {
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  };
-
-  const handleSendMeshChat = async (presetText) => {
-    const text = typeof presetText === "string" ? presetText : chatText;
-    if (!text || !text.trim()) return;
-    setSendingChat(true);
-    try {
-      const res = await fetch("/api/simulation/mesh/send-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sender: activeId,
-          receiver: "BROADCAST",
-          message: text.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setChatText("");
-        setActionFeedback({
-          success: true,
-          msg: `📡 Mesh Packet broadcasted (${data.record?.hop_count || 1} hops · ${data.record?.latency_ms || 35}ms)!`,
-        });
-        const chRes = await fetch("/api/simulation/mesh/chat-history");
-        const chData = await chRes.json();
-        if (Array.isArray(chData)) setRecentMeshChats(chData);
-      }
-    } catch (e) {
-      setActionFeedback({ success: false, msg: "Failed to transmit over mesh radio." });
-    } finally {
-      setSendingChat(false);
-      setTimeout(() => setActionFeedback(null), 5000);
-    }
   };
 
   const availableOrders = orders.filter((o) => !o.assigned_vehicle && o.status !== "DELIVERED");
@@ -762,95 +714,23 @@ export default function DeliveryPartnerCockpit() {
             </div>
           )}
 
-          {/* P2P BLE Mesh Radio Intercom */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          {/* Direct Link to Dedicated BLE Mesh Network & Radio Intercom */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">📡</span>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                  <span>📻</span>
-                  <span>P2P BLE Mesh Radio Intercom</span>
-                </h3>
+                <h4 className="text-xs font-bold text-slate-900">P2P BLE Mesh Network & Radio Intercom</h4>
                 <p className="text-[11px] text-slate-500">
-                  Transmit ad-hoc hopping radio messages directly to peer delivery drivers & hubs.
+                  Switch to dedicated mesh cockpit for multi-hop radio chat & RF telemetry.
                 </p>
               </div>
-              <Link
-                href="/network"
-                className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
-              >
-                Full Mesh Cockpit →
-              </Link>
             </div>
-
-            {/* Quick Tactical Presets */}
-            <div className="space-y-1">
-              <span className="text-[11px] font-semibold text-slate-500 block font-mono">
-                Quick Tactical Radio Presets:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  "⚠️ Traffic jam ahead on highway",
-                  "🌧️ Heavy rain / low visibility",
-                  "📦 Arrived at delivery point",
-                  "🔋 Fast EV charger available",
-                  "🚨 Need backup assistance",
-                ].map((preset, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => handleSendMeshChat(preset)}
-                    disabled={sendingChat}
-                    className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-medium border border-slate-200 transition disabled:opacity-50"
-                  >
-                    {preset}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Mesh Message Input */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMeshChat();
-              }}
-              className="flex gap-2 pt-1"
+            <Link
+              href="/network"
+              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition shrink-0 flex items-center gap-1 shadow-2xs"
             >
-              <input
-                type="text"
-                value={chatText}
-                onChange={(e) => setChatText(e.target.value)}
-                placeholder="Type radio packet to broadcast over mesh..."
-                className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-              <button
-                type="submit"
-                disabled={sendingChat || !chatText.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs"
-              >
-                <span>{sendingChat ? "Transmitting..." : "📡 Send"}</span>
-              </button>
-            </form>
-
-            {/* Recent Mesh Transmissions */}
-            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 pt-1">
-              <span className="text-[11px] font-mono text-slate-400 block uppercase">Recent Mesh Radio Packets:</span>
-              {recentMeshChats.length === 0 ? (
-                <p className="text-[11px] text-slate-400 text-center py-2 italic font-mono">
-                  No mesh radio packets sent yet. Tap a preset above to transmit!
-                </p>
-              ) : (
-                recentMeshChats.slice(0, 5).map((m, idx) => (
-                  <div key={idx} className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5 font-mono">
-                      <span className="font-bold text-blue-700">{m.sender} ➔ {m.receiver}</span>
-                      <span>{m.hop_count} hops · {m.latency_ms} ms · Anonymous</span>
-                    </div>
-                    <div className="text-slate-800 font-medium">{m.message}</div>
-                  </div>
-                ))
-              )}
-            </div>
+              <span>Open BLE Mesh →</span>
+            </Link>
           </div>
         </div>
 

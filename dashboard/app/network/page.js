@@ -7,11 +7,14 @@ import { useDashboardState } from "../../lib/useDashboardState";
 import { numeric } from "../../lib/presentation";
 
 const CHAT_PRESETS = [
+  { label: "⚠️ Traffic Jam Ahead", text: "Heavy traffic jam reported on main corridor. Detouring via secondary routes." },
   { label: "🌧️ Weather Alert", text: "Heavy rain and reduced visibility in Khandala Ghat. Reducing convoy speed to 40 km/h." },
   { label: "🚧 Road Obstruction", text: "Obstruction reported at Expressway km 48. Reroute via lane 2." },
+  { label: "📦 Arrived at Delivery", text: "Driver arrived at customer delivery node. Commencing parcel drop-off." },
   { label: "⚡ Cloud Blackout", text: "Central cellular cloud gateway lost. Operating on autonomous peer-to-peer RF mesh." },
-  { label: "🔋 Cargo Handover", text: "Battery at 18% charge. Requesting peer cargo handover at next interchange." },
-  { label: "🚚 Platooning Convoy", text: "Convoy platooning engaged. Maintaining 25m autonomous radio headway." },
+  { label: "🔋 Fast EV Charger Available", text: "High-speed EV fast charger spotted available at logistics station." },
+  { label: "🚨 Need Backup Assistance", text: "Requesting peer driver assistance for stranded consignment handover." },
+  { label: "🚚 Convoy Platooning", text: "Convoy platooning engaged. Maintaining 25m autonomous radio headway." },
 ];
 
 export default function NetworkPage() {
@@ -25,6 +28,7 @@ export default function NetworkPage() {
   const [chatReceiver, setChatReceiver] = useState("BROADCAST");
   const [chatMessage, setChatMessage] = useState("");
   const [sendingChat, setSendingChat] = useState(false);
+  const [liveChats, setLiveChats] = useState([]);
 
   if (connectionStatus === "OFFLINE" && !state) {
     return (
@@ -57,7 +61,24 @@ export default function NetworkPage() {
   const { network, mesh = { nodes: [], links: [], chat_messages: [] }, fleet, incidents = [], events = [] } = state;
   const isCloudOnline = network.cloud_status === "ONLINE";
   const activeNodes = mesh.nodes || [];
-  const chatMessages = mesh.chat_messages || [];
+
+  useEffect(() => {
+    fetch("/api/simulation/mesh/chat-history")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setLiveChats(data);
+      })
+      .catch(() => {});
+  }, [state]);
+
+  const chatMessages = liveChats.length > 0 ? liveChats : (mesh.chat_messages || []);
+
+  const allSenders = [
+    ...(state.delivery_partners || []).map((p) => ({ id: p.id, name: p.name || p.id })),
+    ...(state.vehicles || []).map((v) => ({ id: v.id, name: v.partner_name ? `${v.id} (${v.partner_name})` : v.id })),
+    ...(activeNodes || []).map((n) => ({ id: n.id, name: n.id })),
+  ];
+  const uniqueSenders = Array.from(new Map(allSenders.map((s) => [s.id, s])).values());
 
   const handleDeployTestNodes = async () => {
     setLoadingAction("deploy");
@@ -588,19 +609,19 @@ export default function NetworkPage() {
                     Transmitter (From):
                   </label>
                   <select
-                    value={chatSender}
+                    value={chatSender || (uniqueSenders[0]?.id || "HUB_BKC")}
                     onChange={(e) => setChatSender(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 text-xs outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                   >
-                    {activeNodes.length > 0 ? (
-                      activeNodes.map((n) => (
+                    {uniqueSenders.length > 0 ? (
+                      uniqueSenders.map((n) => (
                         <option key={n.id} value={n.id}>
-                          {n.id} {n.status === "BROKEN" ? "(Broken)" : ""}
+                          {n.name}
                         </option>
                       ))
                     ) : (
                       <>
-                        <option value="HUB_BKC">HUB_BKC (Mumbai)</option>
+                        <option value="HUB_BKC">HUB_BKC (Operations)</option>
                         <option value="PEER_VASHI">PEER_VASHI</option>
                         <option value="PEER_LONAVALA">PEER_LONAVALA</option>
                         <option value="PEER_PUNE">PEER_PUNE</option>
@@ -616,12 +637,12 @@ export default function NetworkPage() {
                   <select
                     value={chatReceiver}
                     onChange={(e) => setChatReceiver(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 text-xs outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                   >
-                    <option value="BROADCAST">📢 BROADCAST (All)</option>
-                    {activeNodes.map((n) => (
+                    <option value="BROADCAST">📢 BROADCAST (All Swarm Peers)</option>
+                    {uniqueSenders.map((n) => (
                       <option key={n.id} value={n.id}>
-                        {n.id}
+                        {n.name}
                       </option>
                     ))}
                   </select>
