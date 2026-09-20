@@ -155,8 +155,20 @@ class FleetAgent:
         4. Lowest-detour feasible assignment is selected deterministically and confirmed via mesh.
         5. Local routes and loads are updated atomically without central cloud access.
         """
+        # Ensure all dynamic partner vehicles in fleet_state have corresponding edge truck_agents
+        for vehicle_id, vehicle in self.fleet_state.vehicles.items():
+            if vehicle_id not in self.truck_agents:
+                self.truck_agents[vehicle_id] = TruckAgent(
+                    vehicle_id=vehicle_id,
+                    initial_vehicle=vehicle,
+                    initial_orders=self.fleet_state.active_orders,
+                    max_detour_km=self.exchange_engine.max_detour_km,
+                    fuel_predictor=self.fuel_predictor,
+                    use_ml_fuel=self.use_ml_fuel,
+                )
+
         if failed_vehicle_id not in self.truck_agents:
-            return {"success": False, "reason": "Unknown vehicle"}
+            return {"success": False, "reason": f"Unknown vehicle: {failed_vehicle_id}"}
 
         # Refresh edge-agent local state from the physical simulator immediately
         # before the auction.  This keeps capacity, route and location bids

@@ -7,12 +7,13 @@ import { useAuth } from "../../lib/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
 
 const CITY_HUBS = {
-  Bengaluru: [
-    'Koramangala South Hub',
-    'Indiranagar Central Hub',
-    'Whitefield ITPL Hub',
-    'Electronic City Phase 1 Hub',
-    'HSR Layout Sector 2 Hub',
+  Maharashtra: [
+    'BKC Central Freight Hub (Mumbai)',
+    'Hinjawadi Phase 1 Logistics Hub (Pune)',
+    'Andheri MIDC Cargo Terminal (Mumbai)',
+    'Thane Wagle Estate Hub (Thane)',
+    'Vashi APMC Market Hub (Navi Mumbai)',
+    'Bhosari MIDC Hub (Pune)',
   ],
   Mumbai: [
     'BKC Central Freight Hub',
@@ -208,6 +209,17 @@ function SignupForm() {
         registration: role === 'partner' ? registrationPlate.trim().toUpperCase() : null,
         hub: role === 'partner' ? selectedHub : null,
       });
+
+      // Auto-confirm email so user is never blocked by "Email not confirmed"
+      try {
+        await fetch('/api/auth/auto-confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim() }),
+        });
+      } catch (autoErr) {
+        console.warn('Auto-confirm notice:', autoErr);
+      }
 
       setSuccessMessage('Account registered successfully! Redirecting...');
 

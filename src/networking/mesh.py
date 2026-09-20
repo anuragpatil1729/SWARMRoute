@@ -38,6 +38,10 @@ class MeshNetwork:
     def update_node_position(self, node_id: str, position: Tuple[float, float]) -> None:
         self.nodes[node_id] = position
 
+    def add_node(self, node_id: str, position: Tuple[float, float] = (40.0, 50.0)) -> None:
+        """Alias for update_node_position to register or update an RF mesh node."""
+        self.update_node_position(node_id, position)
+
     def set_node_failed(self, node_id: str, failed: bool = True) -> None:
         if failed:
             self.failed_nodes.add(node_id)
@@ -97,11 +101,12 @@ class MeshNetwork:
         if message.receiver_id == "BROADCAST":
             # Check reachable neighbors in the connected component
             if self.topology.has_node(sender):
-                reachable = nx.descendants(self.topology, sender)
-                message.hop_count = 1 if reachable else 0
+                reachable = set(nx.node_connected_component(self.topology, sender)) - {sender}
+                max_hops = max([nx.shortest_path_length(self.topology, sender, r) for r in reachable], default=1) if reachable else 0
+                message.hop_count = max_hops
                 message.delivered = len(reachable) > 0
-                message.total_latency_ms = self.base_latency_per_hop_ms
-                message.route_taken = [sender] + list(reachable)
+                message.total_latency_ms = max_hops * self.base_latency_per_hop_ms + self.rng.uniform(2.0, 8.0)
+                message.route_taken = [sender] + sorted(list(reachable))
                 self.transmitted_messages.append(message)
                 return message.delivered
             message.delivered = False

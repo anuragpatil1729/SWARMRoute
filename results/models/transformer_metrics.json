@@ -1,0 +1,12 @@
+{
+  "model": "TrajectoryTemporalTransformer",
+  "seq_len": 6,
+  "input_dim": 12,
+  "hidden_dim": 64,
+  "parameters_count": 70372,
+  "final_train_loss": 0.00376,
+  "final_val_loss": 0.00391,
+  "epochs": 15,
+  "checkpoint": "results/models/temporal_transformer.pt",
+  "status": "VALIDATED"
+}

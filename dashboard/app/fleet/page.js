@@ -40,7 +40,32 @@ export default function FleetPage() {
 
   const { fleet, vehicles = [], sustainability, performance } = state;
 
-  const filteredVehicles = vehicles.filter((v) => {
+  const displayList = (state.delivery_partners || []).map((p) => {
+    const liveV = vehicles.find((v) => v.id === p.id || v.id === p.vehicle_id);
+    return {
+      id: p.id,
+      partner_name: p.name || p.partner_name || p.id,
+      partner_phone: p.phone || liveV?.partner_phone || "—",
+      vehicle_model: p.vehicle_model || liveV?.vehicle_model || "Commercial Delivery EV",
+      registration: p.registration || liveV?.registration || p.id,
+      hub: p.hub || liveV?.hub || `${state?.simulation?.city || "Maharashtra"} Hub`,
+      status: liveV?.status || p.status || "IDLE",
+      speed_kmh: liveV?.speed_kmh ?? p.speed_kmh ?? 0,
+      current_load: liveV?.current_load ?? p.current_load ?? 0,
+      max_weight: liveV?.max_weight ?? p.max_weight ?? 200,
+      remaining_capacity: liveV?.remaining_capacity ?? p.remaining_capacity ?? 200,
+      fuel_level: liveV?.fuel_level ?? p.fuel_level ?? 100,
+      fuel_consumed: liveV?.fuel_consumed ?? 0,
+      route_progress: liveV?.route_progress ?? 0,
+      eta_mins: liveV?.eta_mins ?? 0,
+      assigned_orders: liveV?.assigned_orders || p.assigned_orders || [],
+      connectivity: liveV?.connectivity || "CLOUD_MODE",
+      mesh_neighbors: liveV?.mesh_neighbors || [],
+      avatar: p.avatar || "🚚",
+    };
+  });
+
+  const filteredVehicles = displayList.filter((v) => {
     const matchesSearch =
       v.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (v.partner_name && v.partner_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -49,6 +74,10 @@ export default function FleetPage() {
       filterStatus === "ALL" || v.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
+
+  const totalUnits = displayList.length;
+  const operationalUnits = displayList.filter((v) => v.status !== "BROKEN_DOWN").length;
+  const brokenUnits = displayList.filter((v) => v.status === "BROKEN_DOWN").length;
 
   return (
     <div className="space-y-6 w-full">
@@ -61,7 +90,7 @@ export default function FleetPage() {
                 Commercial Fleet Telemetry
               </h2>
               <span className="text-[11px] font-mono px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
-                {vehicles.length} Deployed Units
+                {totalUnits} Deployed Units
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
@@ -72,14 +101,14 @@ export default function FleetPage() {
           {/* KPI Summary Cards */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
-              Operational: {fleet.available} / {fleet.size}
+              Operational: {operationalUnits} / {totalUnits}
             </div>
             <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
-              Avg Utilization: {fleet.utilization_pct}%
+              Avg Utilization: {fleet.utilization_pct || 0}%
             </div>
-            {fleet.broken > 0 && (
+            {brokenUnits > 0 && (
               <div className="px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 animate-pulse">
-                Broken Down: {fleet.broken}
+                Broken Down: {brokenUnits}
               </div>
             )}
           </div>
@@ -88,8 +117,8 @@ export default function FleetPage() {
 
       {/* KPI Stats Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-        <Stat label="Total Vehicles" value={fleet.size} help="Active fleet units" />
-        <Stat label="Operational" value={fleet.available} help={`${fleet.broken} broken down`} />
+        <Stat label="Total Vehicles" value={totalUnits} help="Registered partner units" />
+        <Stat label="Operational" value={operationalUnits} help={`${brokenUnits} broken down`} />
         <Stat label="Total Distance" value={`${sustainability.total_distance_km} km`} help="Cumulative distance" />
         <Stat label="Total Fuel / Energy" value={`${sustainability.fuel_liters} L`} help="Fleet consumption" />
         <Stat label="Total CO₂" value={`${sustainability.co2_kg} kg`} help="Emissions footprint" />
@@ -195,22 +224,30 @@ export default function FleetPage() {
                       </div>
                     </td>
                     <td className="py-3 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              v.fuel_level < 25 ? "bg-red-500" : "bg-emerald-500"
-                            }`}
-                            style={{ width: `${Math.min(100, Math.max(0, v.fuel_level))}%` }}
-                          />
-                        </div>
-                        <span className="text-[11px] text-slate-700 font-semibold">
-                          {Math.round(v.fuel_level)}%
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        Used: {v.fuel_consumed} L
-                      </div>
+                      {(() => {
+                        const rawFuel = Number(v.fuel_level) || 0;
+                        const fuelPct = Math.min(100, Math.max(0, Math.round(rawFuel > 100 ? (rawFuel / 300) * 100 : rawFuel)));
+                        return (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    fuelPct < 25 ? "bg-red-500" : "bg-emerald-500"
+                                  }`}
+                                  style={{ width: `${fuelPct}%` }}
+                                />
+                              </div>
+                              <span className="text-[11px] text-slate-700 font-semibold">
+                                {fuelPct}%
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              Used: {v.fuel_consumed ? Math.round(v.fuel_consumed) : 0} L
+                            </div>
+                          </>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 px-3">
                       <div className="text-slate-800 font-semibold">
@@ -259,6 +296,19 @@ export default function FleetPage() {
                   </tr>
                 );
               })}
+              {filteredVehicles.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <span className="text-3xl">🚚</span>
+                      <div className="font-bold text-slate-700 text-sm font-sans">No Active Delivery Partners Found</div>
+                      <p className="text-xs text-slate-500 max-w-sm font-sans">
+                        Delivery partners who sign in via the partner mobile app or web cockpit will automatically be registered and tracked with live telemetry.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

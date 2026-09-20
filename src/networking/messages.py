@@ -18,6 +18,7 @@ class MessageType(str, Enum):
     CONNECTIVITY_STATUS = "CONNECTIVITY_STATUS"
     STATE_SYNC = "STATE_SYNC"
     HEARTBEAT = "HEARTBEAT"
+    CHAT_MESSAGE = "CHAT_MESSAGE"
 
 
 class MeshMessage(BaseModel):
