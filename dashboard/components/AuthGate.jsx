@@ -10,6 +10,9 @@ const AUTH_ROUTES = ['/login', '/signup'];
 // Public pages accessible to all users (guests, fleet managers, and delivery partners)
 const PUBLIC_OPEN_ROUTES = ['/customer'];
 
+// Routes accessible to delivery partners
+const PARTNER_ALLOWED_ROUTES = ['/partner', '/network'];
+
 export default function AuthGate({ children }) {
   const { user, role, loading } = useAuth();
   const pathname = usePathname();
@@ -32,7 +35,7 @@ export default function AuthGate({ children }) {
       } else {
         router.replace('/');
       }
-    } else if (user && role === 'partner' && pathname !== '/partner' && !isOpenRoute) {
+    } else if (user && role === 'partner' && !PARTNER_ALLOWED_ROUTES.includes(pathname) && !isOpenRoute) {
       // Delivery partner attempting to access manager/admin screens: redirect to partner cockpit
       router.replace('/partner');
     }
@@ -80,7 +83,7 @@ export default function AuthGate({ children }) {
   }
 
   // If partner user on admin route, block until redirected to partner cockpit
-  if (user && role === 'partner' && pathname !== '/partner' && !isOpenRoute) {
+  if (user && role === 'partner' && !PARTNER_ALLOWED_ROUTES.includes(pathname) && !isOpenRoute) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-4">
         <div className="w-9 h-9 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
