@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Stat from "../../components/Stat";
 import { useDashboardState } from "../../lib/useDashboardState";
-import { numeric } from "../../lib/presentation";
 
 const CHAT_PRESETS = [
   { label: "⚠️ Traffic Jam Ahead", text: "Heavy traffic jam reported on main corridor. Detouring via secondary routes." },
@@ -158,7 +157,7 @@ export default function NetworkPage() {
 
 
       {/* Network KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Stat
           label="Cloud Status"
           value={network.cloud_status}
@@ -168,26 +167,6 @@ export default function NetworkPage() {
           label="Mesh Status"
           value={network.mesh_status}
           help="Decentralized 802.11p RF Radio"
-        />
-        <Stat
-          label="Connected Nodes"
-          value={`${activeNodes.length} / ${Math.max(activeNodes.length, fleet.size)}`}
-          help={`${mesh.links.length} dynamic RF peer links`}
-        />
-        <Stat
-          label="Radio Range"
-          value={numeric(mesh.transmission_range_km, " km")}
-          help="Direct vehicle-to-vehicle RF radius"
-        />
-        <Stat
-          label="Delivery rate"
-          value={typeof network.messages_sent === "number" && network.messages_sent > 0 && typeof network.messages_delivered === "number" ? `${((network.messages_delivered / network.messages_sent) * 100).toFixed(0)}%` : "100%"}
-          help="Empirical transmission success"
-        />
-        <Stat
-          label="Messages Relayed"
-          value={network.messages_sent || 0}
-          help="Peer packets & SOS audits"
         />
       </div>
 
