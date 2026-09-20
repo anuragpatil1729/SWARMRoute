@@ -120,7 +120,7 @@ export default function CustomerPortalPage() {
               Dispatch parcels across the Mumbai – Pune Logistics Corridor with real-time AI autonomous route allocation.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/orders"
               className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-semibold hover:bg-slate-100 transition"

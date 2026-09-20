@@ -221,7 +221,7 @@ export default function NetworkPage() {
       <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl font-bold text-slate-900">
                 Decentralized Mesh & Cloud Telecommunications
               </h2>

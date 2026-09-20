@@ -9,6 +9,12 @@ export const metadata = {
   description: "Autonomous AI fleet operations, real-time routing, and decentralized mesh resilience platform.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">

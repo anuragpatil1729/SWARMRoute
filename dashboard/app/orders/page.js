@@ -286,7 +286,7 @@ export default function OrdersPage() {
 
       {/* Filter & Search Bar */}
       <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
           <span className="text-xs font-semibold text-slate-500 uppercase font-mono">Filter:</span>
           {["ALL", "PENDING", "IN_TRANSIT", "DELIVERED", "REASSIGNED", "FAILED"].map((status) => (
             <button

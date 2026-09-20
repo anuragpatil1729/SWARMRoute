@@ -197,7 +197,7 @@ export default function DeliveryPartnerCockpit() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">{currentPartner.avatar || "🛵"}</span>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl font-bold text-slate-900">
                     {currentPartner.name}
                   </h2>

@@ -106,8 +106,8 @@ export default function Masthead() {
       </div>
 
       {navItems.length > 0 && (
-        <nav className="w-full px-4 sm:px-6 lg:px-10 border-t border-slate-100">
-          <ul className="flex flex-wrap gap-x-6 text-[13px] font-medium">
+        <nav className="w-full px-4 sm:px-6 lg:px-10 border-t border-slate-100 overflow-x-auto scrollbar-none">
+          <ul className="flex items-center gap-x-6 text-[13px] font-medium whitespace-nowrap min-w-max">
             {navItems.map((item) => {
               const active =
                 item.href === "/"
