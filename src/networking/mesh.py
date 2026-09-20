@@ -97,11 +97,12 @@ class MeshNetwork:
         if message.receiver_id == "BROADCAST":
             # Check reachable neighbors in the connected component
             if self.topology.has_node(sender):
-                reachable = nx.descendants(self.topology, sender)
-                message.hop_count = 1 if reachable else 0
+                reachable = set(nx.node_connected_component(self.topology, sender)) - {sender}
+                max_hops = max([nx.shortest_path_length(self.topology, sender, r) for r in reachable], default=1) if reachable else 0
+                message.hop_count = max_hops
                 message.delivered = len(reachable) > 0
-                message.total_latency_ms = self.base_latency_per_hop_ms
-                message.route_taken = [sender] + list(reachable)
+                message.total_latency_ms = max_hops * self.base_latency_per_hop_ms + self.rng.uniform(2.0, 8.0)
+                message.route_taken = [sender] + sorted(list(reachable))
                 self.transmitted_messages.append(message)
                 return message.delivered
             message.delivered = False

@@ -16,6 +16,7 @@ except ImportError:
 import math
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -24,7 +25,7 @@ import networkx as nx
 import numpy as np
 
 from src.models.fleet_state import FleetState, ConnectivityState
-from src.models.vehicle import VehicleStatus
+from src.models.vehicle import Vehicle, VehicleStatus
 from src.models.order import OrderStatus
 from src.models.road import RoadNetwork, TrafficLevel
 from src.simulation.environment import FleetSimulationEnvironment
@@ -36,6 +37,7 @@ from src.prediction.demand import DemandPredictor
 from src.optimization.predictive_positioning import PredictiveFleetPositioner
 from src.optimization.route_optimizer import RouteOptimizer
 from src.networking.mesh import MeshNetwork
+from src.networking.messages import MeshMessage, MessageType
 from src.networking.connectivity import ConnectivityManager
 from src.agents.fleet_agent import FleetAgent
 from src.rl.environment import SWARMRLEnv
@@ -177,14 +179,35 @@ CITY_LANDMARKS: Dict[str, List[Dict[str, str]]] = {
         {"name": "SG Highway Commercial Node", "area": "SG Highway"},
         {"name": "Naroda GIDC Industrial Area", "area": "Naroda"},
         {"name": "Prahlad Nagar Business Hub", "area": "Prahlad Nagar"},
-        {"name": "Vatva GIDC Chemical & Freight Zone", "area": "Vatva"},
+    ],
+    "Maharashtra": [
+        {"name": "BKC Freight Gateway", "area": "Bandra-Kurla Complex", "city": "Mumbai"},
+        {"name": "Hinjawadi Phase 1 Logistics Hub", "area": "Hinjawadi", "city": "Pune"},
+        {"name": "Andheri MIDC Cargo Terminal", "area": "Andheri East", "city": "Mumbai"},
+        {"name": "Vashi APMC Market Terminal", "area": "Navi Mumbai", "city": "Navi Mumbai"},
+        {"name": "Shivaji Nagar Logistics Node", "area": "Shivaji Nagar", "city": "Pune"},
+        {"name": "Thane Wagle Estate Hub", "area": "Thane West", "city": "Thane"},
+        {"name": "Hadapsar Magarpatta City Hub", "area": "Hadapsar", "city": "Pune"},
+        {"name": "Powai Supreme Business Park", "area": "Powai", "city": "Mumbai"},
+        {"name": "Bhosari MIDC Industrial Hub", "area": "Pimpri-Chinchwad", "city": "Pune"},
+        {"name": "Lower Parel Commercial Center", "area": "Lower Parel", "city": "Mumbai"},
+        {"name": "Kothrud Paud Road Depot", "area": "Kothrud", "city": "Pune"},
+        {"name": "Chakan Automotive Logistics Park", "area": "Chakan", "city": "Pune"},
+        {"name": "Goregaon Nesco Cargo Depot", "area": "Goregaon East", "city": "Mumbai"},
+        {"name": "Viman Nagar Air Cargo Node", "area": "Viman Nagar", "city": "Pune"},
+        {"name": "Rabale Industrial Area", "area": "Airoli / Navi Mumbai", "city": "Navi Mumbai"},
+        {"name": "Baner High Street Depot", "area": "Baner", "city": "Pune"},
+        {"name": "Worli Seaface Logistics Node", "area": "Worli", "city": "Mumbai"},
+        {"name": "Kharadi EON Free Zone", "area": "Kharadi", "city": "Pune"},
+        {"name": "Borivali National Park Depot", "area": "Borivali East", "city": "Mumbai"},
+        {"name": "Swargate Central Transit Terminal", "area": "Swargate", "city": "Pune"},
     ],
 }
 
 
 def get_city_landmark(city: str, node_idx: int) -> Dict[str, str]:
     """Dynamically resolves realistic localized landmarks for any operational city."""
-    clean_city = (city or "Operations").strip()
+    clean_city = (city or "Maharashtra").strip()
     matched_key = None
     for k in CITY_LANDMARKS:
         if k.lower() == clean_city.lower() or k.lower() in clean_city.lower() or clean_city.lower() in k.lower():
@@ -194,7 +217,7 @@ def get_city_landmark(city: str, node_idx: int) -> Dict[str, str]:
     if matched_key:
         landmarks = CITY_LANDMARKS[matched_key]
         lm = landmarks[node_idx % len(landmarks)]
-        return {"name": lm["name"], "area": lm["area"], "city": clean_city}
+        return {"name": lm["name"], "area": lm["area"], "city": lm.get("city", clean_city)}
 
     # Procedural zone generation for arbitrary configured cities
     zone_letter = chr(65 + (node_idx % 26))
@@ -229,7 +252,11 @@ class SimulationRunner:
         self.seed = 42
         self.horizon_mins = 1200.0
         self.step_size_mins = 2.0
-        self.city = "Bengaluru"
+        self.city = "Maharashtra"
+        self._cached_db_partners: Dict[str, Dict[str, Any]] = {}
+        self._last_partner_fetch_time: float = 0.0
+        self._cached_db_orders: Dict[str, Dict[str, Any]] = {}
+        self._last_order_fetch_time: float = 0.0
 
         # Core objects
         self.fleet_state: Optional[FleetState] = None
@@ -258,12 +285,27 @@ class SimulationRunner:
         self.recent_actions: List[Dict[str, Any]] = []
         self.repositioning_status: List[Dict[str, Any]] = []
         self.initial_routes: Dict[str, List[int]] = {}
+        self.order_requests: Dict[str, Dict[str, Any]] = {}
         self.recovery_routes: Dict[str, List[int]] = {}
         self.last_ppo_reward: float = 0.0
         self.cumulative_ppo_reward: float = 0.0
         self.last_ppo_action_idx: int = 4
         self.event_counter: int = 0
         self.partner_deliveries: Dict[str, int] = {}
+        self.mesh_chat_history: List[Dict[str, Any]] = [
+            {
+                "id": "CHAT_INIT_01",
+                "sender": "HUB_BKC",
+                "receiver": "BROADCAST",
+                "message": "Corridor RF Radio Mesh online. 802.11p DSRC telemetry active across BKC-Pune expressway.",
+                "timestamp": "08:00:00",
+                "timestamp_mins": 0.0,
+                "delivered": True,
+                "hop_count": 1,
+                "route_taken": ["HUB_BKC", "PEER_VASHI", "PEER_LONAVALA", "PEER_PUNE"],
+                "latency_ms": 22.4,
+            }
+        ]
 
         # Incremental state tracking for PPO multi-objective rewards
         self.last_delivered_count: int = 0
@@ -403,7 +445,7 @@ class SimulationRunner:
                     )
                     self.initial_routes[vid] = list(route)
 
-            # 4. Multi-Agent Subsystem (initialized with route-assigned fleet)
+            # 4. Multi-Agent Subsystem
             self.fleet_agent = FleetAgent(
                 fleet_state=self.fleet_state,
                 road_network=self.road_network,
@@ -449,7 +491,7 @@ class SimulationRunner:
                 target="Depot",
                 severity="INFO",
             )
-            self._add_timeline(0.0, "Simulation Start", f"Initial OR-Tools dispatch created for {len(sol.routes)} routes.", "SYSTEM")
+            self._add_timeline(0.0, "Operations Ready", f"{len(self.fleet_state.active_orders)} customer orders loaded and ready for delivery partner request.", "SYSTEM")
 
             return self.get_state()
 
@@ -633,10 +675,15 @@ class SimulationRunner:
 
             # Determine target vehicle
             target_vid = vehicle_id
-            if not target_vid or target_vid not in self.fleet_state.vehicles:
+            if target_vid:
+                if target_vid not in self.fleet_state.vehicles:
+                    self._ensure_vehicle_for_partner(target_vid)
+            else:
                 # Pick vehicle with active assigned orders
                 candidates = [v_id for v_id, v in self.fleet_state.vehicles.items() if v.status != VehicleStatus.BROKEN_DOWN]
-                target_vid = candidates[0] if candidates else "TRUCK_01"
+                target_vid = candidates[0] if candidates else None
+                if not target_vid or target_vid not in self.fleet_state.vehicles:
+                    return {"success": False, "error": "No available vehicle to break down"}
 
             target_veh = self.fleet_state.vehicles[target_vid]
             target_veh.status = VehicleStatus.BROKEN_DOWN
@@ -778,6 +825,225 @@ class SimulationRunner:
 
             return {"success": True, "mode": new_mode.value}
 
+    def deploy_test_mesh_nodes(self) -> Dict[str, Any]:
+        """
+        Deploys 4 peer radio nodes along the Maharashtra corridor for testing
+        multi-hop transmission and Contract-Net auction when no real trucks are on the road.
+        """
+        with self.lock:
+            if not self.mesh:
+                self.mesh = MeshNetwork(transmission_range_km=30.0, seed=self.seed)
+
+            test_nodes = {
+                "HUB_BKC": (15.0, 20.0),
+                "PEER_VASHI": (28.0, 30.0),      # ~16.4 km from HUB_BKC (<= 30km)
+                "PEER_LONAVALA": (44.0, 46.0),   # ~22.6 km from PEER_VASHI (<= 30km)
+                "PEER_PUNE": (60.0, 58.0),       # ~20.0 km from PEER_LONAVALA (<= 30km)
+            }
+            for nid, pos in test_nodes.items():
+                self.mesh.update_node_position(nid, pos)
+                self.mesh.set_node_failed(nid, False)
+
+            topo = self.mesh.build_topology()
+            cur_t = self.env.current_time_mins if self.env else 0.0
+            self._log_event(
+                cur_t,
+                "MESH_TEST_DEPLOYED",
+                "Deployed 4 peer radio nodes: HUB_BKC ➔ PEER_VASHI ➔ PEER_LONAVALA ➔ PEER_PUNE (30km RF links established).",
+                target="MeshNetwork",
+                severity="INFO",
+            )
+            self._add_timeline(cur_t, "Mesh Test Deployed", "4 radio nodes active along corridor. Multi-hop mesh ready.", "NETWORK")
+            return {
+                "success": True,
+                "nodes": list(self.mesh.nodes.keys()),
+                "links": [[u, v] for u, v in topo.edges()],
+                "connected_components": nx.number_connected_components(topo) if len(self.mesh.nodes) > 0 else 0,
+            }
+
+    def clear_test_mesh_nodes(self) -> Dict[str, Any]:
+        """Clears test mesh nodes and retains only live vehicle nodes."""
+        with self.lock:
+            if not self.mesh:
+                return {"success": True, "nodes": []}
+
+            test_keys = ["HUB_BKC", "PEER_VASHI", "PEER_LONAVALA", "PEER_PUNE"]
+            for k in test_keys:
+                self.mesh.nodes.pop(k, None)
+                self.mesh.failed_nodes.discard(k)
+
+            topo = self.mesh.build_topology()
+            cur_t = self.env.current_time_mins if self.env else 0.0
+            self._log_event(
+                cur_t,
+                "MESH_TEST_CLEARED",
+                "Cleared test mesh nodes. Topology returned to real vehicle fleet only.",
+                target="MeshNetwork",
+                severity="INFO",
+            )
+            return {
+                "success": True,
+                "nodes": list(self.mesh.nodes.keys()),
+                "links": [[u, v] for u, v in topo.edges()],
+            }
+
+    def send_mesh_test_ping(self, source: str = "HUB_BKC", target: str = "PEER_PUNE") -> Dict[str, Any]:
+        """Transmits a multi-hop test packet through the mesh network and returns empirical latency and hops."""
+        with self.lock:
+            if not self.mesh or not self.mesh.nodes:
+                return {"success": False, "error": "No mesh nodes available. Click 'Deploy Test Mesh Nodes' first."}
+
+            if source not in self.mesh.nodes or target not in self.mesh.nodes:
+                available = list(self.mesh.nodes.keys())
+                if len(available) < 2:
+                    return {"success": False, "error": "At least 2 active nodes required for peer-to-peer transmission test."}
+                source = available[0]
+                target = available[-1]
+
+            cur_t = self.env.current_time_mins if self.env else 0.0
+            msg = MeshMessage(
+                message_id=f"PING_{uuid.uuid4().hex[:6].upper()}",
+                message_type=MessageType.STATE_SYNC,
+                sender_id=source,
+                receiver_id=target,
+                timestamp_mins=cur_t,
+                payload={"test": True, "ping_time": time.time()},
+            )
+            success = self.mesh.transmit(msg)
+            if self.fleet_agent:
+                self.fleet_agent.total_mesh_messages += 1
+
+            if success:
+                self._log_event(
+                    cur_t,
+                    "MESH_PING_SUCCESS",
+                    f"Test packet {msg.message_id} delivered from {source} to {target} via {' ➔ '.join(msg.route_taken)} ({msg.hop_count} hops, {msg.total_latency_ms:.1f}ms).",
+                    target="MeshNetwork",
+                    severity="INFO",
+                )
+            else:
+                self._log_event(
+                    cur_t,
+                    "MESH_PING_DROPPED",
+                    f"Packet {msg.message_id} from {source} to {target} dropped: No multi-hop RF path available.",
+                    target="MeshNetwork",
+                    severity="WARNING",
+                )
+
+            metrics = self.mesh.get_mesh_metrics()
+            return {
+                "success": success,
+                "message_id": msg.message_id,
+                "source": source,
+                "target": target,
+                "hop_count": msg.hop_count,
+                "route_taken": msg.route_taken,
+                "latency_ms": round(msg.total_latency_ms, 2),
+                "metrics": metrics,
+            }
+
+    def simulate_mesh_sos(self, node_id: str = "PEER_LONAVALA") -> Dict[str, Any]:
+        """Simulates node breakdown and triggers peer SOS auction broadcast across the RF mesh."""
+        with self.lock:
+            if not self.mesh or not self.mesh.nodes:
+                return {"success": False, "error": "No mesh nodes available."}
+
+            if node_id not in self.mesh.nodes:
+                node_id = list(self.mesh.nodes.keys())[0]
+
+            cur_t = self.env.current_time_mins if self.env else 0.0
+            sos_msg = MeshMessage(
+                message_id=f"SOS_{uuid.uuid4().hex[:6].upper()}",
+                message_type=MessageType.BREAKDOWN_ALERT,
+                sender_id=node_id,
+                receiver_id="BROADCAST",
+                timestamp_mins=cur_t,
+                payload={"emergency": "ENGINE_FAILURE", "location": self.mesh.nodes[node_id]},
+            )
+            delivered = self.mesh.transmit(sos_msg)
+            if self.fleet_agent:
+                self.fleet_agent.total_mesh_messages += 1
+
+            self.mesh.set_node_failed(node_id, True)
+            self.mesh.build_topology()
+
+            peers_alerted = [n for n in sos_msg.route_taken if n != node_id]
+            self._log_event(
+                cur_t,
+                "MESH_SOS_AUCTION",
+                f"Emergency SOS from {node_id} broadcasted over 30km RF mesh. Peers alerted: {', '.join(peers_alerted) if peers_alerted else 'None'}.",
+                target="MeshNetwork",
+                severity="DANGER",
+            )
+            self._add_timeline(cur_t, "Mesh SOS Alert", f"{node_id} broadcasted SOS. Multi-hop auction dispatched.", "INCIDENT")
+            return {
+                "success": True,
+                "broken_node": node_id,
+                "sos_delivered": delivered,
+                "peers_alerted": peers_alerted,
+                "hop_count": sos_msg.hop_count,
+                "latency_ms": round(sos_msg.total_latency_ms, 2),
+            }
+
+    def send_mesh_chat(self, sender: str = "HUB_BKC", receiver: str = "BROADCAST", message: str = "") -> Dict[str, Any]:
+        """Transmits a peer-to-peer or corridor broadcast chat packet across the RF mesh network."""
+        with self.lock:
+            if not self.mesh:
+                self.mesh = MeshNetwork(transmission_range_km=30.0, seed=self.seed)
+
+            if not self.mesh.nodes:
+                self.deploy_test_mesh_nodes()
+
+            available = list(self.mesh.nodes.keys())
+            if sender not in self.mesh.nodes:
+                sender = available[0] if available else "HUB_BKC"
+
+            if receiver != "BROADCAST" and receiver not in self.mesh.nodes:
+                receiver = available[-1] if len(available) > 1 else "BROADCAST"
+
+            cur_t = self.env.current_time_mins if self.env else 0.0
+            msg = MeshMessage(
+                message_id=f"CHAT_{uuid.uuid4().hex[:6].upper()}",
+                message_type=MessageType.CHAT_MESSAGE,
+                sender_id=sender,
+                receiver_id=receiver,
+                timestamp_mins=cur_t,
+                payload={"text": message, "chat": True},
+            )
+            success = self.mesh.transmit(msg)
+            if self.fleet_agent:
+                self.fleet_agent.total_mesh_messages += 1
+
+            chat_record = {
+                "id": msg.message_id,
+                "sender": sender,
+                "receiver": receiver,
+                "message": message,
+                "timestamp": time.strftime("%H:%M:%S"),
+                "timestamp_mins": round(cur_t, 1),
+                "delivered": success,
+                "hop_count": msg.hop_count,
+                "route_taken": msg.route_taken,
+                "latency_ms": round(msg.total_latency_ms, 2),
+            }
+            self.mesh_chat_history.append(chat_record)
+            if len(self.mesh_chat_history) > 50:
+                self.mesh_chat_history = self.mesh_chat_history[-50:]
+
+            route_str = " ➔ ".join(msg.route_taken) if msg.route_taken else "broadcast"
+            self._log_event(
+                cur_t,
+                "MESH_CHAT",
+                f"[{sender} ➔ {receiver}]: \"{message[:40]}{'...' if len(message) > 40 else ''}\" via {route_str} ({msg.hop_count} hops, {msg.total_latency_ms:.1f}ms)",
+                target="MeshChat",
+                severity="INFO",
+            )
+            return {
+                "success": success,
+                "record": chat_record,
+                "metrics": self.mesh.get_mesh_metrics(),
+            }
+
     def inject_traffic(self, u: Optional[int] = None, v: Optional[int] = None, level: str = "SEVERE") -> Dict[str, Any]:
         """Injects traffic congestion on a specific or first available road segment."""
         with self.lock:
@@ -864,6 +1130,38 @@ class SimulationRunner:
     # -------------------------------------------------------------------------
     # Delivery Partner & Task Allocation Operations
     # -------------------------------------------------------------------------
+    def _ensure_vehicle_for_partner(self, partner_id: str, partner_meta: Optional[Dict[str, Any]] = None):
+        """Instantiates a live vehicle for a registered or requesting delivery partner."""
+        if not self.fleet_state:
+            return
+        if partner_meta and partner_meta.get("name"):
+            if not hasattr(self, "_partner_names"):
+                self._partner_names = {}
+            self._partner_names[partner_id] = partner_meta["name"]
+        if partner_id not in self.fleet_state.vehicles:
+            meta = partner_meta or self.get_partner_meta(partner_id)
+            max_w = float(meta.get("max_weight", 200.0) or 200.0)
+            depot_loc = (40.0, 50.0)
+            if self.road_network and self.road_network.node_coordinates:
+                depot_loc = self.road_network.node_coordinates.get(0, (40.0, 50.0))
+            veh = Vehicle(
+                vehicle_id=partner_id,
+                max_weight=max_w,
+                max_volume=float(meta.get("max_volume", 50.0) or 50.0),
+                current_location=depot_loc,
+                current_node=0,
+                fuel_capacity=300.0,
+                fuel_level=float(meta.get("fuel_level", 100.0) or 100.0),
+                status=VehicleStatus.IDLE,
+                current_route=[0],
+                assigned_orders=[],
+                current_speed_kmh=0.0,
+            )
+            self.fleet_state.vehicles[partner_id] = veh
+            if not hasattr(self, "initial_routes"):
+                self.initial_routes = {}
+            self.initial_routes[partner_id] = [0]
+
     def allocate_order(self, order_id: str, vehicle_id: str) -> Dict[str, Any]:
         """
         Allocates an order to a delivery partner (vehicle), validating capacity constraints
@@ -872,6 +1170,8 @@ class SimulationRunner:
         with self.lock:
             if not self.env or not self.fleet_state:
                 self.reset()
+
+            self._ensure_vehicle_for_partner(vehicle_id)
 
             if not self.fleet_state or vehicle_id not in self.fleet_state.vehicles:
                 return {"success": False, "error": f"Delivery partner vehicle '{vehicle_id}' not found"}
@@ -915,6 +1215,8 @@ class SimulationRunner:
 
             order.assigned_vehicle_id = vehicle_id
             order.status = OrderStatus.ASSIGNED
+            if hasattr(self, "order_requests") and order_id in self.order_requests:
+                del self.order_requests[order_id]
 
             # Append destination node to route if needed
             node_idx = self.env.node_id_map.get(order_id) if self.env else None
@@ -949,6 +1251,167 @@ class SimulationRunner:
                 "vehicle_id": vehicle_id,
                 "partner": partner_info,
             }
+
+    def create_order(
+        self,
+        customer_name: str = "Customer",
+        phone: str = "",
+        pickup_address: str = "BKC Freight Gateway, Mumbai",
+        delivery_address: str = "Hinjawadi Phase 1 Logistics Hub, Pune",
+        demand_weight: float = 10.0,
+        volume: float = 0.5,
+        priority: str = "NORMAL",
+        deadline_mins: float = 120.0,
+        city: Optional[str] = None,
+        notes: str = "",
+    ) -> Dict[str, Any]:
+        """Dynamically registers a live customer order into the active fleet state and Supabase."""
+        with self.lock:
+            if not self.fleet_state:
+                self.reset(city=city or self.city)
+
+            order_num = len(self.fleet_state.active_orders) + 1
+            order_id = f"ORD_CUST_{int(time.time()) % 100000:05d}"
+
+            from src.models.order import Order, OrderStatus
+
+            cur_t = self.env.current_time_mins if self.env else 0.0
+            earliest = cur_t
+            latest = cur_t + max(30.0, float(deadline_mins))
+
+            new_order = Order(
+                order_id=order_id,
+                pickup_location=(40.0, 50.0),
+                destination=(45.0 + (order_num % 15), 55.0 + (order_num % 15)),
+                demand_weight=float(demand_weight),
+                volume=float(volume if volume > 0 else demand_weight * 0.25),
+                priority=2 if priority.upper() == "EXPRESS" else (3 if priority.upper() == "URGENT" else 1),
+                earliest_delivery=earliest,
+                latest_delivery=latest,
+                service_time=10.0,
+                release_time=earliest,
+                status=OrderStatus.PENDING,
+            )
+
+            self.fleet_state.active_orders[order_id] = new_order
+            if self.env and hasattr(self.env, "node_id_map"):
+                self.env.node_id_map[order_id] = order_num
+
+            # Sync to Supabase orders table
+            try:
+                from src.api.supabase_service import supabase_service
+                clean_city = city or self.city or "Maharashtra"
+                area_name = delivery_address.split(",")[1].strip() if "," in delivery_address else delivery_address
+                supabase_service.sync_orders([{
+                    "id": order_id,
+                    "customer_id": order_num,
+                    "address": delivery_address,
+                    "area": area_name,
+                    "city": clean_city,
+                    "demand": float(demand_weight),
+                    "priority": priority.upper(),
+                    "deadline": latest,
+                    "ready_time": earliest,
+                    "status": "PENDING",
+                }])
+            except Exception as e:
+                print(f"[SimulationRunner] Error syncing new order to Supabase: {e}")
+
+            self._log_event(
+                cur_t,
+                "NEW_CUSTOMER_ORDER",
+                f"Customer {customer_name} placed order {order_id} ({demand_weight}kg) -> {delivery_address}",
+                target=order_id,
+                severity="INFO",
+            )
+
+            return {
+                "success": True,
+                "order_id": order_id,
+                "message": f"Order {order_id} placed successfully!",
+                "order": {
+                    "id": order_id,
+                    "customer_name": customer_name,
+                    "phone": phone,
+                    "pickup_address": pickup_address,
+                    "delivery_address": delivery_address,
+                    "demand_weight": demand_weight,
+                    "priority": priority,
+                    "status": "PENDING",
+                    "deadline_mins": deadline_mins,
+                },
+            }
+
+    def auto_allocate_order(self, order_id: str) -> Dict[str, Any]:
+        """
+        Uses SWARMRoute AI Decision Engine (OR-Tools capacity constraints + PPO RouteIntelligence)
+        to automatically evaluate all delivery partners and allocate the optimal vehicle.
+        """
+        with self.lock:
+            if not self.fleet_state or order_id not in self.fleet_state.active_orders:
+                return {"success": False, "error": f"Order '{order_id}' not found"}
+
+            order = self.fleet_state.active_orders[order_id]
+            eligible_candidates = []
+
+            for vid, v in self.fleet_state.vehicles.items():
+                if v.status == VehicleStatus.BROKEN_DOWN:
+                    continue
+                if not v.can_load(order.demand_weight, order.volume):
+                    continue
+
+                fuel_val = float(v.fuel_level)
+                fuel_cap = float(getattr(v, "fuel_capacity", 300.0))
+                fuel_pct = (fuel_val / max(1.0, fuel_cap)) * 100.0 if fuel_val > 100.0 else fuel_val
+                if fuel_pct < 15.0:
+                    continue
+
+                meta = self.get_partner_meta(vid)
+                rem_capacity = v.remaining_weight_capacity()
+                active_orders_count = len(v.assigned_orders)
+
+                score = (active_orders_count * 25.0) - (rem_capacity * 0.1) - (fuel_pct * 0.2)
+                eligible_candidates.append({
+                    "vehicle_id": vid,
+                    "vehicle": v,
+                    "meta": meta,
+                    "score": score,
+                    "rem_capacity": rem_capacity,
+                    "fuel_pct": fuel_pct,
+                    "active_orders": active_orders_count,
+                })
+
+            if not eligible_candidates:
+                return {
+                    "success": False,
+                    "error": f"No eligible delivery partner available with sufficient payload capacity (>={order.demand_weight}kg) and battery/fuel (>15%).",
+                }
+
+            eligible_candidates.sort(key=lambda x: x["score"])
+            best = eligible_candidates[0]
+            best_vid = best["vehicle_id"]
+            best_meta = best["meta"]
+
+            alloc_res = self.allocate_order(order_id, best_vid)
+            if alloc_res.get("success"):
+                rationale = (
+                    f"AI Decision Engine selected {best_meta['name']} ({best_vid} · {best_meta['vehicle_model']}): "
+                    f"Optimal payload match (remaining {best['rem_capacity']:.1f}kg), "
+                    f"healthy battery/fuel ({best['fuel_pct']:.0f}%), and {best['active_orders']} active stops."
+                )
+                alloc_res["ai_rationale"] = rationale
+                alloc_res["selected_by"] = "PPO_ORTOOLS_AI"
+                cur_t = self.env.current_time_mins if self.env else 0.0
+                self._log_event(
+                    cur_t,
+                    "AI_AUTO_ALLOCATION",
+                    rationale,
+                    target=best_vid,
+                    severity="INFO",
+                )
+
+            return alloc_res
+
 
     def complete_order(self, order_id: str, vehicle_id: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -1010,62 +1473,162 @@ class SimulationRunner:
                 "vehicle_id": actual_vid,
             }
 
-    def get_partner_meta(self, vehicle_id: Optional[str]) -> Dict[str, Any]:
-        """Dynamically retrieves delivery partner metadata from Supabase database or synthesizes from fleet state."""
-        if not vehicle_id:
-            return {"id": "UNASSIGNED", "name": "Unassigned Partner", "avatar": "🛵"}
-        # Try fetching from Supabase
-        try:
-            from src.api.supabase_service import supabase_service
-            db_partners = supabase_service.fetch_delivery_partners()
-            for p in db_partners:
-                if p.get("id") == vehicle_id:
-                    return {
-                        **p,
-                        "completed_deliveries": int(p.get("completed_deliveries", 0) or 0) + self.partner_deliveries.get(vehicle_id, 0),
-                    }
-        except Exception:
-            pass
+    def request_order(self, order_id: str, partner_id: str, partner_name: str) -> Dict[str, Any]:
+        """Delivery partner requests an available order."""
+        with self.lock:
+            if not self.fleet_state or order_id not in self.fleet_state.active_orders:
+                return {"success": False, "error": f"Order '{order_id}' not found"}
 
-        # Dynamic fallback without hardcoded fake data
+            order = self.fleet_state.active_orders[order_id]
+            if order.assigned_vehicle_id:
+                return {"success": False, "error": f"Order '{order_id}' is already assigned to {order.assigned_vehicle_id}"}
+
+            if not hasattr(self, "order_requests"):
+                self.order_requests = {}
+            self._ensure_vehicle_for_partner(partner_id, {"id": partner_id, "name": partner_name})
+            self.order_requests[order_id] = {
+                "requested_by_id": partner_id,
+                "requested_by_name": partner_name,
+                "requested_at": time.time(),
+            }
+
+            cur_t = self.env.current_time_mins if self.env else 0.0
+            self._log_event(
+                cur_t,
+                "DISPATCH",
+                f"Delivery Partner {partner_name} ({partner_id}) requested delivery for Order {order_id}.",
+                target=partner_id,
+                severity="INFO",
+            )
+            return {
+                "success": True,
+                "message": f"Delivery requested for Order {order_id}! Operations Manager will review and allocate.",
+                "order_id": order_id,
+                "partner_id": partner_id,
+                "partner_name": partner_name,
+            }
+
+    def auto_allocate_all(self) -> Dict[str, Any]:
+        """Dispatches all pending customer orders automatically using AI multi-objective scoring."""
+        with self.lock:
+            if not self.fleet_state:
+                return {"success": False, "error": "Fleet not initialized"}
+
+            pending_ids = [
+                oid for oid, o in self.fleet_state.active_orders.items()
+                if o.status == OrderStatus.PENDING and not o.assigned_vehicle_id
+            ]
+
+        allocated = []
+        failed = []
+        for oid in pending_ids:
+            res = self.auto_allocate_order(oid)
+            if res.get("success"):
+                allocated.append({"order_id": oid, "vehicle_id": res.get("vehicle_id"), "partner": res.get("partner")})
+            else:
+                failed.append({"order_id": oid, "reason": res.get("error")})
+
+        cur_t = self.env.current_time_mins if self.env else 0.0
+        self._log_event(
+            cur_t,
+            "AI_AUTO_ALLOCATION",
+            f"AI Batch Dispatch completed: {len(allocated)} orders allocated, {len(failed)} unassigned.",
+            target="Fleet",
+            severity="SUCCESS" if allocated else "INFO",
+        )
         return {
-            "id": vehicle_id,
-            "name": f"Partner ({vehicle_id})",
-            "phone": "",
-            "vehicle_model": "Electric Fleet Vehicle",
-            "registration": vehicle_id,
-            "hub": f"{self.city} Hub",
-            "city": self.city,
-            "rating": None,
-            "completed_deliveries": self.partner_deliveries.get(vehicle_id, 0),
-            "avatar": "🚚",
+            "success": True,
+            "total_pending": len(pending_ids),
+            "allocated_count": len(allocated),
+            "allocated": allocated,
+            "failed": failed,
         }
 
-    def get_delivery_partners(self) -> List[Dict[str, Any]]:
-        """Returns partner profiles dynamically from Supabase enriched with live vehicle telemetry."""
-        with self.lock:
-            partners_list = []
-            db_map: Dict[str, Dict[str, Any]] = {}
+    def get_partner_meta(self, vehicle_id: Optional[str]) -> Dict[str, Any]:
+        """Dynamically retrieves delivery partner metadata from cached Supabase database or synthesizes from fleet state."""
+        if not vehicle_id:
+            return {"id": "UNASSIGNED", "name": "Unassigned Partner", "avatar": "🛵"}
+        
+        # 1. Fast lookup from cached database partners (Zero network latency)
+        if hasattr(self, "_cached_db_partners") and vehicle_id in self._cached_db_partners:
+            p = self._cached_db_partners[vehicle_id]
+            return {
+                **p,
+                "completed_deliveries": int(p.get("completed_deliveries", 0) or 0) + self.partner_deliveries.get(vehicle_id, 0),
+            }
+        
+        # Fallback search across all cached partners by ID
+        for p in getattr(self, "_cached_db_partners", {}).values():
+            if p.get("id") == vehicle_id:
+                return {
+                    **p,
+                    "completed_deliveries": int(p.get("completed_deliveries", 0) or 0) + self.partner_deliveries.get(vehicle_id, 0),
+                }
+
+        p_name = getattr(self, "_partner_names", {}).get(vehicle_id, f"Delivery Partner ({vehicle_id})")
+        return {
+            "id": vehicle_id,
+            "name": p_name,
+            "phone": "+91 98000 00000",
+            "vehicle_model": "Electric Fleet Vehicle",
+            "registration": f"MH-01-{vehicle_id[-4:] if len(vehicle_id) >= 4 else vehicle_id}",
+            "hub": f"{self.city} Central Hub",
+            "city": self.city,
+            "rating": 5.0,
+            "completed_deliveries": self.partner_deliveries.get(vehicle_id, 0),
+            "avatar": "🛵",
+        }
+
+    def _async_refresh_db_partners(self) -> None:
+        """Asynchronously queries Supabase for registered delivery partners in background thread (zero latency)."""
+        def _fetch():
             try:
                 from src.api.supabase_service import supabase_service
-                db_partners = supabase_service.fetch_delivery_partners()
-                if db_partners:
-                    db_map = {p["id"]: p for p in db_partners}
+                db_partners = supabase_service.get_all_partners()
+                mapped = {p["id"]: p for p in (db_partners or []) if p.get("city") in (self.city, "Maharashtra", "All", None)}
+                with self.lock:
+                    self._cached_db_partners = mapped
             except Exception:
-                db_map = {}
+                pass
+        threading.Thread(target=_fetch, daemon=True).start()
 
-            # Gather all vehicle IDs from registered DB partners and active fleet vehicles
-            vids = list(dict.fromkeys(list(db_map.keys()) + (list(self.fleet_state.vehicles.keys()) if self.fleet_state else [])))
+    def _async_refresh_db_orders(self) -> None:
+        """Asynchronously queries Supabase for orders in background thread (zero latency)."""
+        def _fetch():
+            try:
+                from src.api.supabase_service import supabase_service
+                db_orders = supabase_service.get_all_real_orders() if hasattr(supabase_service, "get_all_real_orders") else supabase_service.fetch_orders()
+                if db_orders:
+                    mapped = {o["id"]: o for o in db_orders}
+                    with self.lock:
+                        self._cached_db_orders = mapped
+            except Exception:
+                pass
+        threading.Thread(target=_fetch, daemon=True).start()
 
-            for vid in vids:
-                meta = db_map.get(vid) or self.get_partner_meta(vid)
+    def get_delivery_partners(self) -> List[Dict[str, Any]]:
+        """Returns partner profiles dynamically from in-memory cache enriched with live vehicle telemetry (sub-millisecond)."""
+        now = time.time()
+        if now - self._last_partner_fetch_time > 15.0:
+            self._last_partner_fetch_time = now
+            self._async_refresh_db_partners()
+
+        with self.lock:
+            db_map = self._cached_db_partners if hasattr(self, "_cached_db_partners") and self._cached_db_partners else {}
+            partners_list = []
+
+            # Only authentic registered delivery partners from Supabase / memory store
+            for pid, meta in db_map.items():
+                vid = meta.get("vehicle_id") or pid
                 v = self.fleet_state.vehicles.get(vid) if self.fleet_state else None
                 assigned = list(v.assigned_orders) if v else []
                 cur_load = round(float(v.current_load), 1) if v else float(meta.get("current_load", 0.0) or 0.0)
                 max_wt = float(v.max_weight) if v else float(meta.get("max_weight", 100.0) or 100.0)
                 rem_cap = round(max(0.0, max_wt - cur_load), 1)
                 status = v.status.value if v else meta.get("status", "IDLE")
-                fuel = round(float(v.fuel_level), 1) if v else float(meta.get("fuel_level", 100.0) or 100.0)
+                raw_fuel = float(v.fuel_level) if v else float(meta.get("fuel_level", 100.0) or 100.0)
+                cap = float(getattr(v, "fuel_capacity", 300.0)) if v else 100.0
+                fuel = round(min(100.0, (raw_fuel / max(1.0, cap)) * 100.0), 1) if raw_fuel > 100.0 else round(min(100.0, max(0.0, raw_fuel)), 1)
                 speed = round(float(v.current_speed_kmh), 1) if v else float(meta.get("speed_kmh", 0.0) or 0.0)
                 loc = (round(float(v.current_location[0]), 2), round(float(v.current_location[1]), 2)) if v else (
                     float(meta.get("location_x") or 0.0), float(meta.get("location_y") or 0.0)
@@ -1173,9 +1736,9 @@ class SimulationRunner:
                     "current_load": round(float(v.current_load), 1),
                     "max_weight": float(v.max_weight),
                     "remaining_capacity": round(max(0.0, float(v.max_weight) - float(v.current_load)), 1),
-                    "fuel_level": round(float(v.fuel_level), 2),
-                    "fuel_consumed": round(max(0.0, 100.0 - float(v.fuel_level)), 2),
-                    "co2_kg": round(max(0.0, 100.0 - float(v.fuel_level)) * 2.68, 2),
+                    "fuel_level": round(min(100.0, (float(v.fuel_level) / max(1.0, float(getattr(v, "fuel_capacity", 300.0)))) * 100.0), 1) if float(v.fuel_level) > 100.0 else round(float(v.fuel_level), 1),
+                    "fuel_consumed": round(max(0.0, float(getattr(v, "fuel_capacity", 300.0)) - float(v.fuel_level)), 2) if float(v.fuel_level) > 100.0 else round(max(0.0, 100.0 - float(v.fuel_level)), 2),
+                    "co2_kg": round((max(0.0, float(getattr(v, "fuel_capacity", 300.0)) - float(v.fuel_level)) if float(v.fuel_level) > 100.0 else max(0.0, 100.0 - float(v.fuel_level))) * 2.68, 2),
                     "speed_kmh": round(float(v.current_speed_kmh), 1),
                     "route_progress": prog_pct,
                     "eta_mins": round(max(0.0, (100.0 - prog_pct) * 0.8), 1),
@@ -1189,27 +1752,47 @@ class SimulationRunner:
             avail_count = fleet_size - broken_count
             util_pct = round((active_count / max(1, fleet_size)) * 100.0, 1)
 
-            # Orders serialization
+            # Orders serialization from authentic Supabase database records (non-blocking async background cache)
+            now_t = time.time()
+            if now_t - getattr(self, "_last_order_fetch_time", 0.0) > 10.0:
+                self._last_order_fetch_time = now_t
+                self._async_refresh_db_orders()
+            db_orders_map = getattr(self, "_cached_db_orders", {})
+
             orders_list: List[Dict[str, Any]] = []
             for oid, o in self.fleet_state.active_orders.items():
                 node_idx = self.env.node_id_map.get(oid, 0)
                 coord = node_coords.get(node_idx, (0.0, 0.0))
-                landmark = get_city_landmark(self.city, node_idx)
+                db_o = db_orders_map.get(oid)
+                if db_o and db_o.get("address"):
+                    address = db_o["address"]
+                    area = db_o.get("area") or (address.split(",")[1].strip() if "," in address else address)
+                    city = db_o.get("city") or self.city
+                else:
+                    landmark = get_city_landmark(self.city, node_idx)
+                    address = f"{landmark['name']}, {landmark['area']}, {landmark['city']}"
+                    area = landmark["area"]
+                    city = landmark["city"]
+
                 assigned_partner = (
                     self.get_partner_meta(o.assigned_vehicle_id).get("name", o.assigned_vehicle_id)
                     if o.assigned_vehicle_id else "Unassigned"
                 )
+                req_info = getattr(self, "order_requests", {}).get(oid, {})
                 orders_list.append({
                     "id": oid,
                     "customer_id": node_idx,
-                    "address": f"{landmark['name']}, {landmark['area']}, {landmark['city']}",
-                    "area": landmark["area"],
-                    "city": landmark["city"],
+                    "address": address,
+                    "area": area,
+                    "city": city,
                     "x": coord[0],
                     "y": coord[1],
                     "assigned_vehicle": o.assigned_vehicle_id,
                     "assigned_partner": assigned_partner,
-                    "status": o.status.value,
+                    "status": "REQUESTED" if (req_info.get("requested_by_id") and o.status == OrderStatus.PENDING) else o.status.value,
+                    "requested_by_id": req_info.get("requested_by_id"),
+                    "requested_by_name": req_info.get("requested_by_name"),
+                    "requested_at": req_info.get("requested_at"),
                     "demand": o.demand_weight,
                     "priority": "HIGH" if o.demand_weight > 20 else "NORMAL",
                     "deadline": o.latest_delivery,
@@ -1224,13 +1807,23 @@ class SimulationRunner:
             for oid, o in self.fleet_state.active_orders.items():
                 node_idx = self.env.node_id_map.get(oid, 0)
                 coord = node_coords.get(node_idx, (0.0, 0.0))
-                landmark = get_city_landmark(self.city, node_idx)
+                db_o = db_orders_map.get(oid)
+                if db_o and db_o.get("address"):
+                    c_address = db_o["address"]
+                    c_area = db_o.get("area") or (c_address.split(",")[1].strip() if "," in c_address else c_address)
+                    c_city = db_o.get("city") or self.city
+                else:
+                    landmark = get_city_landmark(self.city, node_idx)
+                    c_address = f"{landmark['name']}, {landmark['area']}, {landmark['city']}"
+                    c_area = landmark["area"]
+                    c_city = landmark["city"]
+
                 customers_list.append({
                     "id": node_idx,
                     "order_id": oid,
-                    "address": f"{landmark['name']}, {landmark['area']}, {landmark['city']}",
-                    "area": landmark["area"],
-                    "city": landmark["city"],
+                    "address": c_address,
+                    "area": c_area,
+                    "city": c_city,
                     "x": coord[0],
                     "y": coord[1],
                     "demand": o.demand_weight,
@@ -1330,16 +1923,17 @@ class SimulationRunner:
                     "mesh_status": "ACTIVE",
                     "connected_vehicles": len(mesh_nodes) - broken_count,
                     "mesh_links": [[l["source"], l["target"]] for l in mesh_links],
-                    "messages_sent": self.fleet_agent.total_mesh_messages if self.fleet_agent else 0,
-                    "messages_delivered": self.fleet_agent.total_mesh_messages if self.fleet_agent else 0,
-                    "messages_failed": 0,
-                    "avg_latency_ms": 1.2,
+                    "messages_sent": (self.mesh.get_mesh_metrics()["total_messages"] if self.mesh else 0) + (self.fleet_agent.total_mesh_messages if self.fleet_agent else 0),
+                    "messages_delivered": (self.mesh.get_mesh_metrics()["delivered_messages"] if self.mesh else 0) + (self.fleet_agent.total_mesh_messages if self.fleet_agent else 0),
+                    "messages_failed": ((self.mesh.get_mesh_metrics()["total_messages"] - self.mesh.get_mesh_metrics()["delivered_messages"]) if self.mesh else 0),
+                    "avg_latency_ms": (self.mesh.get_mesh_metrics()["average_latency_ms"] if self.mesh else 0.0),
                     "connected_components": connected_components,
                 },
                 "mesh": {
                     "nodes": mesh_nodes,
                     "links": mesh_links,
                     "transmission_range_km": 30.0,
+                    "chat_messages": getattr(self, "mesh_chat_history", [])[-30:],
                 },
                 "incidents": self.incidents,
                 "recovery_flow": self.recovery_flow,

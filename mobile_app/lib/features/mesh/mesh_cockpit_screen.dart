@@ -244,10 +244,10 @@ class _MeshCockpitScreenState extends State<MeshCockpitScreen> {
                               onPressed: () async {
                                 final ok = await widget.meshService.broadcastAssistanceRequest(
                                   orderId: 'TEST_ORDER_RELAY',
-                                  lat: 12.9784,
-                                  lon: 77.6408,
+                                  lat: 19.0760,
+                                  lon: 72.8777,
                                   reason: 'PHYSICAL_BLE_MULTI_HOP_TEST',
-                                  remainingFuel: 1.5,
+                                  remainingFuel: 25.0,
                                 );
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(

@@ -35,12 +35,16 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       Widget dest;
+      final emailPrefix = _emailController.text.split('@').first;
+      final formattedName = emailPrefix.isNotEmpty 
+          ? emailPrefix.split('.').map((s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ')
+          : (_selectedRole == 'CUSTOMER' ? 'Customer' : 'Driver');
       if (_selectedRole == 'CUSTOMER') {
-        dest = const CustomerScreen(customerId: 'CUST_01', customerName: 'Anurag Patil');
+        dest = CustomerScreen(customerId: 'CUST_${DateTime.now().millisecondsSinceEpoch % 10000}', customerName: formattedName);
       } else if (_selectedRole == 'MANAGER') {
         dest = const ManagerScreen();
       } else {
-        dest = const DriverScreen(driverId: 'TRUCK_01', driverName: 'Rajesh Kumar');
+        dest = DriverScreen(driverId: 'DP_${DateTime.now().millisecondsSinceEpoch % 1000}', driverName: formattedName);
       }
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => dest));
     });

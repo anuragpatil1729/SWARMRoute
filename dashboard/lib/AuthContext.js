@@ -115,15 +115,59 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
+    // Safety timeout so user is never stuck on loading screen
+    const safetyTimer = setTimeout(() => {
+      if (process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true') {
+        const demoUser = {
+          id: 'DEMO_MANAGER_01',
+          email: process.env.NEXT_PUBLIC_DEMO_MANAGER_EMAIL || 'manager@swarmroute.com',
+          user_metadata: { role: 'manager', city: 'Maharashtra' },
+        };
+        setUser(demoUser);
+        setProfile({
+          id: 'DEMO_MANAGER_01',
+          email: 'manager@swarmroute.com',
+          role: 'manager',
+          city: 'Maharashtra',
+          full_name: 'Operations Manager',
+        });
+      }
+      setLoading(false);
+    }, 1200);
+
     // Check initial active session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(safetyTimer);
       const currentUser = session?.user || null;
       setUser(currentUser);
       if (currentUser) {
         loadUserProfile(currentUser);
+      } else if (process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true') {
+        const demoUser = {
+          id: 'DEMO_MANAGER_01',
+          email: process.env.NEXT_PUBLIC_DEMO_MANAGER_EMAIL || 'manager@swarmroute.com',
+          user_metadata: { role: 'manager', city: 'Maharashtra' },
+        };
+        setUser(demoUser);
+        setProfile({
+          id: 'DEMO_MANAGER_01',
+          email: 'manager@swarmroute.com',
+          role: 'manager',
+          city: 'Maharashtra',
+          full_name: 'Operations Manager',
+        });
+        setLoading(false);
       } else {
         setLoading(false);
       }
+    }).catch((err) => {
+      clearTimeout(safetyTimer);
+      console.warn("getSession error:", err);
+      if (process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true') {
+        setUser({ id: 'DEMO_MANAGER_01', email: 'manager@swarmroute.com' });
+        setProfile({ role: 'manager', city: 'Maharashtra', full_name: 'Operations Manager' });
+      }
+      setLoading(false);
     });
 
     // Listen to Supabase auth state changes
@@ -133,6 +177,9 @@ export function AuthProvider({ children }) {
         setUser(currentUser);
         if (currentUser) {
           await loadUserProfile(currentUser);
+        } else if (process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === 'true') {
+          setProfile({ role: 'manager', city: 'Maharashtra', full_name: 'Operations Manager' });
+          setLoading(false);
         } else {
           setProfile(null);
           setLoading(false);
@@ -141,6 +188,7 @@ export function AuthProvider({ children }) {
     );
 
     return () => {
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);

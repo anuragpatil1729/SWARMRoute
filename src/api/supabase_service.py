@@ -5,10 +5,13 @@ task allocations, and real-time telemetry.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import time
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 # Ensure site-packages takes precedence over workspace root directory named 'supabase'
 sys.path = [p for p in sys.path if p != os.getcwd()] + [os.getcwd()]
@@ -365,6 +368,7 @@ class SupabaseService:
                 update_data = {"status": status}
                 if vehicle_id:
                     update_data["assigned_vehicle_id"] = vehicle_id
+                self.client.table("orders").update(update_data).eq("id", order_id).execute()
             except Exception as e:
                 logger.warning(f"Supabase order status update failed: {e}")
         return True
@@ -449,202 +453,9 @@ class SupabaseService:
         return {}
 
     def _initialize_authoritative_store(self) -> None:
-        """Initializes authoritative real-world fleet entities."""
-        self._memory_partners: Dict[str, Dict[str, Any]] = {
-            "DP_01": {
-                "id": "DP_01",
-                "name": "Arjun Kumar",
-                "phone": "+91 98765 43201",
-                "vehicle_id": "VEH_01",
-                "vehicle_model": "Tata Ace EV",
-                "registration": "KA-01-EQ-1024",
-                "hub": "Indiranagar Hub",
-                "city": "Bengaluru",
-                "status": "IDLE",
-                "current_load": 0.0,
-                "max_weight": 600.0,
-                "rating": 4.90,
-                "completed_deliveries": 142,
-                "fuel_level": 88.0,
-                "speed_kmh": 0.0,
-                "location_x": 12.9784,
-                "location_y": 77.6408,
-            },
-            "DP_02": {
-                "id": "DP_02",
-                "name": "Rajesh Sharma",
-                "phone": "+91 98765 43202",
-                "vehicle_id": "VEH_02",
-                "vehicle_model": "Mahindra Bolero Maxi Truck Plus",
-                "registration": "KA-05-MB-5520",
-                "hub": "Koramangala Hub",
-                "city": "Bengaluru",
-                "status": "IDLE",
-                "current_load": 0.0,
-                "max_weight": 1200.0,
-                "rating": 4.80,
-                "completed_deliveries": 289,
-                "fuel_level": 84.5,
-                "speed_kmh": 0.0,
-                "location_x": 12.9352,
-                "location_y": 77.6245,
-            },
-            "DP_03": {
-                "id": "DP_03",
-                "name": "Priya Nair",
-                "phone": "+91 98765 43203",
-                "vehicle_id": "VEH_03",
-                "vehicle_model": "Ashok Leyland Dost+",
-                "registration": "KA-51-AL-8890",
-                "hub": "Whitefield Hub",
-                "city": "Bengaluru",
-                "status": "IDLE",
-                "current_load": 0.0,
-                "max_weight": 1500.0,
-                "rating": 4.95,
-                "completed_deliveries": 310,
-                "fuel_level": 73.8,
-                "speed_kmh": 0.0,
-                "location_x": 12.9698,
-                "location_y": 77.7500,
-            },
-            "DP_04": {
-                "id": "DP_04",
-                "name": "Vikram Singh",
-                "phone": "+91 98765 43204",
-                "vehicle_id": "VEH_04",
-                "vehicle_model": "Tata Intra V30",
-                "registration": "KA-03-TI-4411",
-                "hub": "HSR Layout Hub",
-                "city": "Bengaluru",
-                "status": "IDLE",
-                "current_load": 0.0,
-                "max_weight": 1300.0,
-                "rating": 4.75,
-                "completed_deliveries": 98,
-                "fuel_level": 68.5,
-                "speed_kmh": 0.0,
-                "location_x": 12.9121,
-                "location_y": 77.6446,
-            },
-            "DP_05": {
-                "id": "DP_05",
-                "name": "Mohammed Rizwan",
-                "phone": "+91 98765 43205",
-                "vehicle_id": "VEH_05",
-                "vehicle_model": "Piaggio Ape E-City",
-                "registration": "KA-04-PE-3030",
-                "hub": "Jayanagar Hub",
-                "city": "Bengaluru",
-                "status": "IDLE",
-                "current_load": 0.0,
-                "max_weight": 400.0,
-                "rating": 4.85,
-                "completed_deliveries": 215,
-                "fuel_level": 82.5,
-                "speed_kmh": 0.0,
-                "location_x": 12.9308,
-                "location_y": 77.5838,
-            },
-        }
-
-        self._memory_vehicles: Dict[str, Dict[str, Any]] = {
-            "VEH_01": {
-                "id": "VEH_01",
-                "partner_id": "DP_01",
-                "manufacturer": "Tata Motors",
-                "model": "Ace EV",
-                "model_year": 2024,
-                "fuel_type": "ELECTRIC",
-                "engine_type": "Permanent Magnet Synchronous Motor",
-                "fuel_capacity": 21.3,
-                "current_fuel": 18.5,
-                "odometer_km": 14250.0,
-                "vehicle_condition": 0.96,
-                "maintenance_score": 0.98,
-                "tyre_condition": 0.95,
-                "engine_health": 0.98,
-                "average_fuel_efficiency": 6.8,
-                "max_payload_kg": 600.0,
-                "current_payload_kg": 0.0,
-            },
-            "VEH_02": {
-                "id": "VEH_02",
-                "partner_id": "DP_02",
-                "manufacturer": "Mahindra & Mahindra",
-                "model": "Bolero Maxi Truck Plus",
-                "model_year": 2023,
-                "fuel_type": "DIESEL",
-                "engine_type": "m2DiCR 2.5L 4-Cylinder Turbocharged",
-                "fuel_capacity": 45.0,
-                "current_fuel": 38.0,
-                "odometer_km": 38400.0,
-                "vehicle_condition": 0.91,
-                "maintenance_score": 0.90,
-                "tyre_condition": 0.88,
-                "engine_health": 0.92,
-                "average_fuel_efficiency": 17.2,
-                "max_payload_kg": 1200.0,
-                "current_payload_kg": 0.0,
-            },
-            "VEH_03": {
-                "id": "VEH_03",
-                "partner_id": "DP_03",
-                "manufacturer": "Ashok Leyland",
-                "model": "Dost+",
-                "model_year": 2023,
-                "fuel_type": "DIESEL",
-                "engine_type": "1.5L 3-Cylinder Turbocharged Diesel",
-                "fuel_capacity": 40.0,
-                "current_fuel": 29.5,
-                "odometer_km": 27100.0,
-                "vehicle_condition": 0.93,
-                "maintenance_score": 0.94,
-                "tyre_condition": 0.91,
-                "engine_health": 0.94,
-                "average_fuel_efficiency": 19.6,
-                "max_payload_kg": 1500.0,
-                "current_payload_kg": 0.0,
-            },
-            "VEH_04": {
-                "id": "VEH_04",
-                "partner_id": "DP_04",
-                "manufacturer": "Tata Motors",
-                "model": "Intra V30",
-                "model_year": 2024,
-                "fuel_type": "DIESEL",
-                "engine_type": "1496 cc DI Engine",
-                "fuel_capacity": 35.0,
-                "current_fuel": 24.0,
-                "odometer_km": 11800.0,
-                "vehicle_condition": 0.97,
-                "maintenance_score": 0.96,
-                "tyre_condition": 0.95,
-                "engine_health": 0.97,
-                "average_fuel_efficiency": 14.0,
-                "max_payload_kg": 1300.0,
-                "current_payload_kg": 0.0,
-            },
-            "VEH_05": {
-                "id": "VEH_05",
-                "partner_id": "DP_05",
-                "manufacturer": "Piaggio",
-                "model": "Ape E-City",
-                "model_year": 2024,
-                "fuel_type": "ELECTRIC",
-                "engine_type": "Lithium-ion 51.2V Traction Motor",
-                "fuel_capacity": 7.5,
-                "current_fuel": 6.2,
-                "odometer_km": 8900.0,
-                "vehicle_condition": 0.95,
-                "maintenance_score": 0.97,
-                "tyre_condition": 0.92,
-                "engine_health": 0.96,
-                "average_fuel_efficiency": 9.5,
-                "max_payload_kg": 400.0,
-                "current_payload_kg": 0.0,
-            },
-        }
+        """Initializes authoritative real-world fleet entities without hardcoding."""
+        self._memory_partners: Dict[str, Dict[str, Any]] = {}
+        self._memory_vehicles: Dict[str, Dict[str, Any]] = {}
 
         self._memory_assignments: List[Dict[str, Any]] = []
         self._memory_route_sessions: Dict[str, Dict[str, Any]] = {}

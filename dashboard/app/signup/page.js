@@ -7,12 +7,13 @@ import { useAuth } from "../../lib/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
 
 const CITY_HUBS = {
-  Bengaluru: [
-    'Koramangala South Hub',
-    'Indiranagar Central Hub',
-    'Whitefield ITPL Hub',
-    'Electronic City Phase 1 Hub',
-    'HSR Layout Sector 2 Hub',
+  Maharashtra: [
+    'BKC Central Freight Hub (Mumbai)',
+    'Hinjawadi Phase 1 Logistics Hub (Pune)',
+    'Andheri MIDC Cargo Terminal (Mumbai)',
+    'Thane Wagle Estate Hub (Thane)',
+    'Vashi APMC Market Hub (Navi Mumbai)',
+    'Bhosari MIDC Hub (Pune)',
   ],
   Mumbai: [
     'BKC Central Freight Hub',

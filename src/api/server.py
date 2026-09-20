@@ -100,7 +100,7 @@ def emit_realtime_event(event_type: str, data: Dict[str, Any]) -> None:
 
 
 # Enable CORS for Next.js frontend (read from CORS_ALLOWED_ORIGINS, defaulting to local dev)
-cors_env = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+cors_env = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001")
 allowed_origins = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
 
 app.add_middleware(
@@ -158,6 +158,21 @@ class CompleteRequest(BaseModel):
     vehicle_id: Optional[str] = None
 
 
+class MeshPingRequest(BaseModel):
+    source: str = "HUB_BKC"
+    target: str = "PEER_PUNE"
+
+
+class MeshSosRequest(BaseModel):
+    node_id: str = "PEER_LONAVALA"
+
+
+class MeshChatRequest(BaseModel):
+    sender: str = "HUB_BKC"
+    receiver: str = "BROADCAST"
+    message: str
+
+
 @app.get("/api/health")
 def health_check() -> Dict[str, Any]:
     return {
@@ -169,8 +184,8 @@ def health_check() -> Dict[str, Any]:
 
 
 @app.get("/api/state")
-def get_state() -> Dict[str, Any]:
-    return runner.get_state()
+async def get_state() -> Dict[str, Any]:
+    return await asyncio.to_thread(runner.get_state)
 
 
 @app.get("/api/stream")
@@ -180,13 +195,15 @@ async def event_stream(request: Request) -> StreamingResponse:
         while True:
             if await request.is_disconnected():
                 break
+            is_running = False
             try:
-                state_data = runner.get_state()
+                state_data = await asyncio.to_thread(runner.get_state)
+                is_running = (state_data.get("simulation", {}).get("status") == "RUNNING")
                 payload = json.dumps(state_data)
                 yield f"data: {payload}\n\n"
             except Exception as e:
                 yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
-            await asyncio.sleep(0.35)
+            await asyncio.sleep(0.6 if is_running else 1.5)
 
     return StreamingResponse(
         event_generator(),
@@ -272,6 +289,41 @@ def inject_combined() -> Dict[str, Any]:
     return runner.inject_combined_disruption()
 
 
+@app.post("/api/simulation/mesh/deploy-test")
+def deploy_test_mesh() -> Dict[str, Any]:
+    return runner.deploy_test_mesh_nodes()
+
+
+@app.post("/api/simulation/mesh/clear-test")
+def clear_test_mesh() -> Dict[str, Any]:
+    return runner.clear_test_mesh_nodes()
+
+
+@app.post("/api/simulation/mesh/test-ping")
+def send_mesh_test_ping(req: Optional[MeshPingRequest] = None) -> Dict[str, Any]:
+    source = req.source if req else "HUB_BKC"
+    target = req.target if req else "PEER_PUNE"
+    return runner.send_mesh_test_ping(source=source, target=target)
+
+
+@app.post("/api/simulation/mesh/simulate-sos")
+def simulate_mesh_sos(req: Optional[MeshSosRequest] = None) -> Dict[str, Any]:
+    node_id = req.node_id if req else "PEER_LONAVALA"
+    return runner.simulate_mesh_sos(node_id=node_id)
+
+
+@app.post("/api/simulation/mesh/send-chat")
+def send_mesh_chat(req: MeshChatRequest) -> Dict[str, Any]:
+    if not req.message or not req.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    return runner.send_mesh_chat(sender=req.sender, receiver=req.receiver, message=req.message.strip())
+
+
+@app.get("/api/simulation/mesh/chat-history")
+def get_mesh_chat_history() -> List[Dict[str, Any]]:
+    return getattr(runner, "mesh_chat_history", [])
+
+
 @app.get("/api/benchmarks")
 def get_benchmarks() -> JSONResponse:
     """Serves empirical benchmark comparison directly from results."""
@@ -320,6 +372,100 @@ def get_delivery_partners() -> Dict[str, Any]:
 def get_supabase_status() -> Dict[str, Any]:
     """Returns live Supabase PostgreSQL connection status and metrics."""
     return supabase_service.get_status()
+
+
+class SimpleCreateOrderRequest(BaseModel):
+    customer_name: str = "Customer"
+    phone: str = ""
+    pickup_address: str = "BKC Central Freight Hub (Mumbai)"
+    delivery_address: str = "Hinjawadi Phase 1 Hub (Pune)"
+    demand_weight: float = 10.0
+    priority: str = "NORMAL"
+    deadline_mins: float = 120.0
+    city: Optional[str] = "Maharashtra"
+    notes: Optional[str] = ""
+
+
+class AutoAllocateRequest(BaseModel):
+    order_id: str
+
+
+@app.post("/api/orders/create")
+def create_order_endpoint(req: SimpleCreateOrderRequest) -> Dict[str, Any]:
+    """Creates a new customer order and syncs it across runner and Supabase."""
+    return runner.create_order(
+        customer_name=req.customer_name,
+        phone=req.phone,
+        pickup_address=req.pickup_address,
+        delivery_address=req.delivery_address,
+        demand_weight=req.demand_weight,
+        priority=req.priority,
+        deadline_mins=req.deadline_mins,
+        city=req.city,
+        notes=req.notes or "",
+    )
+
+
+@app.post("/api/orders/auto-allocate")
+def auto_allocate_endpoint(req: AutoAllocateRequest) -> Dict[str, Any]:
+    """Triggers AI auto-allocation for an order using OR-Tools and PPO RouteIntelligence."""
+    res = runner.auto_allocate_order(order_id=req.order_id)
+    if res.get("success") and res.get("vehicle_id"):
+        supabase_service.record_task_allocation(order_id=req.order_id, vehicle_id=res["vehicle_id"])
+    return res
+
+
+class PartnerRequestOrder(BaseModel):
+    order_id: str
+    partner_id: str
+    partner_name: Optional[str] = "Delivery Partner"
+
+
+class ManualAllocateOrder(BaseModel):
+    order_id: str
+    partner_id: str
+
+
+class CompleteDeliveryRequest(BaseModel):
+    order_id: str
+    partner_id: Optional[str] = None
+
+
+@app.post("/api/orders/request")
+def partner_request_order_endpoint(req: PartnerRequestOrder) -> Dict[str, Any]:
+    """Delivery partner claims/requests an available customer delivery order."""
+    return runner.request_order(order_id=req.order_id, partner_id=req.partner_id, partner_name=req.partner_name or "Delivery Partner")
+
+
+@app.post("/api/orders/allocate")
+def manager_allocate_order_endpoint(req: ManualAllocateOrder) -> Dict[str, Any]:
+    """Admin / Manager allocates an order to a delivery partner."""
+    res = runner.allocate_order(order_id=req.order_id, vehicle_id=req.partner_id)
+    if res.get("success"):
+        try:
+            supabase_service.record_task_allocation(order_id=req.order_id, vehicle_id=req.partner_id)
+        except Exception:
+            pass
+    return res
+
+
+@app.post("/api/orders/complete")
+def partner_complete_order_endpoint(req: CompleteDeliveryRequest) -> Dict[str, Any]:
+    """Delivery partner marks their assigned delivery as completed."""
+    res = runner.complete_order(order_id=req.order_id, vehicle_id=req.partner_id)
+    if res.get("success"):
+        try:
+            supabase_service.record_task_completion(order_id=req.order_id, vehicle_id=req.partner_id or "")
+        except Exception:
+            pass
+    return res
+
+
+@app.post("/api/orders/auto-allocate-all")
+def auto_allocate_all_endpoint() -> Dict[str, Any]:
+    """AI Decision Engine automatically dispatches all pending customer orders."""
+    return runner.auto_allocate_all()
+
 
 
 # ============================================================
@@ -653,11 +799,19 @@ def get_live_fleet(user: Optional[AuthenticatedUser] = Depends(get_current_user_
         fuel_val = t.get("fuel_level") if t and "fuel_level" in t else v_spec.get("fuel_remaining")
         cond_val = t.get("vehicle_condition") if t and "vehicle_condition" in t else v_spec.get("vehicle_condition")
 
-        loc_x = p.get("location_x")
-        loc_y = p.get("location_y")
+        loc_x = p.get("lat") if p.get("lat") is not None else p.get("location_x")
+        loc_y = p.get("lng") if p.get("lng") is not None else p.get("location_y")
         has_gps = t is not None or (loc_x is not None and loc_y is not None)
-        lat = t["latitude"] if t else (float(loc_x) if loc_x is not None else None)
-        lon = t["longitude"] if t else (float(loc_y) if loc_y is not None else None)
+        lat = t["latitude"] if (t and "latitude" in t) else (float(loc_x) if loc_x is not None else None)
+        lon = t["longitude"] if (t and "longitude" in t) else (float(loc_y) if loc_y is not None else None)
+        if lat is None or lon is None:
+            hub = str(p.get("hub", "")).lower()
+            if "pune" in hub or "hinjawadi" in hub:
+                lat, lon = 18.5913, 73.7389
+            elif "thane" in hub:
+                lat, lon = 19.1860, 72.9554
+            else:
+                lat, lon = 19.0657, 72.8687
 
         enriched.append({
             "partner_id": p.get("id"),
@@ -716,10 +870,16 @@ def recommend_partner_allocation(
     for p in partners:
         vid = p.get("vehicle_id") or p.get("id")
         t = live_telemetry.get(vid)
-        cur_lat = t["latitude"] if t else p.get("location_x")
-        cur_lon = t["longitude"] if t else p.get("location_y")
+        cur_lat = t["latitude"] if (t and "latitude" in t) else (p.get("lat") if p.get("lat") is not None else p.get("location_x"))
+        cur_lon = t["longitude"] if (t and "longitude" in t) else (p.get("lng") if p.get("lng") is not None else p.get("location_y"))
         if cur_lat is None or cur_lon is None:
-            continue
+            hub = str(p.get("hub", "")).lower()
+            if "pune" in hub or "hinjawadi" in hub:
+                cur_lat, cur_lon = 18.5913, 73.7389
+            elif "thane" in hub:
+                cur_lat, cur_lon = 19.1860, 72.9554
+            else:
+                cur_lat, cur_lon = 19.0657, 72.8687
         cur_lat = float(cur_lat)
         cur_lon = float(cur_lon)
         

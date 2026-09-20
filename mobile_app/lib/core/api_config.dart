@@ -4,9 +4,15 @@ class ApiConfig {
   static const String defaultLocalUrl = 'http://10.0.2.2:8000';
   static const String defaultDesktopUrl = 'http://127.0.0.1:8000';
   
-  static String baseUrl = const bool.fromEnvironment('dart.vm.product')
-      ? 'http://10.0.2.2:8000'
-      : defaultDesktopUrl;
+  // Real Cloud / Vercel deployment URL or Local LAN IP
+  // Run with: flutter run --dart-define=BACKEND_URL=http://<YOUR_LAN_IP>:8000 or https://<VERCEL_APP>.vercel.app
+  static const String configuredUrl = String.fromEnvironment('BACKEND_URL', defaultValue: '');
+
+  static String baseUrl = configuredUrl.isNotEmpty
+      ? configuredUrl
+      : (const bool.fromEnvironment('dart.vm.product')
+          ? defaultLocalUrl
+          : defaultDesktopUrl);
 
   static void setBaseUrl(String url) {
     baseUrl = url.replaceAll(RegExp(r'/+$'), '');

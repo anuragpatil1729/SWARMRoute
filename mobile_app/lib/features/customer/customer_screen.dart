@@ -32,11 +32,11 @@ class _CustomerScreenState extends State<CustomerScreen> {
   bool _isLoading = false;
 
   // New Order Creation Form
-  final _pickupController = TextEditingController(text: 'Indiranagar Hub, Bengaluru');
-  final _deliveryController = TextEditingController(text: 'Koramangala 4th Block, Bengaluru');
-  final _weightController = TextEditingController(text: '3.5');
-  final LatLng _pickupCoord = const LatLng(12.9784, 77.6408);
-  final LatLng _deliveryCoord = const LatLng(12.9352, 77.6245);
+  final _pickupController = TextEditingController(text: 'BKC Freight Gateway, Mumbai');
+  final _deliveryController = TextEditingController(text: 'Hinjawadi Phase 1 Hub, Pune');
+  final _weightController = TextEditingController(text: '15.0');
+  final LatLng _pickupCoord = const LatLng(19.0674, 72.8689);
+  final LatLng _deliveryCoord = const LatLng(18.5913, 73.7389);
 
   @override
   void initState() {

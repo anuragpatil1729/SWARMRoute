@@ -18,6 +18,84 @@ from src.ai.temporal_transformer import temporal_transformer
 
 @pytest.fixture
 def client():
+    from src.api.supabase_service import supabase_service
+    if not supabase_service.get_all_partners():
+        supabase_service.upsert_partner({
+            "id": "DP_01",
+            "name": "Arjun Kumar",
+            "phone": "+91 98765 43201",
+            "vehicle_id": "VEH_01",
+            "vehicle_model": "Tata Ace EV",
+            "registration": "KA-01-EQ-1024",
+            "hub": "Indiranagar Hub",
+            "city": "Bengaluru",
+            "status": "IDLE",
+            "current_load": 0.0,
+            "max_weight": 600.0,
+            "rating": 4.90,
+            "completed_deliveries": 142,
+            "fuel_level": 88.0,
+            "speed_kmh": 0.0,
+            "location_x": 12.9784,
+            "location_y": 77.6408,
+        })
+        supabase_service.upsert_partner({
+            "id": "DP_02",
+            "name": "Rajesh Sharma",
+            "phone": "+91 98765 43202",
+            "vehicle_id": "VEH_02",
+            "vehicle_model": "Mahindra Bolero Maxi Truck Plus",
+            "registration": "KA-05-MB-5520",
+            "hub": "Koramangala Hub",
+            "city": "Bengaluru",
+            "status": "IDLE",
+            "current_load": 0.0,
+            "max_weight": 1200.0,
+            "rating": 4.80,
+            "completed_deliveries": 289,
+            "fuel_level": 84.5,
+            "speed_kmh": 0.0,
+            "location_x": 12.9352,
+            "location_y": 77.6245,
+        })
+        supabase_service.upsert_vehicle({
+            "id": "VEH_01",
+            "partner_id": "DP_01",
+            "manufacturer": "Tata Motors",
+            "model": "Ace EV",
+            "model_year": 2024,
+            "fuel_type": "ELECTRIC",
+            "engine_type": "Permanent Magnet Synchronous Motor",
+            "fuel_capacity": 21.3,
+            "current_fuel": 18.5,
+            "odometer_km": 14250.0,
+            "vehicle_condition": 0.96,
+            "maintenance_score": 0.98,
+            "tyre_condition": 0.95,
+            "engine_health": 0.98,
+            "average_fuel_efficiency": 6.8,
+            "max_payload_kg": 600.0,
+            "current_payload_kg": 0.0,
+        })
+        supabase_service.upsert_vehicle({
+            "id": "VEH_02",
+            "partner_id": "DP_02",
+            "manufacturer": "Mahindra & Mahindra",
+            "model": "Bolero Maxi Truck Plus",
+            "model_year": 2023,
+            "fuel_type": "DIESEL",
+            "engine_type": "m2DiCR 2.5L 4-Cylinder Turbocharged",
+            "fuel_capacity": 45.0,
+            "current_fuel": 38.0,
+            "odometer_km": 38400.0,
+            "vehicle_condition": 0.91,
+            "maintenance_score": 0.90,
+            "tyre_condition": 0.88,
+            "engine_health": 0.92,
+            "average_fuel_efficiency": 17.2,
+            "max_payload_kg": 1200.0,
+            "current_payload_kg": 0.0,
+        })
     return TestClient(app)
 
 
@@ -26,12 +104,12 @@ def test_real_order_creation_and_osrm_routing(client):
     res = client.post("/api/v1/orders", json={
         "customer_id": "CUST_TEST_01",
         "customer_name": "Test Customer",
-        "pickup_address": "Indiranagar Hub, Bengaluru",
-        "pickup_lat": 12.9784,
-        "pickup_lon": 77.6408,
-        "delivery_address": "Koramangala 4th Block, Bengaluru",
-        "delivery_lat": 12.9352,
-        "delivery_lon": 77.6245,
+        "pickup_address": "BKC Bandra Kurla Complex, Mumbai",
+        "pickup_lat": 19.0674,
+        "pickup_lon": 72.8689,
+        "delivery_address": "Hinjawadi Phase 1, Pune",
+        "delivery_lat": 18.5913,
+        "delivery_lon": 73.7389,
         "demand_weight": 2.5,
         "priority": "NORMAL",
     })
@@ -320,12 +398,12 @@ def test_driver_telemetry_active_order_vs_no_active_order(client):
     res_o = client.post("/api/v1/orders", json={
         "customer_id": "CUST_ROUTED",
         "customer_name": "Routed Customer",
-        "pickup_address": "Indiranagar Hub",
-        "pickup_lat": 12.9784,
-        "pickup_lon": 77.6408,
-        "delivery_address": "Koramangala 4th Block",
-        "delivery_lat": 12.9352,
-        "delivery_lon": 77.6245,
+        "pickup_address": "BKC Bandra Kurla Complex",
+        "pickup_lat": 19.0674,
+        "pickup_lon": 72.8689,
+        "delivery_address": "Hinjawadi Phase 1",
+        "delivery_lat": 18.5913,
+        "delivery_lon": 73.7389,
         "demand_weight": 2.0,
     })
     order_id = res_o.json()["order"]["id"]

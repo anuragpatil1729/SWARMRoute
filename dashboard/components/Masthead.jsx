@@ -5,12 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../lib/AuthContext";
 
 const managerItems = [
-  { href: "/", label: "Overview" },
-  { href: "/fleet", label: "Fleet" },
+  { href: "/", label: "Operations Overview" },
+  { href: "/fleet", label: "Fleet Telematics" },
   { href: "/orders", label: "Orders" },
-  { href: "/network", label: "Network" },
-  { href: "/ai", label: "Decision Engine" },
-  { href: "/benchmarks", label: "Analytics" },
+  { href: "/customer", label: "Customer Portal" },
+  { href: "/routes", label: "GIS Routes" },
+  { href: "/network", label: "BLE Mesh Network" },
 ];
 
 const partnerItems = [
@@ -43,7 +43,7 @@ export default function Masthead() {
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Fleet operations · live simulation · mesh resilience
+            Autonomous fleet operations · real-time GIS routing · BLE mesh resilience
           </p>
         </div>
 
@@ -63,8 +63,8 @@ export default function Masthead() {
                   </div>
                   <div className="text-[10px] text-slate-500 font-mono leading-tight">
                     {role === "manager"
-                      ? `Company Manager${profile?.city ? ` · ${profile.city}` : ""}`
-                      : `Delivery Partner${profile?.city ? ` · ${profile.city}` : ""}`}
+                      ? `Company Manager · ${profile?.city && profile.city !== "Bengaluru" ? profile.city : "Maharashtra"}`
+                      : `Delivery Partner · ${profile?.city && profile.city !== "Bengaluru" ? profile.city : "Maharashtra"}`}
                   </div>
                 </div>
               </div>

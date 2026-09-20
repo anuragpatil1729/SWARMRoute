@@ -30,19 +30,16 @@ def main():
         print("ERROR: Could not connect to Supabase database:", status.get("error"))
         sys.exit(1)
 
-    # Initialize simulation if needed
-    if not runner.fleet_state:
-        print("Initializing simulation instance (C101, 20 customers, 4 vehicles)...")
-        runner.reset()
+    # Initialize simulation with Maharashtra
+    print("Initializing simulation instance (C101, 20 customers, 4 vehicles, Maharashtra)...")
+    runner.reset(city="Maharashtra")
 
-    # Get partners and orders
+    # Only customer orders are synced (no hardcoded delivery partners)
+    print("Syncing live customer orders to Supabase...")
+
+    # Get Maharashtra orders
     state = runner.get_state()
-    partners = state.get("delivery_partners", [])
     orders = state.get("orders", [])
-
-    print(f"\n1. Syncing {len(partners)} Delivery Partners to Supabase...")
-    p_success = supabase_service.sync_delivery_partners(partners)
-    print(f"   -> Partners synced successfully: {p_success}")
 
     print(f"\n2. Syncing {len(orders)} Customer Orders to Supabase...")
     o_success = supabase_service.sync_orders(orders)
