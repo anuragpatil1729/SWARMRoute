@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Stat from "../../components/Stat";
 import LiveMeshFigure from "../../components/LiveMeshFigure";
 import { useDashboardState } from "../../lib/useDashboardState";
@@ -29,6 +29,15 @@ export default function NetworkPage() {
   const [chatMessage, setChatMessage] = useState("");
   const [sendingChat, setSendingChat] = useState(false);
   const [liveChats, setLiveChats] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/simulation/mesh/chat-history")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setLiveChats(data);
+      })
+      .catch(() => {});
+  }, [state]);
 
   if (connectionStatus === "OFFLINE" && !state) {
     return (
@@ -61,15 +70,6 @@ export default function NetworkPage() {
   const { network, mesh = { nodes: [], links: [], chat_messages: [] }, fleet, incidents = [], events = [] } = state;
   const isCloudOnline = network.cloud_status === "ONLINE";
   const activeNodes = mesh.nodes || [];
-
-  useEffect(() => {
-    fetch("/api/simulation/mesh/chat-history")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setLiveChats(data);
-      })
-      .catch(() => {});
-  }, [state]);
 
   const chatMessages = liveChats.length > 0 ? liveChats : (mesh.chat_messages || []);
 
