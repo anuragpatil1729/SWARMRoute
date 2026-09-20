@@ -374,6 +374,28 @@ def get_supabase_status() -> Dict[str, Any]:
     return supabase_service.get_status()
 
 
+class AutoConfirmRequest(BaseModel):
+    email: str
+
+
+@app.post("/api/auth/auto-confirm")
+def auto_confirm_user(req: AutoConfirmRequest) -> Dict[str, Any]:
+    """Auto-confirms a user's email via Supabase Admin API so they can log in immediately."""
+    if not supabase_service.client:
+        return {"status": "error", "message": "Supabase client not initialized"}
+    try:
+        admin = supabase_service.client.auth.admin
+        users = admin.list_users()
+        target = next((u for u in users if (getattr(u, "email", "") or "").lower() == req.email.strip().lower()), None)
+        if target:
+            admin.update_user_by_id(target.id, {"email_confirm": True})
+            return {"status": "ok", "message": f"User {req.email} successfully confirmed", "user_id": target.id}
+        else:
+            return {"status": "not_found", "message": f"User {req.email} not found in auth records"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 class SimpleCreateOrderRequest(BaseModel):
     customer_name: str = "Customer"
     phone: str = ""

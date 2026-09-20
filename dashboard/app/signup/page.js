@@ -210,6 +210,17 @@ function SignupForm() {
         hub: role === 'partner' ? selectedHub : null,
       });
 
+      // Auto-confirm email so user is never blocked by "Email not confirmed"
+      try {
+        await fetch('/api/auth/auto-confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim() }),
+        });
+      } catch (autoErr) {
+        console.warn('Auto-confirm notice:', autoErr);
+      }
+
       setSuccessMessage('Account registered successfully! Redirecting...');
 
       setTimeout(() => {

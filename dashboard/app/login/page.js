@@ -33,6 +33,30 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error('Login error:', err);
+      // If Supabase returned 'Email not confirmed', auto-confirm and retry sign-in immediately
+      if (err.message && err.message.toLowerCase().includes('email not confirmed')) {
+        try {
+          const autoRes = await fetch('/api/auth/auto-confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email.trim() }),
+          });
+          const autoData = await autoRes.json();
+          if (autoData.status === 'ok') {
+            const retryData = await signIn({ email, password });
+            const role = retryData.user?.user_metadata?.role || activeTab;
+            if (role === 'partner') {
+              router.push('/partner');
+            } else {
+              router.push('/');
+            }
+            return;
+          }
+        } catch (confirmErr) {
+          console.error('Failed auto-confirm retry:', confirmErr);
+        }
+      }
+
       // Give clear, friendly error messages
       if (err.message.includes('Invalid login credentials')) {
         setErrorMessage('Invalid email or password. If this is your first time, please Sign Up or use Demo Quick Login.');
