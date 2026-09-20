@@ -37,6 +37,7 @@ export default function DeliveryPartnerCockpit() {
   }, [profile, state]);
 
   const [requestingOrderId, setRequestingOrderId] = useState(null);
+  const [activeTab, setActiveTab] = useState("available"); // "available" or "my_tasks"
 
   if (connectionStatus === "OFFLINE" && !state) {
     return (
@@ -146,7 +147,6 @@ export default function DeliveryPartnerCockpit() {
     setTimeout(() => setActionFeedback(null), 8000);
   };
 
-  const [activeTab, setActiveTab] = useState("available"); // "available" or "my_tasks"
   const availableOrders = orders.filter((o) => !o.assigned_vehicle && o.status !== "DELIVERED");
 
   const handleRequestDelivery = async (orderId) => {
