@@ -41,8 +41,6 @@ export default function DeliveryPartnerCockpit() {
   const [activeTab, setActiveTab] = useState("available"); // "available" or "my_tasks"
   const [gpsActive, setGpsActive] = useState(false);
   const [gpsCoords, setGpsCoords] = useState(null);
-  const [bleDevice, setBleDevice] = useState(null);
-  const [isScanningBle, setIsScanningBle] = useState(false);
   const [chatText, setChatText] = useState("");
   const [sendingChat, setSendingChat] = useState(false);
   const [recentMeshChats, setRecentMeshChats] = useState([]);
@@ -275,40 +273,6 @@ export default function DeliveryPartnerCockpit() {
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
-  };
-
-  const handleConnectBle = async () => {
-    if (typeof window === "undefined") return;
-    if (!navigator.bluetooth) {
-      const isHttp = typeof window !== "undefined" && !window.isSecureContext;
-      setActionFeedback({
-        success: false,
-        msg: isHttp
-          ? `🔒 Web Bluetooth blocked by browser on plain HTTP (${window.location.host}). Browsers require HTTPS or localhost. On Android Chrome, enable chrome://flags/#unsafely-treat-insecure-origin-as-secure for ${window.location.origin}. Note: iOS Safari does not support Web Bluetooth.`
-          : "Web Bluetooth is not supported in this browser. Apple Safari on iOS restricts Web Bluetooth; use Chrome on Android or the native SWARMRoute mobile app.",
-      });
-      return;
-    }
-    setIsScanningBle(true);
-    try {
-      const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-      });
-      setBleDevice(device);
-      setActionFeedback({
-        success: true,
-        msg: `📶 Paired with Bluetooth BLE Device: ${device.name || device.id}. Hardware radio link active!`,
-      });
-    } catch (err) {
-      if (err.name === "NotFoundError" || err.message?.includes("User cancelled")) {
-        setActionFeedback({ success: false, msg: "Bluetooth device pairing cancelled." });
-      } else {
-        setActionFeedback({ success: false, msg: `Bluetooth pairing error: ${err.message}` });
-      }
-    } finally {
-      setIsScanningBle(false);
-      setTimeout(() => setActionFeedback(null), 6000);
-    }
   };
 
   const handleSendMeshChat = async (presetText) => {
@@ -816,29 +780,6 @@ export default function DeliveryPartnerCockpit() {
               >
                 Full Mesh Cockpit →
               </Link>
-            </div>
-
-            {/* Web Bluetooth Physical Pairing Card */}
-            <div className="flex items-center justify-between bg-blue-50/70 border border-blue-200 rounded-lg p-2.5">
-              <div className="flex items-center gap-2">
-                <span className="text-base">📶</span>
-                <div>
-                  <div className="text-xs font-bold text-blue-950">
-                    {bleDevice ? `BLE Linked: ${bleDevice.name || "Device"}` : "Physical Bluetooth BLE Radio"}
-                  </div>
-                  <div className="text-[10px] text-blue-700">
-                    {bleDevice ? "Direct hardware wireless telemetry link active" : "Pair smartphone Bluetooth with nearby delivery partner"}
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleConnectBle}
-                disabled={isScanningBle}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs shrink-0"
-              >
-                <span>{isScanningBle ? "Scanning..." : bleDevice ? "Re-pair BLE" : "Pair Bluetooth"}</span>
-              </button>
             </div>
 
             {/* Quick Tactical Presets */}
