@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Stat from "../../components/Stat";
-import LiveMeshFigure from "../../components/LiveMeshFigure";
 import { useDashboardState } from "../../lib/useDashboardState";
 import { numeric } from "../../lib/presentation";
 
@@ -417,85 +416,7 @@ export default function NetworkPage() {
         />
       </div>
 
-      {/* Mesh Graph & Link Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Topology Visualization */}
-        <div className="lg:col-span-2 border border-slate-200 bg-white rounded-xl shadow-sm p-5">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 uppercase font-mono">
-                Dynamic Mesh Topology Graph
-              </h3>
-              <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Real-time geometric proximity links based on 30 km RF radius
-              </p>
-            </div>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-              {network.connected_components || (activeNodes.length > 0 ? 1 : 0)} Connected Subgraphs
-            </span>
-          </div>
 
-          <div className="h-64 bg-slate-50 rounded-xl p-3 border border-slate-200 relative overflow-hidden">
-            <LiveMeshFigure
-              mesh={mesh}
-              cloudStatus={network.cloud_status}
-              activeRecovery={incidents[0]}
-              activeRoute={activeRoute}
-            />
-          </div>
-
-          <div className="flex items-center justify-between mt-3 text-xs text-slate-500 font-mono flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> Active Peer
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Transmitting Path
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Broken Down Node
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-4 h-0.5 bg-slate-400" /> RF Link (≤30km)
-              </span>
-            </div>
-            <span>Auto-Updated Every 500ms</span>
-          </div>
-        </div>
-
-        {/* Link Matrix */}
-        <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-5">
-          <div className="border-b border-slate-100 pb-3 mb-4">
-            <h3 className="text-sm font-bold text-slate-900 uppercase font-mono">
-              Active Peer Links ({mesh.links.length})
-            </h3>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">Direct point-to-point radios</p>
-          </div>
-
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {mesh.links.length > 0 ? (
-              mesh.links.map((link, i) => (
-                <div
-                  key={i}
-                  className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs font-mono"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-800">{link.source}</span>
-                    <span className="text-slate-400">⟷</span>
-                    <span className="font-bold text-slate-800">{link.target}</span>
-                  </div>
-                  <span className="text-slate-500 text-[11px] font-semibold">{link.distance || "18.5"} km</span>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-12 text-xs text-slate-400 font-mono space-y-1">
-                <div>No active links within transmission radius</div>
-                <div className="text-[11px] text-slate-400">Click &quot;Deploy Test Radio Nodes&quot; above to simulate links</div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* Decentralized Mesh Radio Chat & Peer Comm Console */}
       <div className="border border-slate-200 bg-white rounded-xl shadow-sm p-5 space-y-4">
