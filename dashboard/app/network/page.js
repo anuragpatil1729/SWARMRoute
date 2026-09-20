@@ -95,10 +95,10 @@ export default function NetworkPage() {
         setTestLog({
           type: "PING",
           title: `Packet Delivered: ${data.message_id}`,
-          message: `Multi-hop routing successful from ${data.source} to ${data.target} via ${data.route_taken.join(" ➔ ")}`,
+          message: `Multi-hop routing successful from ${data.source} to ${data.target} via ${data.hop_count || 1} anonymous peer hops`,
           hops: data.hop_count,
           latency: `${data.latency_ms} ms`,
-          route: data.route_taken,
+          route: [],
           status: "DELIVERED",
         });
       } else {
@@ -557,14 +557,10 @@ export default function NetworkPage() {
                         {msg.message}
                       </p>
 
-                      {msg.route_taken && msg.route_taken.length > 1 && (
-                        <div className="text-[10px] text-slate-500 flex items-center gap-1.5 pt-0.5">
-                          <span className="font-semibold text-slate-400">Path:</span>
-                          <span className="text-emerald-700 font-bold">
-                            {msg.route_taken.join(" ➔ ")}
-                          </span>
-                        </div>
-                      )}
+                      <div className="text-[10px] text-slate-400 flex items-center gap-1.5 pt-0.5 font-mono">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span>Anonymous End-to-End Relay ({msg.hop_count || 1} hops)</span>
+                      </div>
                     </div>
                   );
                 })

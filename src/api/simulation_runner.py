@@ -292,20 +292,7 @@ class SimulationRunner:
         self.last_ppo_action_idx: int = 4
         self.event_counter: int = 0
         self.partner_deliveries: Dict[str, int] = {}
-        self.mesh_chat_history: List[Dict[str, Any]] = [
-            {
-                "id": "CHAT_INIT_01",
-                "sender": "HUB_BKC",
-                "receiver": "BROADCAST",
-                "message": "Corridor RF Radio Mesh online. 802.11p DSRC telemetry active across BKC-Pune expressway.",
-                "timestamp": "08:00:00",
-                "timestamp_mins": 0.0,
-                "delivered": True,
-                "hop_count": 1,
-                "route_taken": ["HUB_BKC", "PEER_VASHI", "PEER_LONAVALA", "PEER_PUNE"],
-                "latency_ms": 22.4,
-            }
-        ]
+        self.mesh_chat_history: List[Dict[str, Any]] = []
 
         # Incremental state tracking for PPO multi-objective rewards
         self.last_delivered_count: int = 0
@@ -738,9 +725,6 @@ class SimulationRunner:
 
             p_info = self.get_partner_meta(target_vid)
             p_name = p_info.get("name") or target_vid
-            route_path = getattr(sos_msg, "route_taken", None)
-            if not route_path or len(route_path) <= 1:
-                route_path = [target_vid, "HUB_BKC", "PEER_PUNE"]
 
             self.mesh_chat_history.insert(0, {
                 "id": getattr(sos_msg, "message_id", f"SOS_{int(time.time()*1000)}"),
@@ -749,7 +733,6 @@ class SimulationRunner:
                 "message": f"🚨 EMERGENCY SOS: Breakdown reported by {p_name}! Swarm peer auction initiated for stranded deliveries.",
                 "hop_count": getattr(sos_msg, "hop_count", 2),
                 "latency_ms": round(getattr(sos_msg, "total_latency_ms", 32.4), 1),
-                "route_taken": route_path,
                 "timestamp": time.time(),
                 "type": "SOS",
             })
@@ -1099,18 +1082,16 @@ class SimulationRunner:
                 "timestamp_mins": round(cur_t, 1),
                 "delivered": success,
                 "hop_count": msg.hop_count,
-                "route_taken": msg.route_taken,
                 "latency_ms": round(msg.total_latency_ms, 2),
             }
             self.mesh_chat_history.append(chat_record)
             if len(self.mesh_chat_history) > 50:
                 self.mesh_chat_history = self.mesh_chat_history[-50:]
 
-            route_str = " ➔ ".join(msg.route_taken) if msg.route_taken else "broadcast"
             self._log_event(
                 cur_t,
                 "MESH_CHAT",
-                f"[{sender} ➔ {receiver}]: \"{message[:40]}{'...' if len(message) > 40 else ''}\" via {route_str} ({msg.hop_count} hops, {msg.total_latency_ms:.1f}ms)",
+                f"[{sender} ➔ {receiver}]: \"{message[:40]}{'...' if len(message) > 40 else ''}\" (Anonymous Multi-Hop, {msg.hop_count} hops, {msg.total_latency_ms:.1f}ms)",
                 target="MeshChat",
                 severity="INFO",
             )

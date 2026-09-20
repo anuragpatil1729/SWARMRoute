@@ -840,14 +840,9 @@ export default function DeliveryPartnerCockpit() {
                   <div key={idx} className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
                     <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5 font-mono">
                       <span className="font-bold text-blue-700">{m.sender} ➔ {m.receiver}</span>
-                      <span>{m.hop_count} hops · {m.latency_ms} ms</span>
+                      <span>{m.hop_count} hops · {m.latency_ms} ms · Anonymous</span>
                     </div>
                     <div className="text-slate-800 font-medium">{m.message}</div>
-                    {m.route_taken && m.route_taken.length > 1 && (
-                      <div className="text-[10px] text-emerald-700 font-mono mt-0.5">
-                        Forwarding Path: {m.route_taken.join(" ➔ ")}
-                      </div>
-                    )}
                   </div>
                 ))
               )}
