@@ -1608,7 +1608,7 @@ class SimulationRunner:
             try:
                 from src.api.supabase_service import supabase_service
                 db_partners = supabase_service.get_all_partners()
-                mapped = {p["id"]: p for p in (db_partners or []) if p.get("city") in (self.city, "Maharashtra", "All", None)}
+                mapped = {p["id"]: p for p in (db_partners or [])}
                 with self.lock:
                     self._cached_db_partners = mapped
             except Exception:
@@ -1632,7 +1632,15 @@ class SimulationRunner:
     def get_delivery_partners(self) -> List[Dict[str, Any]]:
         """Returns partner profiles dynamically from in-memory cache enriched with live vehicle telemetry (sub-millisecond)."""
         now = time.time()
-        if now - self._last_partner_fetch_time > 15.0:
+        if not getattr(self, "_cached_db_partners", None):
+            self._last_partner_fetch_time = now
+            try:
+                from src.api.supabase_service import supabase_service
+                db_partners = supabase_service.get_all_partners()
+                self._cached_db_partners = {p["id"]: p for p in (db_partners or [])}
+            except Exception:
+                self._cached_db_partners = {}
+        elif now - self._last_partner_fetch_time > 10.0:
             self._last_partner_fetch_time = now
             self._async_refresh_db_partners()
 
@@ -1771,9 +1779,12 @@ class SimulationRunner:
                     "last_action": ACTION_NAMES[self.last_ppo_action_idx],
                 })
 
-            fleet_size = len(self.fleet_state.vehicles)
+            db_partners_list = self.get_delivery_partners()
+            fleet_size = len(db_partners_list)
+            broken_count = sum(1 for p in db_partners_list if p.get("status") == VehicleStatus.BROKEN_DOWN.value)
             avail_count = fleet_size - broken_count
-            util_pct = round((active_count / max(1, fleet_size)) * 100.0, 1)
+            active_p_count = sum(1 for p in db_partners_list if p.get("status") in (VehicleStatus.EN_ROUTE.value, "ACTIVE"))
+            util_pct = round((active_p_count / max(1, fleet_size)) * 100.0, 1) if fleet_size > 0 else 0.0
 
             # Orders serialization from authentic Supabase database records (non-blocking async background cache)
             now_t = time.time()

@@ -75,6 +75,10 @@ export default function FleetPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const totalUnits = displayList.length;
+  const operationalUnits = displayList.filter((v) => v.status !== "BROKEN_DOWN").length;
+  const brokenUnits = displayList.filter((v) => v.status === "BROKEN_DOWN").length;
+
   return (
     <div className="space-y-6 w-full">
       {/* Header Banner */}
@@ -86,7 +90,7 @@ export default function FleetPage() {
                 Commercial Fleet Telemetry
               </h2>
               <span className="text-[11px] font-mono px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
-                {vehicles.length} Deployed Units
+                {totalUnits} Deployed Units
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
@@ -97,14 +101,14 @@ export default function FleetPage() {
           {/* KPI Summary Cards */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
-              Operational: {fleet.available} / {fleet.size}
+              Operational: {operationalUnits} / {totalUnits}
             </div>
             <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
-              Avg Utilization: {fleet.utilization_pct}%
+              Avg Utilization: {fleet.utilization_pct || 0}%
             </div>
-            {fleet.broken > 0 && (
+            {brokenUnits > 0 && (
               <div className="px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-xs font-semibold text-red-700 animate-pulse">
-                Broken Down: {fleet.broken}
+                Broken Down: {brokenUnits}
               </div>
             )}
           </div>
@@ -113,8 +117,8 @@ export default function FleetPage() {
 
       {/* KPI Stats Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-        <Stat label="Total Vehicles" value={fleet.size} help="Active fleet units" />
-        <Stat label="Operational" value={fleet.available} help={`${fleet.broken} broken down`} />
+        <Stat label="Total Vehicles" value={totalUnits} help="Registered partner units" />
+        <Stat label="Operational" value={operationalUnits} help={`${brokenUnits} broken down`} />
         <Stat label="Total Distance" value={`${sustainability.total_distance_km} km`} help="Cumulative distance" />
         <Stat label="Total Fuel / Energy" value={`${sustainability.fuel_liters} L`} help="Fleet consumption" />
         <Stat label="Total CO₂" value={`${sustainability.co2_kg} kg`} help="Emissions footprint" />
