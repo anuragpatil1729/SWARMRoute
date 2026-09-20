@@ -116,10 +116,23 @@ export default function DeliveryPartnerCockpit() {
     : (partnerProfiles.find((p) => p.id === (selectedPartnerId || partnerProfiles[0]?.id)) || fallbackPartner);
 
   const activeId = currentPartner.id;
-  const currentVehicle = vehicles.find((v) => v.id === activeId) || null;
+  const currentVehicle = vehicles.find((v) => 
+    v.id === activeId || 
+    (currentPartner.registration && v.registration === currentPartner.registration) ||
+    (v.partner_name && currentPartner.name && v.partner_name.toLowerCase().includes(currentPartner.name.toLowerCase()))
+  ) || (isDeliveryPartner && vehicles.length > 0 ? vehicles[0] : null);
 
-  // Filter orders assigned to this rider
-  const myOrders = orders.filter((o) => o.assigned_vehicle === activeId);
+  // Filter orders assigned to this rider (by partner ID, vehicle ID, registration, or partner name)
+  const myOrders = orders.filter((o) => {
+    if (!o.assigned_vehicle) return false;
+    return (
+      o.assigned_vehicle === activeId ||
+      o.assigned_vehicle === currentPartner.id ||
+      (currentPartner.registration && o.assigned_vehicle === currentPartner.registration) ||
+      (currentVehicle && o.assigned_vehicle === currentVehicle.id) ||
+      (currentPartner.name && o.assigned_partner && o.assigned_partner.toLowerCase().includes(currentPartner.name.toLowerCase()))
+    );
+  });
   const completedCount = myOrders.filter((o) => o.status === "DELIVERED").length;
   const pendingOrders = myOrders.filter((o) => o.status !== "DELIVERED");
   const isBroken = currentVehicle?.status === "BROKEN_DOWN";
@@ -344,7 +357,27 @@ export default function DeliveryPartnerCockpit() {
                 <span className="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-bold border border-blue-200">
                   {availableOrders.length} Open
                 </span>
-              </div>
+              {pendingOrders.length > 0 && (
+                <div 
+                  onClick={() => setActiveTab("my_tasks")}
+                  className="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl cursor-pointer transition flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🚚</span>
+                    <div>
+                      <div className="text-xs font-bold text-emerald-900">
+                        {pendingOrders.length} Allocated Delivery Task{pendingOrders.length > 1 ? "s" : ""} Waiting!
+                      </div>
+                      <div className="text-[11px] text-emerald-700">
+                        Tap here to view your delivery destinations.
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-200 px-2.5 py-1 rounded-lg">
+                    View Tasks →
+                  </span>
+                </div>
+              )}
 
               <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
                 {availableOrders.length === 0 ? (
