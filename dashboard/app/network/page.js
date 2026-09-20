@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Stat from "../../components/Stat";
 import { useDashboardState } from "../../lib/useDashboardState";
+import { useAuth } from "../../lib/AuthContext";
 
 const CHAT_PRESETS = [
   { label: "⚠️ Traffic Jam Ahead", text: "Heavy traffic jam reported on main corridor. Detouring via secondary routes." },
@@ -17,6 +18,7 @@ const CHAT_PRESETS = [
 
 export default function NetworkPage() {
   const { state, connectionStatus, toggleCloud } = useDashboardState();
+  const { user, profile } = useAuth();
 
   // Chat controls
   const [chatSender, setChatSender] = useState("");
@@ -24,15 +26,116 @@ export default function NetworkPage() {
   const [chatMessage, setChatMessage] = useState("");
   const [sendingChat, setSendingChat] = useState(false);
   const [liveChats, setLiveChats] = useState([]);
+  const [transmitFeedback, setTransmitFeedback] = useState(null);
+  const chatScrollRef = useRef(null);
+
+  const fetchChatHistory = async () => {
+    try {
+      const r = await fetch("/api/simulation/mesh/chat-history");
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data)) {
+          setLiveChats(data);
+        }
+      }
+    } catch {
+      // silent fallback
+    }
+  };
 
   useEffect(() => {
-    fetch("/api/simulation/mesh/chat-history")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setLiveChats(data);
-      })
-      .catch(() => {});
-  }, [state]);
+    fetchChatHistory();
+    const timer = setInterval(fetchChatHistory, 1500);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (ts) => {
+    if (!ts) return "";
+    if (typeof ts === "number") {
+      const date = ts > 1e11 ? new Date(ts) : new Date(ts * 1000);
+      return isNaN(date.getTime()) ? `${ts}` : date.toLocaleTimeString();
+    }
+    return String(ts);
+  };
+
+  const activeNodes = state?.mesh?.nodes || [];
+  const allSenders = [
+    ...(state?.delivery_partners || []).map((p) => ({ id: p.id, name: p.name || p.id })),
+    ...(state?.vehicles || []).map((v) => ({ id: v.id, name: v.partner_name ? `${v.id} (${v.partner_name})` : v.id })),
+    ...(activeNodes || []).map((n) => ({ id: n.id, name: n.id })),
+  ];
+  const uniqueSenders = Array.from(new Map(allSenders.map((s) => [s.id, s])).values());
+
+  useEffect(() => {
+    if (!chatSender && uniqueSenders.length > 0) {
+      const userPartnerId = profile?.partner_id || profile?.registration || user?.user_metadata?.partner_id || user?.user_metadata?.registration;
+      const matching = uniqueSenders.find(
+        (s) => s.id === userPartnerId || (profile?.full_name && s.name.toLowerCase().includes(profile.full_name.toLowerCase()))
+      );
+      if (matching) {
+        setChatSender(matching.id);
+      } else if (uniqueSenders[0]?.id) {
+        setChatSender(uniqueSenders[0].id);
+      }
+    }
+  }, [uniqueSenders, chatSender, profile, user]);
+
+  const chatMessages = liveChats.length > 0 ? liveChats : (state?.mesh?.chat_messages || []);
+
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMessages.length]);
+
+  const handleSendChat = async (overrideText) => {
+    const textToSend = typeof overrideText === "string" ? overrideText : chatMessage;
+    if (!textToSend || !textToSend.trim()) return;
+
+    setSendingChat(true);
+    setTransmitFeedback(null);
+    try {
+      const sender = chatSender || (uniqueSenders[0]?.id || activeNodes[0]?.id || "HUB_BKC");
+      const receiver = chatReceiver || "BROADCAST";
+
+      const res = await fetch("/api/simulation/mesh/send-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender,
+          receiver,
+          message: textToSend.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.record) {
+        setChatMessage("");
+        setLiveChats((prev) => {
+          const filtered = prev.filter((m) => m.id !== data.record.id);
+          return [...filtered, data.record];
+        });
+        setTransmitFeedback({
+          success: true,
+          text: `Packet ${data.record.id} transmitted! (${data.record.hop_count} hops, ${data.record.latency_ms}ms)`,
+        });
+        setTimeout(() => setTransmitFeedback(null), 5000);
+        fetchChatHistory();
+      } else {
+        setTransmitFeedback({
+          success: false,
+          text: data.detail || "Mesh transmission failed.",
+        });
+      }
+    } catch (err) {
+      console.error("Failed to send mesh chat:", err);
+      setTransmitFeedback({
+        success: false,
+        text: "Network transmission error.",
+      });
+    } finally {
+      setSendingChat(false);
+    }
+  };
 
   if (connectionStatus === "OFFLINE" && !state) {
     return (
@@ -62,48 +165,8 @@ export default function NetworkPage() {
     );
   }
 
-  const { network, mesh = { nodes: [], links: [], chat_messages: [] }, fleet, incidents = [], events = [] } = state;
+  const { network, mesh = { nodes: [], links: [], chat_messages: [] }, events = [] } = state;
   const isCloudOnline = network.cloud_status === "ONLINE";
-  const activeNodes = mesh.nodes || [];
-
-  const chatMessages = liveChats.length > 0 ? liveChats : (mesh.chat_messages || []);
-
-  const allSenders = [
-    ...(state.delivery_partners || []).map((p) => ({ id: p.id, name: p.name || p.id })),
-    ...(state.vehicles || []).map((v) => ({ id: v.id, name: v.partner_name ? `${v.id} (${v.partner_name})` : v.id })),
-    ...(activeNodes || []).map((n) => ({ id: n.id, name: n.id })),
-  ];
-  const uniqueSenders = Array.from(new Map(allSenders.map((s) => [s.id, s])).values());
-
-
-  const handleSendChat = async (overrideText) => {
-    const textToSend = typeof overrideText === "string" ? overrideText : chatMessage;
-    if (!textToSend || !textToSend.trim()) return;
-
-    setSendingChat(true);
-    try {
-      const sender = chatSender || (activeNodes[0]?.id || "HUB_BKC");
-      const receiver = chatReceiver || "BROADCAST";
-
-      const res = await fetch("/api/simulation/mesh/send-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sender,
-          receiver,
-          message: textToSend.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.record) {
-        setChatMessage("");
-      }
-    } catch (err) {
-      console.error("Failed to send mesh chat:", err);
-    } finally {
-      setSendingChat(false);
-    }
-  };
 
   const networkEvents = events.filter(
     (e) =>
@@ -205,11 +268,11 @@ export default function NetworkPage() {
               </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-1">
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-3 py-3 pr-1">
               {chatMessages.length > 0 ? (
                 chatMessages.map((msg, idx) => {
                   const isBroadcast = msg.receiver === "BROADCAST";
-                  const isDepot = msg.sender.includes("HUB");
+                  const isDepot = msg.sender?.includes("HUB");
 
                   return (
                     <div
@@ -240,7 +303,7 @@ export default function NetworkPage() {
                         </div>
 
                         <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                          <span>{msg.timestamp}</span>
+                          <span>{formatTime(msg.timestamp)}</span>
                           {msg.latency_ms && (
                             <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">
                               {msg.hop_count} hops · {msg.latency_ms} ms
@@ -364,7 +427,20 @@ export default function NetworkPage() {
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
+              {transmitFeedback && (
+                <div
+                  className={`p-2.5 rounded-lg text-xs font-mono flex items-center gap-2 ${
+                    transmitFeedback.success
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      : "bg-red-50 text-red-800 border border-red-200"
+                  }`}
+                >
+                  <span>{transmitFeedback.success ? "✅" : "⚠️"}</span>
+                  <span className="font-semibold">{transmitFeedback.text}</span>
+                </div>
+              )}
+
               <button
                 onClick={() => handleSendChat()}
                 disabled={sendingChat || !chatMessage.trim()}

@@ -8,7 +8,8 @@ function getStateSignature(s) {
   const perf = s.performance || {};
   const vehSig = (s.vehicles || []).map(v => `${v.id}:${v.status}:${v.current_load}:${v.speed_kmh}:${v.location?.x || v.x || ""}:${v.location?.y || v.y || ""}`).join("|");
   const ordSig = (s.orders || []).map(o => `${o.id}:${o.status}:${o.assigned_vehicle || ""}`).join("|");
-  return `${sim.status}-${sim.time}-${vehSig}-${ordSig}-${perf.delivered}-${perf.reassigned}-${(s.incidents || []).length}-${(s.delivery_partners || []).length}`;
+  const chatCount = (s.mesh?.chat_messages || []).length;
+  return `${sim.status}-${sim.time}-${vehSig}-${ordSig}-${perf.delivered}-${perf.reassigned}-${(s.incidents || []).length}-${(s.delivery_partners || []).length}-${chatCount}`;
 }
 
 // Module-level persistent singleton store across all Next.js client-side page transitions

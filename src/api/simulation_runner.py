@@ -1053,12 +1053,29 @@ class SimulationRunner:
             if not self.mesh.nodes:
                 self.deploy_test_mesh_nodes()
 
-            available = list(self.mesh.nodes.keys())
-            if sender not in self.mesh.nodes:
+            def _get_entity_pos(entity_id: str):
+                if self.fleet_agent:
+                    if hasattr(self.fleet_agent, "truck_agents") and entity_id in self.fleet_agent.truck_agents:
+                        v = self.fleet_agent.truck_agents[entity_id].vehicle
+                        return getattr(v, "current_location", (40.0, 50.0))
+                    if hasattr(self.fleet_agent, "fleet_state") and entity_id in self.fleet_agent.fleet_state.vehicles:
+                        v = self.fleet_agent.fleet_state.vehicles[entity_id]
+                        return getattr(v, "current_location", (40.0, 50.0))
+                return (40.0, 50.0)
+
+            # Ensure sender is in mesh nodes without being overwritten
+            if sender:
+                if sender not in self.mesh.nodes:
+                    self.mesh.add_node(sender, _get_entity_pos(sender))
+            else:
+                available = list(self.mesh.nodes.keys())
                 sender = available[0] if available else "HUB_BKC"
 
-            if receiver != "BROADCAST" and receiver not in self.mesh.nodes:
-                receiver = available[-1] if len(available) > 1 else "BROADCAST"
+            if receiver and receiver != "BROADCAST":
+                if receiver not in self.mesh.nodes:
+                    self.mesh.add_node(receiver, _get_entity_pos(receiver))
+            elif not receiver:
+                receiver = "BROADCAST"
 
             cur_t = self.env.current_time_mins if self.env else 0.0
             msg = MeshMessage(
