@@ -18,9 +18,6 @@ const CHAT_PRESETS = [
 
 export default function NetworkPage() {
   const { state, connectionStatus, toggleCloud } = useDashboardState();
-  const [testLog, setTestLog] = useState(null);
-  const [activeRoute, setActiveRoute] = useState([]);
-  const [loadingAction, setLoadingAction] = useState(null);
 
   // Chat controls
   const [chatSender, setChatSender] = useState("");
@@ -79,110 +76,6 @@ export default function NetworkPage() {
   ];
   const uniqueSenders = Array.from(new Map(allSenders.map((s) => [s.id, s])).values());
 
-  const handleDeployTestNodes = async () => {
-    setLoadingAction("deploy");
-    try {
-      const res = await fetch("/api/simulation/mesh/deploy-test", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        setTestLog({
-          type: "DEPLOY",
-          title: "Test Mesh Nodes Active",
-          message: "4 peer radio nodes deployed along corridor: HUB_BKC ➔ PEER_VASHI ➔ PEER_LONAVALA ➔ PEER_PUNE (30km RF links).",
-          status: "ONLINE",
-          nodes: data.nodes,
-        });
-        setActiveRoute([]);
-      }
-    } catch (err) {
-      console.error("Failed to deploy test mesh nodes:", err);
-    } finally {
-      setLoadingAction(null);
-    }
-  };
-
-  const handleSendPing = async () => {
-    setLoadingAction("ping");
-    try {
-      const res = await fetch("/api/simulation/mesh/test-ping", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "HUB_BKC", target: "PEER_PUNE" }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setActiveRoute(data.route_taken || []);
-        setTestLog({
-          type: "PING",
-          title: `Packet Delivered: ${data.message_id}`,
-          message: `Multi-hop routing successful from ${data.source} to ${data.target} via ${data.hop_count || 1} anonymous peer hops`,
-          hops: data.hop_count,
-          latency: `${data.latency_ms} ms`,
-          route: [],
-          status: "DELIVERED",
-        });
-      } else {
-        setTestLog({
-          type: "ERROR",
-          title: "Transmission Dropped",
-          message: data.error || "No active multi-hop RF path available.",
-          status: "DROPPED",
-        });
-      }
-    } catch (err) {
-      console.error("Failed to send mesh ping:", err);
-    } finally {
-      setLoadingAction(null);
-    }
-  };
-
-  const handleSimulateSos = async () => {
-    setLoadingAction("sos");
-    try {
-      const res = await fetch("/api/simulation/mesh/simulate-sos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ node_id: "PEER_LONAVALA" }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setTestLog({
-          type: "SOS",
-          title: `🚨 Emergency SOS Broadcast: ${data.broken_node}`,
-          message: `Node ${data.broken_node} experienced engine failure. Emergency SOS packet relayed to peers: ${data.peers_alerted.join(", ")}.`,
-          hops: data.hop_count,
-          latency: `${data.latency_ms} ms`,
-          peers: data.peers_alerted,
-          status: "SOS_RESOLVED",
-        });
-      }
-    } catch (err) {
-      console.error("Failed to simulate SOS:", err);
-    } finally {
-      setLoadingAction(null);
-    }
-  };
-
-  const handleClearTestNodes = async () => {
-    setLoadingAction("clear");
-    try {
-      const res = await fetch("/api/simulation/mesh/clear-test", { method: "POST" });
-      const data = await res.json();
-      if (data.success) {
-        setActiveRoute([]);
-        setTestLog({
-          type: "CLEAR",
-          title: "Test Nodes Cleared",
-          message: "Mesh returned to real registered delivery vehicles.",
-          status: "CLEARED",
-        });
-      }
-    } catch (err) {
-      console.error("Failed to clear test nodes:", err);
-    } finally {
-      setLoadingAction(null);
-    }
-  };
 
   const handleSendChat = async (overrideText) => {
     const textToSend = typeof overrideText === "string" ? overrideText : chatMessage;
@@ -204,19 +97,7 @@ export default function NetworkPage() {
       });
       const data = await res.json();
       if (data.success && data.record) {
-        if (data.record.route_taken?.length > 1) {
-          setActiveRoute(data.record.route_taken);
-        }
         setChatMessage("");
-        setTestLog({
-          type: "CHAT",
-          title: `💬 Mesh Radio Packet: ${data.record.id}`,
-          message: `"${data.record.message}" transmitted from ${data.record.sender} to ${data.record.receiver}`,
-          hops: data.record.hop_count,
-          latency: `${data.record.latency_ms} ms`,
-          route: data.record.route_taken,
-          status: "DELIVERED",
-        });
       }
     } catch (err) {
       console.error("Failed to send mesh chat:", err);
@@ -275,112 +156,6 @@ export default function NetworkPage() {
         </div>
       </div>
 
-      {/* Interactive BLE Mesh Test Bench */}
-      <div className="border border-blue-200 bg-gradient-to-r from-blue-50/50 via-indigo-50/30 to-white rounded-xl shadow-sm p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-100 pb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-base">🧪</span>
-              <h3 className="text-sm font-bold text-slate-900 uppercase font-mono tracking-wide">
-                Interactive BLE Mesh Test Bench
-              </h3>
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
-                Self-Contained Sandbox
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Test peer-to-peer radio propagation, multi-hop packet routing, chat messaging, and Contract-Net emergency SOS without needing real trucks.
-            </p>
-          </div>
-
-          <div className="text-xs font-mono text-slate-500">
-            Active Nodes: <b className="text-blue-700 font-bold">{activeNodes.length}</b> · Links: <b className="text-blue-700 font-bold">{mesh.links.length}</b>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={handleDeployTestNodes}
-            disabled={loadingAction !== null}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <span>🛰️</span>
-            <span>{loadingAction === "deploy" ? "Deploying..." : "Deploy Test Radio Nodes"}</span>
-          </button>
-
-          <button
-            onClick={handleSendPing}
-            disabled={loadingAction !== null || activeNodes.length < 2}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <span>📡</span>
-            <span>{loadingAction === "ping" ? "Transmitting..." : "Send Multi-Hop Ping Packet"}</span>
-          </button>
-
-          <button
-            onClick={handleSimulateSos}
-            disabled={loadingAction !== null || activeNodes.length === 0}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white transition shadow-xs flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <span>🚨</span>
-            <span>{loadingAction === "sos" ? "Broadcasting..." : "Simulate Node SOS Breakdown"}</span>
-          </button>
-
-          <button
-            onClick={() => toggleCloud(!isCloudOnline)}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white transition shadow-xs flex items-center gap-1.5"
-          >
-            <span>⚡</span>
-            <span>{isCloudOnline ? "Cut Cloud (Mesh Only)" : "Restore Central Cloud"}</span>
-          </button>
-
-          {activeNodes.length > 0 && (
-            <button
-              onClick={handleClearTestNodes}
-              disabled={loadingAction !== null}
-              className="px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition border border-slate-200 flex items-center gap-1.5 ml-auto disabled:opacity-50"
-            >
-              <span>🧹</span>
-              <span>Clear Test Nodes</span>
-            </button>
-          )}
-        </div>
-
-        {/* Live Packet Transmission Result Display */}
-        {testLog && (
-          <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                  testLog.status === "DELIVERED"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : testLog.status === "SOS_RESOLVED"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-blue-100 text-blue-800"
-                }`}>
-                  {testLog.status}
-                </span>
-                <span className="font-bold text-slate-800">{testLog.title}</span>
-              </div>
-              <p className="text-slate-600 font-sans text-xs">{testLog.message}</p>
-            </div>
-
-            {testLog.route && (
-              <div className="flex items-center gap-3 bg-slate-50 px-3 py-2 rounded border border-slate-200 shrink-0">
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Hops</span>
-                  <span className="font-bold text-blue-700">{testLog.hops} hops</span>
-                </div>
-                <div className="border-l border-slate-200 pl-3">
-                  <span className="text-[10px] text-slate-400 block uppercase">Latency</span>
-                  <span className="font-bold text-emerald-700">{testLog.latency}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* Network KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -510,7 +285,7 @@ export default function NetworkPage() {
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs text-center space-y-1">
                   <span className="text-xl">📻</span>
                   <span>No mesh radio chat transmissions yet.</span>
-                  <span className="text-[11px]">Send a test radio message using the console on the right!</span>
+                  <span className="text-[11px]">Send a radio packet using the console on the right!</span>
                 </div>
               )}
             </div>
