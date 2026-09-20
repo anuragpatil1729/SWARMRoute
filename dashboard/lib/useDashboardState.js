@@ -182,14 +182,17 @@ export function useDashboardState() {
 
   const breakVehicle = useCallback(async (vehicleId = null) => {
     try {
-      await fetch("/api/disruption/break", {
+      const res = await fetch("/api/disruption/break", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vehicle_id: vehicleId }),
       });
+      const data = await res.json();
       await fetchGlobalState();
+      return data;
     } catch (e) {
       console.error(e);
+      return { success: false, error: e.message };
     }
   }, []);
 

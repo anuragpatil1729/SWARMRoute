@@ -38,6 +38,10 @@ class MeshNetwork:
     def update_node_position(self, node_id: str, position: Tuple[float, float]) -> None:
         self.nodes[node_id] = position
 
+    def add_node(self, node_id: str, position: Tuple[float, float] = (40.0, 50.0)) -> None:
+        """Alias for update_node_position to register or update an RF mesh node."""
+        self.update_node_position(node_id, position)
+
     def set_node_failed(self, node_id: str, failed: bool = True) -> None:
         if failed:
             self.failed_nodes.add(node_id)

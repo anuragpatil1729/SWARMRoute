@@ -126,8 +126,16 @@ export default function DeliveryPartnerCockpit() {
     rating: profile?.rating ?? 5.0,
   };
 
+  const matchedPartner = partnerProfiles.find(
+    (p) =>
+      p.id === profile?.partner_id ||
+      p.id === partnerId ||
+      (partnerPlate && p.registration && p.registration.toUpperCase() === partnerPlate.toUpperCase()) ||
+      (partnerName && p.name && p.name.toLowerCase() === partnerName.toLowerCase())
+  );
+
   const currentPartner = isDeliveryPartner
-    ? fallbackPartner
+    ? (matchedPartner || fallbackPartner)
     : (partnerProfiles.find((p) => p.id === (selectedPartnerId || partnerProfiles[0]?.id)) || fallbackPartner);
 
   const activeId = currentPartner.id;
@@ -166,18 +174,39 @@ export default function DeliveryPartnerCockpit() {
 
   const handleSos = async () => {
     setIsSosLoading(true);
-    const res = await breakVehicle(activeId);
-    setIsSosLoading(false);
-    setActionFeedback({
-      success: false,
-      msg: `🚨 EMERGENCY SOS BROADCASTED! P2P Swarm mesh initiated peer contract-net auction for pending parcels.`,
-    });
-    setTimeout(() => setActionFeedback(null), 8000);
+    try {
+      const targetVehicleId = currentVehicle?.id || activeId;
+      const res = await breakVehicle(targetVehicleId);
+      if (res && res.success === false) {
+        setActionFeedback({
+          success: false,
+          msg: `SOS transmission failed: ${res.error || "Network packet dropped."}`,
+        });
+        return;
+      }
+      const chRes = await fetch("/api/simulation/mesh/chat-history");
+      const chData = await chRes.json();
+      if (Array.isArray(chData)) setRecentMeshChats(chData);
+      setActionFeedback({
+        success: true,
+        msg: `🚨 EMERGENCY SOS BROADCASTED! High-priority radio packets transmitted across RF mesh.`,
+      });
+    } catch (e) {
+      console.error(e);
+      setActionFeedback({
+        success: false,
+        msg: "Failed to broadcast emergency SOS.",
+      });
+    } finally {
+      setIsSosLoading(false);
+      setTimeout(() => setActionFeedback(null), 8000);
+    }
   };
 
   const handleClearSos = async () => {
     setIsSosLoading(true);
-    const res = await repairVehicle(activeId);
+    const targetVehicleId = currentVehicle?.id || activeId;
+    const res = await repairVehicle(targetVehicleId);
     setIsSosLoading(false);
     if (res && res.success) {
       setActionFeedback({

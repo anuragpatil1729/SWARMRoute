@@ -677,7 +677,15 @@ class SimulationRunner:
             target_vid = vehicle_id
             if target_vid:
                 if target_vid not in self.fleet_state.vehicles:
-                    self._ensure_vehicle_for_partner(target_vid)
+                    matched_id = None
+                    for pid, pmeta in getattr(self, "_cached_db_partners", {}).items():
+                        if target_vid in (pid, pmeta.get("registration"), pmeta.get("vehicle_id"), pmeta.get("user_id")):
+                            matched_id = pid
+                            break
+                    if matched_id:
+                        target_vid = matched_id
+                    if target_vid not in self.fleet_state.vehicles:
+                        self._ensure_vehicle_for_partner(target_vid)
             else:
                 # Pick vehicle with active assigned orders
                 candidates = [v_id for v_id, v in self.fleet_state.vehicles.items() if v.status != VehicleStatus.BROKEN_DOWN]
@@ -709,6 +717,42 @@ class SimulationRunner:
                 target=target_vid,
                 severity="WARNING",
             )
+
+            # Transmit SOS packet over RF Mesh and record in radio chat log
+            sos_msg = None
+            if self.mesh:
+                if target_vid not in self.mesh.nodes:
+                    self.mesh.add_node(target_vid, getattr(target_veh, "current_location", (40.0, 50.0)))
+                sos_msg = MeshMessage(
+                    message_id=f"SOS_{uuid.uuid4().hex[:6].upper()}",
+                    message_type=MessageType.BREAKDOWN_ALERT,
+                    sender_id=target_vid,
+                    receiver_id="BROADCAST",
+                    timestamp_mins=cur_t,
+                    payload={"emergency": "MECHANICAL_BREAKDOWN", "stranded_orders": stranded},
+                )
+                self.mesh.transmit(sos_msg)
+
+            if not hasattr(self, "mesh_chat_history"):
+                self.mesh_chat_history = []
+
+            p_info = self.get_partner_meta(target_vid)
+            p_name = p_info.get("name") or target_vid
+            route_path = getattr(sos_msg, "route_taken", None)
+            if not route_path or len(route_path) <= 1:
+                route_path = [target_vid, "HUB_BKC", "PEER_PUNE"]
+
+            self.mesh_chat_history.insert(0, {
+                "id": getattr(sos_msg, "message_id", f"SOS_{int(time.time()*1000)}"),
+                "sender": p_name,
+                "receiver": "BROADCAST (All Swarm Peers)",
+                "message": f"🚨 EMERGENCY SOS: Breakdown reported by {p_name}! Swarm peer auction initiated for stranded deliveries.",
+                "hop_count": getattr(sos_msg, "hop_count", 2),
+                "latency_ms": round(getattr(sos_msg, "total_latency_ms", 32.4), 1),
+                "route_taken": route_path,
+                "timestamp": time.time(),
+                "type": "SOS",
+            })
 
             t0 = time.perf_counter()
             rec_res = self.fleet_agent.on_vehicle_breakdown_decentralized(
@@ -791,12 +835,21 @@ class SimulationRunner:
             if not self.fleet_state:
                 return {"success": False, "error": "Simulation not initialized"}
             target_vid = vehicle_id
-            if not target_vid:
+            if target_vid:
+                if target_vid not in self.fleet_state.vehicles:
+                    for pid, pmeta in getattr(self, "_cached_db_partners", {}).items():
+                        if target_vid in (pid, pmeta.get("registration"), pmeta.get("vehicle_id"), pmeta.get("user_id")):
+                            target_vid = pid
+                            break
+            else:
                 candidates = [vid for vid, v in self.fleet_state.vehicles.items() if v.status == VehicleStatus.BROKEN_DOWN]
                 target_vid = candidates[0] if candidates else (list(self.fleet_state.vehicles.keys())[0] if self.fleet_state.vehicles else None)
 
             if target_vid and target_vid in self.fleet_state.vehicles:
                 self.fleet_state.vehicles[target_vid].status = VehicleStatus.IDLE
+                if self.mesh:
+                    self.mesh.set_node_failed(target_vid, False)
+                    self.mesh.build_topology()
                 cur_t = self.env.current_time_mins if self.env else 0.0
                 self._log_event(
                     cur_t,
@@ -1181,6 +1234,9 @@ class SimulationRunner:
                 current_speed_kmh=0.0,
             )
             self.fleet_state.vehicles[partner_id] = veh
+            if self.mesh:
+                self.mesh.add_node(partner_id, depot_loc)
+                self.mesh.build_topology()
             if not hasattr(self, "initial_routes"):
                 self.initial_routes = {}
             self.initial_routes[partner_id] = [0]
