@@ -265,6 +265,12 @@ def inject_breakdown(req: Optional[BreakRequest] = None) -> Dict[str, Any]:
     return runner.break_vehicle(vehicle_id=vid)
 
 
+@app.post("/api/disruption/repair")
+def clear_breakdown(req: Optional[BreakRequest] = None) -> Dict[str, Any]:
+    vid = req.vehicle_id if req else None
+    return runner.repair_vehicle(vehicle_id=vid)
+
+
 @app.post("/api/disruption/cloud")
 def toggle_cloud(req: Optional[CloudRequest] = None) -> Dict[str, Any]:
     enabled = req.enabled if req else None

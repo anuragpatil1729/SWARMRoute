@@ -180,7 +180,6 @@ export function useDashboardState() {
     }
   }, []);
 
-  // Disruption Injections
   const breakVehicle = useCallback(async (vehicleId = null) => {
     try {
       await fetch("/api/disruption/break", {
@@ -191,6 +190,22 @@ export function useDashboardState() {
       await fetchGlobalState();
     } catch (e) {
       console.error(e);
+    }
+  }, []);
+
+  const repairVehicle = useCallback(async (vehicleId = null) => {
+    try {
+      const res = await fetch("/api/disruption/repair", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vehicle_id: vehicleId }),
+      });
+      const data = await res.json();
+      await fetchGlobalState();
+      return data;
+    } catch (e) {
+      console.error(e);
+      return { success: false, error: e.message };
     }
   }, []);
 
@@ -285,6 +300,7 @@ export function useDashboardState() {
     reset,
     setSpeed,
     breakVehicle,
+    repairVehicle,
     toggleCloud,
     injectTraffic,
     injectDemand,

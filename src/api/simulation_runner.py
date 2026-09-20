@@ -785,6 +785,29 @@ class SimulationRunner:
 
             return {"success": True, "incident": incident, "recovery": rec_res}
 
+    def repair_vehicle(self, vehicle_id: Optional[str] = None) -> Dict[str, Any]:
+        """Restores a broken down vehicle back to IDLE/operational status and clears SOS."""
+        with self.lock:
+            if not self.fleet_state:
+                return {"success": False, "error": "Simulation not initialized"}
+            target_vid = vehicle_id
+            if not target_vid:
+                candidates = [vid for vid, v in self.fleet_state.vehicles.items() if v.status == VehicleStatus.BROKEN_DOWN]
+                target_vid = candidates[0] if candidates else (list(self.fleet_state.vehicles.keys())[0] if self.fleet_state.vehicles else None)
+
+            if target_vid and target_vid in self.fleet_state.vehicles:
+                self.fleet_state.vehicles[target_vid].status = VehicleStatus.IDLE
+                cur_t = self.env.current_time_mins if self.env else 0.0
+                self._log_event(
+                    cur_t,
+                    "VEHICLE_REPAIRED",
+                    f"{target_vid} recovered from breakdown. Restored to IDLE operational status.",
+                    target=target_vid,
+                    severity="SUCCESS",
+                )
+                return {"success": True, "message": f"{target_vid} repaired and operational."}
+            return {"success": False, "error": f"Vehicle '{target_vid}' not found"}
+
     def toggle_cloud(self, enabled: Optional[bool] = None) -> Dict[str, Any]:
         """Toggles between central cloud connectivity and decentralized RF mesh."""
         with self.lock:

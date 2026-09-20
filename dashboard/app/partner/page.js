@@ -15,6 +15,7 @@ export default function DeliveryPartnerCockpit() {
     connectionStatus,
     completeTask,
     breakVehicle,
+    repairVehicle,
     start,
     pause,
     step,
@@ -38,6 +39,20 @@ export default function DeliveryPartnerCockpit() {
 
   const [requestingOrderId, setRequestingOrderId] = useState(null);
   const [activeTab, setActiveTab] = useState("available"); // "available" or "my_tasks"
+  const [gpsActive, setGpsActive] = useState(false);
+  const [gpsCoords, setGpsCoords] = useState(null);
+  const [chatText, setChatText] = useState("");
+  const [sendingChat, setSendingChat] = useState(false);
+  const [recentMeshChats, setRecentMeshChats] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/simulation/mesh/chat-history")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setRecentMeshChats(data);
+      })
+      .catch(() => {});
+  }, [state]);
 
   if (connectionStatus === "OFFLINE" && !state) {
     return (
@@ -160,6 +175,106 @@ export default function DeliveryPartnerCockpit() {
     setTimeout(() => setActionFeedback(null), 8000);
   };
 
+  const handleClearSos = async () => {
+    setIsSosLoading(true);
+    const res = await repairVehicle(activeId);
+    setIsSosLoading(false);
+    if (res && res.success) {
+      setActionFeedback({
+        success: true,
+        msg: `✅ Vehicle repaired! SOS cleared and operational status restored to IDLE.`,
+      });
+    } else {
+      setActionFeedback({
+        success: false,
+        msg: res?.error || "Could not clear SOS.",
+      });
+    }
+    setTimeout(() => setActionFeedback(null), 5000);
+  };
+
+  const handleToggleGps = () => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      setActionFeedback({ success: false, msg: "Geolocation not supported in this browser." });
+      return;
+    }
+    if (gpsActive) {
+      setGpsActive(false);
+      setActionFeedback({ success: true, msg: "Switched back to fleet simulation route coordinates." });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        setGpsActive(true);
+        const { latitude, longitude, speed, heading, accuracy } = pos.coords;
+        setGpsCoords({ lat: latitude, lon: longitude, accuracy });
+        try {
+          await fetch("/api/v1/driver/telemetry", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              vehicle_id: activeId,
+              latitude,
+              longitude,
+              speed_kmh: speed ? speed * 3.6 : 0,
+              heading: heading || 0,
+              accuracy: accuracy || 5.0,
+              fuel_level: 100.0,
+              vehicle_condition: 1.0,
+              internet_status: "ONLINE",
+            }),
+          });
+          setActionFeedback({
+            success: true,
+            msg: `📍 Real Device GPS Synced: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+          });
+        } catch (e) {
+          setActionFeedback({ success: true, msg: `Device GPS captured (${latitude.toFixed(4)}, ${longitude.toFixed(4)})` });
+        }
+      },
+      (err) => {
+        setActionFeedback({
+          success: false,
+          msg: `Location permission needed: ${err.message}. Over local IP, enable location in browser settings.`,
+        });
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const handleSendMeshChat = async (presetText) => {
+    const text = typeof presetText === "string" ? presetText : chatText;
+    if (!text || !text.trim()) return;
+    setSendingChat(true);
+    try {
+      const res = await fetch("/api/simulation/mesh/send-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: activeId,
+          receiver: "BROADCAST",
+          message: text.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setChatText("");
+        setActionFeedback({
+          success: true,
+          msg: `📡 Mesh Packet broadcasted (${data.record?.hop_count || 1} hops · ${data.record?.latency_ms || 35}ms)!`,
+        });
+        const chRes = await fetch("/api/simulation/mesh/chat-history");
+        const chData = await chRes.json();
+        if (Array.isArray(chData)) setRecentMeshChats(chData);
+      }
+    } catch (e) {
+      setActionFeedback({ success: false, msg: "Failed to transmit over mesh radio." });
+    } finally {
+      setSendingChat(false);
+      setTimeout(() => setActionFeedback(null), 5000);
+    }
+  };
+
   const availableOrders = orders.filter((o) => !o.assigned_vehicle && o.status !== "DELIVERED");
 
   const handleRequestDelivery = async (orderId) => {
@@ -230,6 +345,22 @@ export default function DeliveryPartnerCockpit() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Quick Real Device GPS Button */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleGps}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border shadow-xs ${
+                gpsActive
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-300 ring-1 ring-emerald-300"
+                  : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+              }`}
+            >
+              <span>📍</span>
+              <span>{gpsActive ? `Live Device GPS Active (${gpsCoords?.lat?.toFixed(3)}, ${gpsCoords?.lon?.toFixed(3)})` : "Use Real Device GPS"}</span>
+            </button>
           </div>
 
           {/* Switch Active Partner View - only for preview/simulation mode */}
@@ -486,9 +617,19 @@ export default function DeliveryPartnerCockpit() {
                   <span>{isSosLoading ? "Broadcasting..." : "Report Breakdown / Trigger Swarm Mesh SOS"}</span>
                 </button>
               ) : (
-                <div className="p-2.5 bg-red-100 border border-red-300 rounded-lg text-xs text-red-800 font-semibold flex items-center gap-2">
-                  <span>⚠</span>
-                  <span>Vehicle is broken down. Swarm auction is re-allocating parcels to peer riders.</span>
+                <div className="p-3 bg-red-50 border border-red-300 rounded-xl text-xs text-red-800 font-semibold flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>Vehicle is broken down. Swarm auction is re-allocating parcels to peer riders.</span>
+                  </div>
+                  <button
+                    onClick={handleClearSos}
+                    disabled={isSosLoading}
+                    className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <span>🛠️</span>
+                    <span>{isSosLoading ? "Repairing..." : "Vehicle Repaired — Clear SOS & Resume Service"}</span>
+                  </button>
                 </div>
               )}
 
@@ -587,6 +728,102 @@ export default function DeliveryPartnerCockpit() {
               </div>
             </div>
           )}
+
+          {/* P2P BLE Mesh Radio Intercom */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                  <span>📻</span>
+                  <span>P2P BLE Mesh Radio Intercom</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Transmit ad-hoc hopping radio messages directly to peer delivery drivers & hubs.
+                </p>
+              </div>
+              <Link
+                href="/network"
+                className="text-xs text-blue-600 hover:text-blue-800 font-semibold"
+              >
+                Full Mesh Cockpit →
+              </Link>
+            </div>
+
+            {/* Quick Tactical Presets */}
+            <div className="space-y-1">
+              <span className="text-[11px] font-semibold text-slate-500 block font-mono">
+                Quick Tactical Radio Presets:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "⚠️ Traffic jam ahead on highway",
+                  "🌧️ Heavy rain / low visibility",
+                  "📦 Arrived at delivery point",
+                  "🔋 Fast EV charger available",
+                  "🚨 Need backup assistance",
+                ].map((preset, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSendMeshChat(preset)}
+                    disabled={sendingChat}
+                    className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-medium border border-slate-200 transition disabled:opacity-50"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Mesh Message Input */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMeshChat();
+              }}
+              className="flex gap-2 pt-1"
+            >
+              <input
+                type="text"
+                value={chatText}
+                onChange={(e) => setChatText(e.target.value)}
+                placeholder="Type radio packet to broadcast over mesh..."
+                className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <button
+                type="submit"
+                disabled={sendingChat || !chatText.trim()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs"
+              >
+                <span>{sendingChat ? "Transmitting..." : "📡 Send"}</span>
+              </button>
+            </form>
+
+            {/* Recent Mesh Transmissions */}
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 pt-1">
+              <span className="text-[11px] font-mono text-slate-400 block uppercase">Recent Mesh Radio Packets:</span>
+              {recentMeshChats.length === 0 ? (
+                <p className="text-[11px] text-slate-400 text-center py-2 italic font-mono">
+                  No mesh radio packets sent yet. Tap a preset above to transmit!
+                </p>
+              ) : (
+                recentMeshChats.slice(0, 5).map((m, idx) => (
+                  <div key={idx} className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5 font-mono">
+                      <span className="font-bold text-blue-700">{m.sender} ➔ {m.receiver}</span>
+                      <span>{m.hop_count} hops · {m.latency_ms} ms</span>
+                    </div>
+                    <div className="text-slate-800 font-medium">{m.message}</div>
+                    {m.route_taken && m.route_taken.length > 1 && (
+                      <div className="text-[10px] text-emerald-700 font-mono mt-0.5">
+                        Forwarding Path: {m.route_taken.join(" ➔ ")}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right Column: Interactive OpenStreetMap for Bengaluru */}

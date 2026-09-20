@@ -15,6 +15,7 @@ const managerItems = [
 
 const partnerItems = [
   { href: "/partner", label: "🛵 My Deliveries & Active Route" },
+  { href: "/network", label: "📡 BLE Mesh Network" },
 ];
 
 export default function Masthead() {
