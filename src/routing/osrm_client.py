@@ -48,6 +48,7 @@ class RoadRoute:
             "origin": {"lat": self.origin[0], "lon": self.origin[1]},
             "destination": {"lat": self.destination[0], "lon": self.destination[1]},
             "coordinates": [{"lat": c[0], "lon": c[1]} for c in self.coordinates],
+            "lat_lon": [[round(c[0], 6), round(c[1], 6)] for c in self.coordinates],
             "distance_km": self.distance_km,
             "duration_mins": self.duration_mins,
             "steps_count": len(self.steps),
@@ -71,9 +72,9 @@ class OSRMRoutingClient:
             or "https://router.project-osrm.org"
         ).rstrip("/")
         self.timeout_sec = timeout_sec
-        # In-memory cache for recent coordinate pairs (lat1, lon1, lat2, lon2) -> (timestamp, RoadRoute)
-        self._cache: Dict[Tuple[float, float, float, float], Tuple[float, RoadRoute]] = {}
-        self._cache_ttl_sec = 300.0
+        # In-memory cache for recent coordinate pairs (lat1, lon1, lat2, lon2, detour) -> (timestamp, RoadRoute)
+        self._cache: Dict[Tuple[float, float, float, float, bool], Tuple[float, RoadRoute]] = {}
+        self._cache_ttl_sec = 600.0
 
     def is_healthy(self) -> bool:
         """Returns True if OSRM routing endpoint is configured and active."""
@@ -85,10 +86,12 @@ class OSRMRoutingClient:
         origin_lon: float,
         dest_lat: float,
         dest_lon: float,
+        detour: bool = False,
     ) -> Dict[str, Any]:
         """
         Fetches true driving route along real street networks.
         Coordinates are passed as (lat, lon) and transformed to OSRM order (lon,lat).
+        Supports detour=True to route around congestion via a bypass corridor.
         """
         # Quantize for cache lookup (approx 10m precision)
         cache_key = (
@@ -96,6 +99,7 @@ class OSRMRoutingClient:
             round(origin_lon, 4),
             round(dest_lat, 4),
             round(dest_lon, 4),
+            bool(detour),
         )
         now = time.time()
         if cache_key in self._cache:
@@ -103,12 +107,24 @@ class OSRMRoutingClient:
             if now - cached_time < self._cache_ttl_sec:
                 return {"success": True, "route": cached_route.to_dict()}
 
-        # Construct OSRM request URL: /route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=full&geometries=geojson&steps=true
-        url = (
-            f"{self.base_url}/route/v1/driving/"
-            f"{origin_lon},{origin_lat};{dest_lon},{dest_lat}"
-            f"?overview=full&geometries=geojson&steps=true"
-        )
+        if detour:
+            mid_lat = (origin_lat + dest_lat) / 2.0
+            mid_lon = (origin_lon + dest_lon) / 2.0
+            d_lat = dest_lat - origin_lat
+            d_lon = dest_lon - origin_lon
+            via_lat = round(mid_lat - d_lon * 0.28, 6)
+            via_lon = round(mid_lon + d_lat * 0.28, 6)
+            url = (
+                f"{self.base_url}/route/v1/driving/"
+                f"{origin_lon},{origin_lat};{via_lon},{via_lat};{dest_lon},{dest_lat}"
+                f"?overview=full&geometries=geojson&steps=true"
+            )
+        else:
+            url = (
+                f"{self.base_url}/route/v1/driving/"
+                f"{origin_lon},{origin_lat};{dest_lon},{dest_lat}"
+                f"?overview=full&geometries=geojson&steps=true"
+            )
 
         try:
             req = urllib.request.Request(

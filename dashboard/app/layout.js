@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
               </AuthGate>
             </main>
             <footer className="w-full border-t border-slate-200 py-5 mt-10 text-xs text-slate-400 font-mono text-center">
-              SWARMRoute Autonomous Fleet Operations & Dynamic Mesh Resilience • Powered by Supabase
+              SWARMRoute Autonomous Fleet Operations & Dynamic Mesh Resilience
             </footer>
           </div>
         </AuthProvider>

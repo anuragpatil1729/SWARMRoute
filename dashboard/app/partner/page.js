@@ -320,10 +320,6 @@ export default function DeliveryPartnerCockpit() {
                   <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">
                     ⭐ {currentPartner.rating || 4.9}
                   </span>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                    <span>Supabase Synced</span>
-                  </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {currentPartner.vehicle_model} · {currentPartner.registration} · {currentPartner.hub}
@@ -386,39 +382,89 @@ export default function DeliveryPartnerCockpit() {
           </div>
         )}
 
-        {/* Rider KPI Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mt-4">
-          <Stat
-            label="Cockpit Status"
-            value={isBroken ? "BREAKDOWN" : currentVehicle?.status || "IDLE"}
-            help={isBroken ? "Emergency SOS Active" : "Operational in Swarm"}
-          />
-          <Stat
-            label="Current Speed"
-            value={`${Math.round(currentVehicle?.speed_kmh || 0)} km/h`}
-            help={`${partnerCity} Urban Cruise`}
-          />
-          <Stat
-            label="Cargo Load"
-            value={`${currentVehicle?.current_load || 0} / ${currentVehicle?.max_weight || 100} kg`}
-            help={`Rem: ${currentVehicle?.remaining_capacity || 0} kg`}
-          />
-          <Stat
-            label="Fuel / Battery"
-            value={`${Math.round(currentVehicle?.fuel_level || 100)}%`}
-            help="EV Fast-Charge Ready"
-          />
-          <Stat
-            label="Available Tasks"
-            value={`${availableOrders.length} Open`}
-            help="Open for claiming"
-          />
-          <Stat
-            label="P2P Mesh Link"
-            value={currentVehicle?.mesh_neighbors?.length > 0 ? "CONNECTED" : "STANDALONE"}
-            help={`${currentVehicle?.mesh_neighbors?.length || 0} Peer Riders in RF Range`}
-          />
-        </div>
+        {/* Dynamic Rider KPI Metrics */}
+        {(() => {
+          const partnerStatus = isBroken
+            ? "BREAKDOWN"
+            : pendingOrders.length > 0
+            ? "EN_ROUTE"
+            : currentPartner?.status || currentVehicle?.status || "AVAILABLE";
+
+          const partnerStatusSub = isBroken
+            ? "Emergency SOS Active"
+            : pendingOrders.length > 0
+            ? `${pendingOrders.length} stop${pendingOrders.length === 1 ? "" : "s"} allocated`
+            : "Standby for orders";
+
+          const speedVal = gpsActive && gpsCoords?.speed
+            ? Math.round(gpsCoords.speed * 3.6)
+            : Math.round(currentVehicle?.speed_kmh || currentPartner?.speed_kmh || 0);
+
+          const speedSub = gpsActive
+            ? "Live device GPS"
+            : speedVal > 0
+            ? `${partnerCity} road transit`
+            : "Stationary / Parked";
+
+          const currentLoadKg = Number(currentVehicle?.current_load) 
+            || Number(currentPartner?.current_load) 
+            || pendingOrders.reduce((acc, o) => acc + (Number(o.demand) || Number(o.demand_weight) || 0), 0);
+
+          const maxWeightKg = Number(currentPartner?.max_weight) 
+            || Number(currentVehicle?.max_weight) 
+            || (currentPartner?.vehicle_model?.includes("Mini Truck") ? 3000 : 500);
+
+          const remWeightKg = Math.max(0, maxWeightKg - currentLoadKg);
+
+          const rawFuel = currentVehicle?.fuel_level ?? currentPartner?.fuel_level;
+          const fuelDisplay = rawFuel !== undefined && rawFuel !== null ? `${Math.round(rawFuel)}%` : "—";
+          const fuelSub = rawFuel !== undefined && rawFuel !== null
+            ? (rawFuel < 20 ? "Low level alert" : "Operational range")
+            : "Telemetry standby";
+
+          const meshPeers = currentVehicle?.mesh_neighbors?.length 
+            || (state?.network?.connected_vehicles ? Math.max(0, state.network.connected_vehicles - 1) : 0);
+          const isMeshConnected = meshPeers > 0;
+          const meshDisplay = isMeshConnected ? "CONNECTED" : "STANDALONE";
+          const meshSub = isMeshConnected
+            ? `${meshPeers} Peer Rider${meshPeers === 1 ? "" : "s"} in Range`
+            : (state?.network?.cloud_status === "ONLINE" ? "Cloud mode (Mesh standby)" : "Edge isolated");
+
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mt-4">
+              <Stat
+                label="Cockpit Status"
+                value={partnerStatus}
+                sub={partnerStatusSub}
+              />
+              <Stat
+                label="Current Speed"
+                value={`${speedVal} km/h`}
+                sub={speedSub}
+              />
+              <Stat
+                label="Cargo Load"
+                value={`${Math.round(currentLoadKg)} / ${Math.round(maxWeightKg)} kg`}
+                sub={`Available: ${Math.round(remWeightKg)} kg`}
+              />
+              <Stat
+                label="Fuel / Battery"
+                value={fuelDisplay}
+                sub={fuelSub}
+              />
+              <Stat
+                label="Available Tasks"
+                value={`${availableOrders.length} Open`}
+                sub={availableOrders.length > 0 ? "Ready for claiming" : "All orders assigned"}
+              />
+              <Stat
+                label="P2P Mesh Link"
+                value={meshDisplay}
+                sub={meshSub}
+              />
+            </div>
+          );
+        })()}
       </div>
 
       {/* 2. Main Cockpit View: Assigned Tasks List + Interactive Map */}

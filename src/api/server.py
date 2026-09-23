@@ -46,6 +46,8 @@ app = FastAPI(
     description="Field-testable delivery platform API connecting Web and Flutter clients to authoritative Supabase state.",
     version="2.0.0",
 )
+from src.api.news_endpoint import router as news_router
+app.include_router(news_router)
 
 # --- Realtime State Broadcaster (Web & Mobile Synchronization) ---
 class RealtimeBroadcaster:
@@ -518,6 +520,9 @@ class DriverTelemetryRequest(BaseModel):
     vehicle_id: str
     latitude: float
     longitude: float
+    dest_lat: Optional[float] = None
+    dest_lon: Optional[float] = None
+    traffic_level: Optional[str] = "NORMAL"
     speed_kmh: float = 0.0
     heading: float = 0.0
     accuracy: float = 5.0
@@ -1203,16 +1208,30 @@ def ingest_driver_telemetry(req: DriverTelemetryRequest) -> Dict[str, Any]:
         ai_evaluation["active_order_id"] = active_order.get("id")
         ai_evaluation["destination_type"] = "PICKUP" if order_status == "ASSIGNED" else "DELIVERY"
     else:
-        # Honest reporting per Phase 11: Driver has no active delivery order
-        ai_evaluation = {
-            "status": "NO_ACTIVE_ROUTE",
-            "decision": "HOLD_OR_WAIT",
-            "recommended_action": "KEEP_ROUTE",
-            "action_name": "HOLD_OR_CONTINUE",
-            "reason": "Driver has no active delivery order assigned. Standing by.",
-            "message": "Driver has no active delivery order assigned",
-            "evaluated_at": time.time(),
-        }
+        # Autonomous Route Evaluation fallback using provided telemetry target
+        target_dest_lat = req.dest_lat if req.dest_lat is not None else (req.latitude + 0.05)
+        target_dest_lon = req.dest_lon if req.dest_lon is not None else (req.longitude - 0.05)
+
+        route_calc = routing_client.get_road_route(req.latitude, req.longitude, target_dest_lat, target_dest_lon)
+        rem_dist_km = (
+            route_calc["route"]["distance_km"]
+            if (route_calc.get("success") and "route" in route_calc)
+            else (req.remaining_distance_km if req.remaining_distance_km > 0 else 10.0)
+        )
+
+        ai_evaluation = route_evaluator.evaluate(
+            vehicle_id=req.vehicle_id,
+            current_location=(req.latitude, req.longitude),
+            destination=(target_dest_lat, target_dest_lon),
+            remaining_distance_km=rem_dist_km,
+            speed_kmh=req.speed_kmh,
+            fuel_remaining_liters=fuel_rem_liters,
+            fuel_capacity_liters=cap,
+            vehicle_condition=req.vehicle_condition,
+            connectivity="CLOUD_MODE" if req.internet_status == "ONLINE" else "MESH_MODE",
+            traffic_level=req.traffic_level or "NORMAL",
+        )
+        ai_evaluation["destination_type"] = "SIMULATED_TARGET"
 
     emit_realtime_event("DRIVER_TELEMETRY_UPDATED", {
         "vehicle_id": req.vehicle_id,
@@ -1276,14 +1295,32 @@ def update_driver_order_status(
 
 # --- Route Intelligence Direct Evaluation ---
 
+@app.get("/api/v1/route/road")
+def get_road_route_endpoint(
+    origin_lat: float,
+    origin_lon: float,
+    dest_lat: float,
+    dest_lon: float,
+    detour: bool = False,
+) -> Dict[str, Any]:
+    """Fetches real road street network path geometry from OSRM."""
+    return routing_client.get_road_route(origin_lat, origin_lon, dest_lat, dest_lon, detour=detour)
+
+
 @app.post("/api/v1/route/intelligence")
 def evaluate_route_intelligence(req: RouteIntelligenceRequest) -> Dict[str, Any]:
     """Direct continuous route intelligence evaluation via Transformer + PPO."""
-    return route_evaluator.evaluate(
+    road_calc = routing_client.get_road_route(req.current_lat, req.current_lon, req.dest_lat, req.dest_lon)
+    rem_dist = (
+        road_calc["route"]["distance_km"]
+        if (road_calc.get("success") and "route" in road_calc)
+        else req.remaining_distance_km
+    )
+    res = route_evaluator.evaluate(
         vehicle_id=req.vehicle_id,
         current_location=(req.current_lat, req.current_lon),
         destination=(req.dest_lat, req.dest_lon),
-        remaining_distance_km=req.remaining_distance_km,
+        remaining_distance_km=rem_dist,
         speed_kmh=req.speed_kmh,
         fuel_remaining_liters=req.fuel_remaining_liters,
         fuel_capacity_liters=req.fuel_capacity_liters,
@@ -1293,6 +1330,9 @@ def evaluate_route_intelligence(req: RouteIntelligenceRequest) -> Dict[str, Any]
         current_load_kg=req.current_load_kg,
         max_load_kg=req.max_load_kg,
     )
+    if road_calc.get("success") and "route" in road_calc:
+        res["road_route"] = road_calc["route"]
+    return res
 
 
 # --- Physical BLE Multi-Hop Relay Gateway (NO SIMULATION RUNNER DEPENDENCY) ---

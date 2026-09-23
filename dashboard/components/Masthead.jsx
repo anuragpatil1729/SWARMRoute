@@ -11,11 +11,13 @@ const managerItems = [
   { href: "/customer", label: "Customer Portal" },
   { href: "/routes", label: "GIS Routes" },
   { href: "/network", label: "BLE Mesh Network" },
+  { href: "/simulator", label: "⚡ API Simulator" },
 ];
 
 const partnerItems = [
   { href: "/partner", label: "🛵 My Deliveries & Active Route" },
   { href: "/network", label: "📡 BLE Mesh Network" },
+  { href: "/simulator", label: "⚡ API Simulator" },
 ];
 
 export default function Masthead() {
